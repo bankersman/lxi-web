@@ -8,6 +8,8 @@ import { useSessionsStore } from "@/stores/sessions";
 const props = defineProps<{
   sessionId: string;
   readonly disabled?: boolean;
+  /** When true, only transcript lines whose origin is `panic` are shown. */
+  readonly panicFilterOnly?: boolean;
 }>();
 
 const sessions = useSessionsStore();
@@ -41,6 +43,7 @@ function formatOrigin(o: TranscriptOrigin): string {
 const filtered = computed(() => {
   const q = filterText.value.trim().toLowerCase();
   return entries.value.filter((e) => {
+    if (props.panicFilterOnly && e.origin.kind !== "panic") return false;
     if (!showDriver.value && e.origin.kind === "driver") return false;
     if (!showPoller.value && e.origin.kind === "poller") return false;
     if (

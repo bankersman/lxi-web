@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { ScpiSession, SessionSummary } from "@lxi-web/core";
+import type { PanicResult, ScpiSession, SessionSummary } from "@lxi-web/core";
 import { SessionManager } from "../src/sessions/manager.js";
 
 interface FakeScpi {
@@ -241,4 +241,36 @@ test("reconnect on an unknown id returns null", () => {
     },
   });
   assert.equal(manager.reconnect("does-not-exist"), null);
+});
+
+test("panic skips non-output sessions and records empty touched list", async () => {
+  const fake = makeFakeScpi().onQueryIdn("RIGOL TECHNOLOGIES,DHO804,SN,FW");
+  const manager = new SessionManager({
+    scpiFactory: async () => ({ scpi: fake.session, port: fake.session }),
+  });
+  const initial = manager.open({ host: "10.0.0.50" });
+  await waitFor(
+    () => manager.get(initial.id),
+    (s) => s?.status === "connected",
+  );
+  const result: PanicResult = await manager.panic({ timeoutMs: 2000 });
+  assert.equal(result.touchedSessions.length, 0);
+  assert.equal(result.skippedSessions.length, 1);
+  assert.equal(result.skippedSessions[0]!.reason, "not-output-killable");
+});
+
+test("panic skips sessions that are not connected", async () => {
+  const manager = new SessionManager({
+    scpiFactory: async () => {
+      throw new Error("ECONNREFUSED");
+    },
+  });
+  const initial = manager.open({ host: "10.0.0.51" });
+  await waitFor(
+    () => manager.get(initial.id),
+    (s) => s?.status === "error",
+  );
+  const result = await manager.panic({ timeoutMs: 500 });
+  assert.equal(result.touchedSessions.length, 0);
+  assert.ok(result.skippedSessions.some((s) => s.reason === "session-not-connected"));
 });

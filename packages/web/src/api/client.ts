@@ -64,6 +64,7 @@ import type {
   PsuProtectionState,
   DeviceErrorEntry,
   SessionSummary,
+  PanicResult,
   TranscriptEntry,
   SignalGeneratorArbitraryCapability,
   SignalGeneratorArbitrarySample,
@@ -249,6 +250,21 @@ export const api = {
     );
     const body = await parse<{ entries: DeviceErrorEntry[] }>(res);
     return body.entries;
+  },
+
+  async panic(options?: { readonly timeoutMs?: number }): Promise<PanicResult> {
+    const res = await fetch("/api/panic", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify(options ?? {}),
+    });
+    return parse<PanicResult>(res);
+  },
+
+  async getPanicHistory(): Promise<PanicResult[]> {
+    const res = await fetch("/api/panic/history");
+    const body = await parse<{ history: PanicResult[] }>(res);
+    return body.history;
   },
 
   async getScopeChannels(id: string): Promise<OscilloscopeChannelState[]> {

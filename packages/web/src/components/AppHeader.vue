@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { Activity } from "lucide-vue-next";
 import ThemeToggle from "./ThemeToggle.vue";
+import PanicStopControl from "./PanicStopControl.vue";
 import { useSessionsStore } from "@/stores/sessions";
 
 const sessions = useSessionsStore();
@@ -23,6 +24,7 @@ const wsLabel = computed(() =>
       <span class="text-xs text-fg-muted">bench instrument dashboard</span>
     </div>
     <div class="flex items-center gap-3">
+      <PanicStopControl />
       <span
         class="flex items-center gap-2 text-xs text-fg-muted"
         role="status"

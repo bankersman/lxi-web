@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import websocket from "@fastify/websocket";
 import { SessionManager } from "./sessions/manager.js";
 import { registerSessionRoutes } from "./routes/sessions.js";
+import { registerPanicRoutes } from "./routes/panic.js";
 import { registerTranscriptRoutes } from "./routes/transcript.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerDiscoveryRoutes } from "./routes/discovery.js";
@@ -40,6 +41,7 @@ export async function buildServer(
   app.get("/healthz", async () => ({ status: "ok" }));
 
   await registerSessionRoutes(app, manager);
+  await registerPanicRoutes(app, manager);
   await registerTranscriptRoutes(app, manager);
   await registerDeviceRoutes(app, manager);
   await registerDiscoveryRoutes(app, discovery);

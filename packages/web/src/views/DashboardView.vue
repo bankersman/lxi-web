@@ -6,6 +6,7 @@ import { useSavedConnectionsStore } from "@/stores/savedConnections";
 import AppHeader from "@/components/AppHeader.vue";
 import DeviceCard from "@/components/DeviceCard.vue";
 import AddDeviceDialog from "@/components/AddDeviceDialog.vue";
+import PanicHistoryPanel from "@/components/PanicHistoryPanel.vue";
 import ScopeMiniPanel from "@/components/panels/ScopeMiniPanel.vue";
 import PsuMiniPanel from "@/components/panels/PsuMiniPanel.vue";
 import DmmMiniPanel from "@/components/panels/DmmMiniPanel.vue";
@@ -170,6 +171,8 @@ async function reopenAllSaved(): Promise<void> {
           </template>
         </DeviceCard>
       </section>
+
+      <PanicHistoryPanel class="mt-6" />
     </main>
 
     <AddDeviceDialog :open="dialogOpen" @close="dialogOpen = false" />

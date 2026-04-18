@@ -1,5 +1,7 @@
 import type { ScpiPort } from "../../scpi/port.js";
 import type { DeviceIdentity } from "../../identity/idn.js";
+import type { OutputKillResult } from "../../facades/output-kill.js";
+import { runPsuDisableAll } from "../../facades/output-kill.js";
 import type {
   IPowerSupply,
   PsuChannelLimits,
@@ -116,5 +118,9 @@ export class TektronixPws implements IPowerSupply {
       output: parseBool(outRaw),
       limits: this.#channelLimits[id] ?? { voltageMax: 30, currentMax: 3 },
     };
+  }
+
+  async disableAllOutputs(): Promise<OutputKillResult> {
+    return runPsuDisableAll(this);
   }
 }

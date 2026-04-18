@@ -67,6 +67,21 @@ export async function registerWebsocketRoute(
   };
 
   manager.on("update", (session) => broadcast({ type: "sessions:update", session }));
+  manager.on("panicComplete", (result) => {
+    const at = Date.now();
+    for (const row of result.touchedSessions) {
+      broadcast({
+        type: "session.event",
+        sessionId: row.sessionId,
+        kind: "panicStop",
+        idn: row.idn,
+        outcome: row.outcome,
+        elapsedMs: row.elapsedMs,
+        at,
+      });
+    }
+    broadcast({ type: "panic:complete", result, at });
+  });
   manager.on("removed", ({ id }) => {
     scheduler.removeSession(id);
     observability.removeSession(id);

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ArrowLeft } from "lucide-vue-next";
 import { useSessionsStore } from "@/stores/sessions";
 import AppHeader from "@/components/AppHeader.vue";
@@ -19,10 +19,21 @@ const props = defineProps<{ sessionId: string }>();
 const scpiTab = ref<"transcript" | "raw">("transcript");
 
 const router = useRouter();
+const route = useRoute();
 const sessions = useSessionsStore();
 const session = computed(() => sessions.get(props.sessionId));
 
 const isConnected = computed(() => session.value?.status === "connected");
+
+const transcriptPanicOnly = computed(() => route.query.origin === "panic");
+
+watch(
+  () => route.query.origin,
+  (v) => {
+    if (v === "panic") scpiTab.value = "transcript";
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -122,6 +133,7 @@ const isConnected = computed(() => session.value?.status === "connected");
             v-show="scpiTab === 'transcript'"
             :session-id="session.id"
             :disabled="!isConnected"
+            :panic-filter-only="transcriptPanicOnly"
           />
           <div v-show="scpiTab === 'raw'" id="raw-scpi">
             <RawConsole :session-id="session.id" :disabled="!isConnected" />

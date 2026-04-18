@@ -1,4 +1,5 @@
 import type { InstrumentFacade } from "./base.js";
+import type { OutputKillResult } from "./output-kill.js";
 
 export interface PsuChannelLimits {
   readonly voltageMax: number;
@@ -136,4 +137,6 @@ export interface IPowerSupply extends InstrumentFacade {
   savePreset?(slot: number): Promise<void>;
   /** Optional — recall a previously saved state from `slot`. */
   recallPreset?(slot: number): Promise<void>;
+  /** Epic 5.2 — disable every output-capable path (panic stop). */
+  disableAllOutputs?(): Promise<OutputKillResult>;
 }

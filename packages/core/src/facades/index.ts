@@ -1,4 +1,10 @@
 export type { InstrumentFacade } from "./base.js";
+export type { OutputKillResult, PanicResult } from "./output-kill.js";
+export {
+  runEloadDisableAll,
+  runPsuDisableAll,
+  runSgDisableAll,
+} from "./output-kill.js";
 export type {
   IOscilloscope,
   OscilloscopeChannelState,

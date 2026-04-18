@@ -1,5 +1,7 @@
 import type { ScpiPort } from "../../scpi/port.js";
 import type { DeviceIdentity } from "../../identity/idn.js";
+import type { OutputKillResult } from "../../facades/output-kill.js";
+import { runEloadDisableAll } from "../../facades/output-kill.js";
 import type {
   ElectronicLoadBatteryCapability,
   ElectronicLoadBatteryConfig,
@@ -350,6 +352,10 @@ export class RigolDl3000 implements IElectronicLoad {
         }
         return;
     }
+  }
+
+  async disableAllOutputs(): Promise<OutputKillResult> {
+    return runEloadDisableAll(this);
   }
 }
 

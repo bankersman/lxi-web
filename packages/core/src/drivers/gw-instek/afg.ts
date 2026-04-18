@@ -1,5 +1,7 @@
 import type { ScpiPort } from "../../scpi/port.js";
 import type { DeviceIdentity } from "../../identity/idn.js";
+import type { OutputKillResult } from "../../facades/output-kill.js";
+import { runSgDisableAll } from "../../facades/output-kill.js";
 import type {
   ISignalGenerator,
   SignalGeneratorActualSetpoints,
@@ -305,6 +307,10 @@ export class GwInstekAfg implements ISignalGenerator {
         `preset slot must be an integer between 0 and ${slots - 1}`,
       );
     }
+  }
+
+  async disableAllOutputs(): Promise<OutputKillResult> {
+    return runSgDisableAll(this);
   }
 }
 

@@ -35,6 +35,8 @@ export const useSessionsStore = defineStore("sessions", () => {
   const byId = ref<Map<string, SessionSummary>>(new Map());
   const wsConnected = ref(false);
   const wsError = ref<string | null>(null);
+  /** Bumped on every `panic:complete` WS frame so views can refetch history. */
+  const panicEpoch = ref(0);
   let socket: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   const listeners = new Map<TopicKey, Set<TopicListener>>();
@@ -97,6 +99,8 @@ export const useSessionsStore = defineStore("sessions", () => {
       const set = listeners.get(keyOf(message.sessionId, "session.transcript"));
       if (!set) return;
       for (const l of set) l.onUpdate(message.entries, message.at);
+    } else if (message.type === "panic:complete") {
+      panicEpoch.value += 1;
     }
   }
 
@@ -273,5 +277,6 @@ export const useSessionsStore = defineStore("sessions", () => {
     subscribeTopic,
     wsConnected,
     wsError,
+    panicEpoch,
   };
 });

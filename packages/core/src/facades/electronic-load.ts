@@ -1,4 +1,5 @@
 import type { InstrumentFacade } from "./base.js";
+import type { OutputKillResult } from "./output-kill.js";
 import type {
   InstrumentPresetCapability,
   MultimeterLoggingCapability,
@@ -187,4 +188,7 @@ export interface IElectronicLoad extends InstrumentFacade {
   getPresetCatalog?(): Promise<readonly boolean[]>;
   savePreset?(slot: number): Promise<void>;
   recallPreset?(slot: number): Promise<void>;
+
+  /** Epic 5.2 — disable load input (panic stop). */
+  disableAllOutputs?(): Promise<OutputKillResult>;
 }

@@ -1,5 +1,7 @@
 import type { ScpiPort } from "../../scpi/port.js";
 import type { DeviceIdentity } from "../../identity/idn.js";
+import type { OutputKillResult } from "../../facades/output-kill.js";
+import { runSgDisableAll } from "../../facades/output-kill.js";
 import type {
   ISignalGenerator,
   SignalGeneratorActualSetpoints,
@@ -586,6 +588,10 @@ export class RigolDg900 implements ISignalGenerator {
     if (config.type === "arbitrary" && config.builtinName && config.sampleId) {
       throw new RangeError("specify builtinName or sampleId, not both");
     }
+  }
+
+  async disableAllOutputs(): Promise<OutputKillResult> {
+    return runSgDisableAll(this);
   }
 }
 

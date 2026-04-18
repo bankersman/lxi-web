@@ -1,3 +1,4 @@
+import type { OutputKillResult, PanicResult } from "../facades/output-kill.js";
 import type { SessionSummary } from "./session.js";
 import type { DeviceErrorEntry, TranscriptEntry } from "./transcript.js";
 
@@ -64,7 +65,19 @@ export type ServerMessage =
       sessionId: string;
       entries: readonly TranscriptEntry[];
       at: number;
-    };
+    }
+  /** Epic 5.2 — per-session panic notification (forward-compatible with session event bus). */
+  | {
+      type: "session.event";
+      sessionId: string;
+      kind: "panicStop";
+      idn: string;
+      outcome: OutputKillResult;
+      elapsedMs: number;
+      at: number;
+    }
+  /** Epic 5.2 — full panic round-trip (toast + history refresh). */
+  | { type: "panic:complete"; result: PanicResult; at: number };
 
 /** Client-to-server WebSocket message envelope. */
 export type ClientMessage =

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { ScpiSession, SessionSummary } from "@lxi-web/core";
+import type { PanicResult, ScpiSession, SessionSummary } from "@lxi-web/core";
 import { buildServer } from "../src/server.js";
 import { SessionManager } from "../src/sessions/manager.js";
 
@@ -1555,5 +1555,79 @@ test("sa endpoints reject non-spectrum-analyzer sessions", async () => {
     url: `/api/sessions/${id}/sa/state`,
   });
   assert.equal(res.statusCode, 409);
+  await app.close();
+});
+
+// ---- Epic 5.2 panic stop ----
+
+test("POST /api/panic touches every connected PSU in parallel", async () => {
+  const arm: FakeScpiSession[] = [];
+  const psuQuery = (cmd: string): string | undefined => {
+    if (/^:OUTPut:TRACk\?/.test(cmd)) return "0";
+    if (/^:OUTPut:STATe\? CH/.test(cmd)) return "OFF";
+    if (/^:SOURce\d+:VOLTage\?/.test(cmd)) return "0";
+    if (/^:SOURce\d+:CURRent\?/.test(cmd)) return "0";
+    if (/^:MEASure:ALL\? CH/.test(cmd)) return "0,0,0";
+    return undefined;
+  };
+  const manager = new SessionManager({
+    scpiFactory: async () => {
+      const s = fakeScpi({ idn: "RIGOL,DP932E,SN,FW", queryHandler: psuQuery });
+      arm.push(s);
+      return { scpi: s, port: s };
+    },
+  });
+  const app = await buildServer({ logger: false, manager });
+  const ids: string[] = [];
+  for (const host of ["10.1.0.1", "10.1.0.2", "10.1.0.3"]) {
+    const opened = await app.inject({
+      method: "POST",
+      url: "/api/sessions",
+      payload: { host },
+    });
+    ids.push((opened.json() as { session: SessionSummary }).session.id);
+  }
+  for (const id of ids) await waitForStatus(app, id, "connected");
+
+  const panicRes = await app.inject({ method: "POST", url: "/api/panic", payload: {} });
+  assert.equal(panicRes.statusCode, 200);
+  const body = panicRes.json() as PanicResult;
+  assert.equal(body.touchedSessions.length, 3);
+  assert.equal(arm.length, 3);
+  for (const s of arm) {
+    assert.ok(s.writes.includes(":OUTPut:STATe CH1,OFF"));
+    assert.ok(s.writes.includes(":OUTPut:STATe CH2,OFF"));
+  }
+
+  const hist = await app.inject({ method: "GET", url: "/api/panic/history" });
+  assert.equal(hist.statusCode, 200);
+  const histBody = hist.json() as { history: PanicResult[] };
+  assert.equal(histBody.history.length, 1);
+
+  await app.close();
+});
+
+test("POST /api/panic skips bench instruments without output kill", async () => {
+  const manager = new SessionManager({
+    scpiFactory: async () => {
+      const s = fakeScpi("RIGOL TECHNOLOGIES,DHO804,SN,FW");
+      return { scpi: s, port: s };
+    },
+  });
+  const app = await buildServer({ logger: false, manager });
+  const opened = await app.inject({
+    method: "POST",
+    url: "/api/sessions",
+    payload: { host: "10.1.0.10" },
+  });
+  const id = (opened.json() as { session: SessionSummary }).session.id;
+  await waitForStatus(app, id, "connected");
+
+  const panicRes = await app.inject({ method: "POST", url: "/api/panic", payload: {} });
+  assert.equal(panicRes.statusCode, 200);
+  const body = panicRes.json() as PanicResult;
+  assert.equal(body.touchedSessions.length, 0);
+  assert.ok(body.skippedSessions.some((s) => s.sessionId === id && s.reason === "not-output-killable"));
+
   await app.close();
 });

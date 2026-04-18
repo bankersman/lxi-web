@@ -1,4 +1,5 @@
 import type { InstrumentFacade } from "./base.js";
+import type { OutputKillResult } from "./output-kill.js";
 import type { InstrumentPresetCapability } from "./multimeter.js";
 
 /**
@@ -295,4 +296,7 @@ export interface ISignalGenerator extends InstrumentFacade {
   getPresetCatalog?(): Promise<readonly boolean[]>;
   savePreset?(slot: number): Promise<void>;
   recallPreset?(slot: number): Promise<void>;
+
+  /** Epic 5.2 — disable every RF/output channel (panic stop). */
+  disableAllOutputs?(): Promise<OutputKillResult>;
 }

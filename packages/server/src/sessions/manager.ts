@@ -13,6 +13,8 @@ import {
   type DeviceKind,
   type DriverEntry,
   type InstrumentFacade,
+  type OutputKillResult,
+  type PanicResult,
   type ScpiPort,
   type ScpiSessionOptions,
   type SessionStatus,
@@ -38,6 +40,10 @@ export interface SessionManagerOptions {
   }>;
   readonly transcriptRingMax?: number;
   readonly deviceErrorRingMax?: number;
+  /** Per-instrument wall time for `disableAllOutputs` during panic. Default 500 ms. */
+  readonly panicTimeoutMs?: number;
+  /** Ring buffer size for `GET /api/panic/history`. Default 20. */
+  readonly panicHistoryMax?: number;
 }
 
 export interface OpenOptions {
@@ -55,6 +61,7 @@ type SessionEvents = {
   removed: [{ id: string }];
   deviceErrors: [{ sessionId: string; entries: DeviceErrorEntry[] }];
   transcript: [{ sessionId: string; entries: import("@lxi-web/core").TranscriptEntry[] }];
+  panicComplete: [PanicResult];
 };
 
 interface InternalSession {
@@ -83,6 +90,9 @@ export class SessionManager {
   readonly #scpiFactory: NonNullable<SessionManagerOptions["scpiFactory"]>;
   readonly #transcriptRingMax: number;
   readonly #deviceErrorRingMax: number;
+  readonly #panicTimeoutMs: number;
+  readonly #panicHistoryMax: number;
+  readonly #panicHistory: PanicResult[] = [];
 
   constructor(options: SessionManagerOptions = {}) {
     this.#registry = options.registry ?? createDefaultRegistry();
@@ -94,6 +104,9 @@ export class SessionManager {
     this.#deviceErrorRingMax =
       options.deviceErrorRingMax ??
       (Number(process.env.LXI_DEVICE_ERROR_RING_MAX) || 200);
+    this.#panicTimeoutMs =
+      options.panicTimeoutMs ?? (Number(process.env.LXI_PANIC_TIMEOUT_MS) || 500);
+    this.#panicHistoryMax = options.panicHistoryMax ?? 20;
   }
 
   on<K extends keyof SessionEvents>(
@@ -268,6 +281,94 @@ export class SessionManager {
     const e = session.transcriptRing.push(input);
     this.#emitter.emit("transcript", { sessionId: id, entries: [e] });
     return true;
+  }
+
+  /** Last panic invocations (oldest → newest), capped at {@link SessionManagerOptions.panicHistoryMax}. */
+  getPanicHistory(): readonly PanicResult[] {
+    return [...this.#panicHistory];
+  }
+
+  /**
+   * Disable outputs on every connected session whose façade implements
+   * `disableAllOutputs`, in parallel with a per-session timeout. SCPI during
+   * each kill is tagged with transcript origin `{ kind: "panic" }`.
+   */
+  async panic(options?: { readonly timeoutMs?: number }): Promise<PanicResult> {
+    const startedAt = new Date().toISOString();
+    const timeoutMs = options?.timeoutMs ?? this.#panicTimeoutMs;
+    const touchedSessions: PanicResult["touchedSessions"][number][] = [];
+    const skippedSessions: PanicResult["skippedSessions"][number][] = [];
+
+    const killable: InternalSession[] = [];
+    for (const session of this.#sessions.values()) {
+      if (session.status !== "connected") {
+        skippedSessions.push({
+          sessionId: session.id,
+          reason: "session-not-connected",
+        });
+        continue;
+      }
+      if (!isOutputKillableFacade(session.facade)) {
+        skippedSessions.push({
+          sessionId: session.id,
+          reason: "not-output-killable",
+        });
+        continue;
+      }
+      killable.push(session);
+    }
+
+    const outcomes = await Promise.all(
+      killable.map((session) => this.#panicOneSession(session, timeoutMs)),
+    );
+    touchedSessions.push(...outcomes);
+
+    const finishedAt = new Date().toISOString();
+    const result: PanicResult = {
+      startedAt,
+      finishedAt,
+      touchedSessions,
+      skippedSessions,
+    };
+
+    this.#panicHistory.push(result);
+    while (this.#panicHistory.length > this.#panicHistoryMax) {
+      this.#panicHistory.shift();
+    }
+    this.#emitter.emit("panicComplete", result);
+    return result;
+  }
+
+  async #panicOneSession(
+    session: InternalSession,
+    timeoutMs: number,
+  ): Promise<PanicResult["touchedSessions"][number]> {
+    const facade = session.facade as InstrumentFacade & {
+      disableAllOutputs(): Promise<OutputKillResult>;
+    };
+    const idn = session.identity?.raw ?? "unknown";
+    const t0 = performance.now();
+    try {
+      const outcome = await withTimeout(
+        runAsyncWithTranscriptOrigin({ kind: "panic" }, () => facade.disableAllOutputs()),
+        timeoutMs,
+      );
+      const elapsedMs = Math.round(performance.now() - t0);
+      return { sessionId: session.id, idn, outcome, elapsedMs };
+    } catch (err) {
+      const elapsedMs = Math.round(performance.now() - t0);
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        sessionId: session.id,
+        idn,
+        outcome: {
+          kind: "error",
+          touched: [],
+          errors: [{ target: "panic", message }],
+        },
+        elapsedMs,
+      };
+    }
   }
 
   async #establish(session: InternalSession): Promise<void> {
@@ -445,3 +546,31 @@ async function defaultScpiFactory(
 }
 
 export type { DriverEntry };
+
+function isOutputKillableFacade(
+  facade: InstrumentFacade | null,
+): facade is InstrumentFacade & {
+  disableAllOutputs(): Promise<OutputKillResult>;
+} {
+  return (
+    facade !== null &&
+    typeof (facade as { disableAllOutputs?: unknown }).disableAllOutputs === "function"
+  );
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("panic-timeout")), ms);
+    if (typeof timer.unref === "function") timer.unref();
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}

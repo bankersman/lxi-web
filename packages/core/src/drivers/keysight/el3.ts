@@ -1,5 +1,7 @@
 import type { ScpiPort } from "../../scpi/port.js";
 import type { DeviceIdentity } from "../../identity/idn.js";
+import type { OutputKillResult } from "../../facades/output-kill.js";
+import { runEloadDisableAll } from "../../facades/output-kill.js";
 import type {
   ElectronicLoadLimits,
   ElectronicLoadMeasurement,
@@ -199,6 +201,10 @@ export class KeysightEl3 implements IElectronicLoad {
         `preset slot must be an integer between 0 and ${this.presets.slots - 1}`,
       );
     }
+  }
+
+  async disableAllOutputs(): Promise<OutputKillResult> {
+    return runEloadDisableAll(this);
   }
 }
 

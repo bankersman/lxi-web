@@ -13,6 +13,7 @@
     "test": "node --test --import tsx/esm ./test/*.test.ts"
   },
   "dependencies": {
+    "@fastify/static": "^9.1.1",
     "@fastify/websocket": "^11.0.1",
     "@lxi-web/core": "workspace:*",
     "bonjour-service": "^1.3.0",

@@ -17,7 +17,31 @@ docker run --rm -p 8787:8787 ghcr.io/<owner>/lxi-web:latest
 ### docker-compose
 
 A reference `docker-compose.yml` ships in the repo root. Drop it next to
-your other services and run `docker compose up -d`.
+your other services and run `docker compose up -d`. It pins
+`ghcr.io/lxi-web/lxi-web:latest`, exposes port `8787`, and defines a
+container-level `/healthz` check.
+
+### Verifying the image
+
+Every release attaches a build-provenance attestation. Verify a
+specific digest with [cosign](https://docs.sigstore.dev/cosign/installation/):
+
+```bash
+cosign verify-attestation \
+  --type slsaprovenance \
+  --certificate-identity-regexp '^https://github.com/lxi-web/lxi-web/.github/workflows/release.yml@.*' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/lxi-web/lxi-web@sha256:<digest>
+```
+
+### Environment variables
+
+| Variable     | Default         | Effect                                                 |
+| ------------ | --------------- | ------------------------------------------------------ |
+| `HOST`       | `127.0.0.1`     | Bind address for the API. Set to `0.0.0.0` in Docker.  |
+| `PORT`       | `8787`          | TCP port.                                              |
+| `WEB_DIST`   | (auto-detected) | Path to the built SPA. Set in the image to `/app/web-dist`. |
+| `LOG_LEVEL`  | `info`          | Fastify log level (`trace` / `debug` / `info` / `warn` / `error`). |
 
 ## From source
 

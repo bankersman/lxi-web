@@ -1,0 +1,146 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
+
+jobs:
+  sanity:
+    name: Sanity gate (typecheck + test + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify package.json version matches tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::git tag v$TAG does not match package.json version $PKG"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r typecheck
+      - run: pnpm -r test
+      - run: pnpm -r build
+
+  docker:
+    name: Build and push multi-arch image
+    needs: sanity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check Docker Hub availability
+        id: dh
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          if [ -n "$DH_USER" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "repo=$DH_USER/lxi-web" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Log in to Docker Hub
+        if: steps.dh.outputs.enabled == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute image tags (GHCR + Docker Hub)
+        if: steps.dh.outputs.enabled == 'true'
+        id: meta-both
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+            docker.io/${{ steps.dh.outputs.repo }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - name: Compute image tags (GHCR only)
+        if: steps.dh.outputs.enabled != 'true'
+        id: meta-ghcr
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-both.outputs.tags || steps.meta-ghcr.outputs.tags }}
+          labels: ${{ steps.meta-both.outputs.labels || steps.meta-ghcr.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+      - name: Attest GHCR image
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  github-release:
+    name: Create GitHub Release
+    needs: docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}

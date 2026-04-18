@@ -5,6 +5,7 @@ import { registerSessionRoutes } from "./routes/sessions.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
 import { registerDiscoveryRoutes } from "./routes/discovery.js";
 import { registerWebsocketRoute } from "./routes/ws.js";
+import { registerWebRoutes } from "./routes/web.js";
 import {
   DiscoveryService,
   createBonjourFactoryBuilder,
@@ -35,11 +36,13 @@ export async function buildServer(
     });
 
   app.get("/api/health", async () => ({ ok: true }));
+  app.get("/healthz", async () => ({ status: "ok" }));
 
   await registerSessionRoutes(app, manager);
   await registerDeviceRoutes(app, manager);
   await registerDiscoveryRoutes(app, discovery);
   await registerWebsocketRoute(app, manager);
+  await registerWebRoutes(app);
 
   app.addHook("onClose", async () => {
     await manager.closeAll();

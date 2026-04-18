@@ -107,6 +107,14 @@ test("health endpoint returns ok", async () => {
   await app.close();
 });
 
+test("GET /healthz returns ok for container health checks", async () => {
+  const app = await setupApp("RIGOL,DHO804,SN,FW");
+  const res = await app.inject({ method: "GET", url: "/healthz" });
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { status: "ok" });
+  await app.close();
+});
+
 test("POST /api/sessions validates body and opens a session", async () => {
   const app = await setupApp("RIGOL,DHO804,SN,FW");
   const bad = await app.inject({ method: "POST", url: "/api/sessions", payload: {} });

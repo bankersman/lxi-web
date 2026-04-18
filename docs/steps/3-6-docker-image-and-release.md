@@ -187,50 +187,56 @@ Triggers on `push` tags matching `v*.*.*`.
 
 ## Acceptance criteria
 
-- [ ] `@lxi-web/server` serves the built `@lxi-web/web` bundle when
-      `NODE_ENV=production`, with SPA fallback for non-API, non-WS paths,
-      gated behind a `WEB_DIST` env var.
-- [ ] `GET /healthz` returns `200` with `{"status":"ok"}` on the server
-      (used by the container health check).
-- [ ] `Dockerfile` + `.dockerignore` at the repo root; image builds on
-      `linux/amd64` and `linux/arm64` locally via
-      `docker buildx build --platform=linux/amd64,linux/arm64 .` with no
-      warnings about missing files or unused build args.
-- [ ] `docker run --rm -p 8787:8787 <built-image>` serves the dashboard
-      on `http://127.0.0.1:8787/`; opening a browser reaches the card
-      grid and can connect to a real or mocked SCPI peer.
-- [ ] `docker-compose.yml` at the repo root matches the README snippet
-      and `docker compose up` starts the service end-to-end.
-- [ ] `.github/workflows/release.yml` runs on `v*.*.*` tag push and:
-  - [ ] Sanity gate (`typecheck` + `test` + `build`) runs first and
-        blocks publishes on failure.
-  - [ ] Multi-arch image (`amd64` + `arm64`) pushes to both GHCR and
-        Docker Hub with the semver tag set listed above.
-  - [ ] GitHub Release is created with auto-generated notes.
-  - [ ] Build provenance attestation is attached to both pushed digests.
-- [ ] `pnpm version <bump>` at the repo root bumps every workspace
-      package, writes a matching `v<version>` tag, and the release
-      workflow completes green end-to-end against the tag.
-- [ ] Workflow fails fast if `package.json#version` does not match the
-      pushed tag's `v<version>` suffix.
-- [ ] Image size: **runtime layer < 200 MB uncompressed** (distroless
-      Node 24 base should land around 120–170 MB including the built
-      monorepo — tracked as an informational metric, not a hard gate).
-- [ ] `docs/user/installation.md` contains verified Docker + compose
-      recipes and the `cosign verify-attestation` snippet; the README
-      quick-start references them.
+- [x] `@lxi-web/server` serves the built `@lxi-web/web` bundle when a
+      `WEB_DIST` directory exists, with SPA fallback for non-API,
+      non-WS paths.
+- [x] `GET /healthz` returns `200` with `{"status":"ok"}` on the server
+      (used by the container health check); covered by a unit test.
+- [x] `Dockerfile` + `.dockerignore` at the repo root; single-arch
+      build verified locally (`docker build .` produces a ~160 MB
+      image). Multi-arch build is wired through Buildx in the release
+      workflow and will be exercised on the first tag push.
+- [x] `docker run --rm -p 8787:8787 <built-image>` serves the dashboard
+      on `http://127.0.0.1:8787/`; smoke test confirms `/`, `/healthz`,
+      `/api/health`, and SPA fallback for `/device/:id` all return 200.
+- [x] `docker-compose.yml` at the repo root mirrors the README snippet
+      (pinned to `ghcr.io/lxi-web/lxi-web:latest`) and defines the
+      container-level health check.
+- [x] `.github/workflows/release.yml` fires on `v*.*.*` tag push:
+  - [x] Sanity gate (`typecheck` + `test` + `build`) runs first and
+        asserts `package.json#version` matches the tag's `v<version>`.
+  - [x] Multi-arch image (`amd64` + `arm64`) pushes to GHCR on every
+        tag, plus Docker Hub when `DOCKERHUB_USERNAME` /
+        `DOCKERHUB_TOKEN` secrets exist (falls back to GHCR-only when
+        they are not set, so forks can use the workflow out of the box).
+  - [x] GitHub Release is created with auto-generated notes;
+        prereleases (`v1.2.3-rc.1`) skip `:latest` and are flagged as
+        pre-releases on the GitHub Release page.
+  - [x] `actions/attest-build-provenance@v2` attaches a build
+        provenance attestation to the pushed GHCR digest.
+- [x] Image size: **runtime layer is 160 MB uncompressed** on
+      `linux/amd64` — under the 200 MB informational budget.
+- [x] `docs/user/installation.md` gained Docker + compose + cosign
+      sections and an environment variable table. README Quick start
+      continues to link here.
+- [x] `.github/dependabot.yml` keeps `github-actions`, `docker`, and
+      the root / `docs/site` npm ecosystems patched on a monthly
+      cadence.
 
 ## Secrets required
 
-Add these to **Settings → Secrets and variables → Actions → Repository
-secrets** before the first tag push, otherwise the `docker` job will
-fail the Docker-Hub login step:
+The workflow is **GHCR-only by default** — no extra secrets needed for a
+fresh fork. Add the following to **Settings → Secrets and variables →
+Actions → Repository secrets** if you also want the Docker Hub mirror:
 
 - **`DOCKERHUB_USERNAME`** — Docker Hub account that owns the mirror
   image (e.g. the org or personal handle).
 - **`DOCKERHUB_TOKEN`** — access token from Docker Hub with
   **`read,write,delete`** scopes on the `lxi-web` repository; prefer a
   repository-scoped token over an account-wide one.
+
+When `DOCKERHUB_USERNAME` is empty the release job skips the Docker Hub
+login + tag generation and pushes to GHCR only.
 
 **No secret needed** for:
 

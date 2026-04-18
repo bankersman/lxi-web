@@ -30,6 +30,10 @@ device.
   [Spectrum analyzer](./spectrum-analyzer.md) — per-kind feature tour.
 - [Raw SCPI](./raw-scpi.md) — the fallback for unknown instruments.
 - [Troubleshooting](./troubleshooting.md) — common pitfalls.
-- [Hardware reports](./hardware-reports.md) — how to get your
-  instrument verified.
+- [Supported hardware](./supported-hardware.md) — the canonical
+  compatibility matrix (Verified / Community / Preview / Reported).
+- [Hardware reports](./hardware-reports.md) — how to file a report
+  and move rows up the lifecycle.
+- [Adding a driver](../contributing/adding-a-driver.md) — contributor
+  guide for adding a variant / family / kind.
 - [Roadmap](./roadmap.md) — what is next.

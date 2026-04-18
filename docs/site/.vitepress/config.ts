@@ -12,6 +12,8 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: "Manual", link: "/manual/" },
+      { text: "Supported hardware", link: "/manual/supported-hardware" },
+      { text: "Contributing", link: "/contributing/adding-a-driver" },
       { text: "Roadmap", link: "/manual/roadmap" },
       {
         text: "GitHub",
@@ -41,17 +43,45 @@ export default defineConfig({
           ],
         },
         {
+          text: "Hardware",
+          items: [
+            { text: "Supported hardware", link: "/manual/supported-hardware" },
+            { text: "Hardware reports", link: "/manual/hardware-reports" },
+          ],
+        },
+        {
           text: "For developers",
           items: [
             { text: "Embed the core drivers", link: "/manual/embed-core" },
+            {
+              text: "Adding a driver",
+              link: "/contributing/adding-a-driver",
+            },
           ],
         },
         {
           text: "Reference",
           items: [
             { text: "Troubleshooting", link: "/manual/troubleshooting" },
-            { text: "Hardware reports", link: "/manual/hardware-reports" },
             { text: "Roadmap", link: "/manual/roadmap" },
+          ],
+        },
+      ],
+      "/contributing/": [
+        {
+          text: "Contributing",
+          items: [
+            {
+              text: "Adding a driver",
+              link: "/contributing/adding-a-driver",
+            },
+          ],
+        },
+        {
+          text: "Hardware",
+          items: [
+            { text: "Supported hardware", link: "/manual/supported-hardware" },
+            { text: "Hardware reports", link: "/manual/hardware-reports" },
           ],
         },
       ],

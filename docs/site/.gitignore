@@ -1,4 +1,5 @@
 node_modules
 manual/
+contributing/
 .vitepress/cache
 .vitepress/dist

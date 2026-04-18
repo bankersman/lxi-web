@@ -62,16 +62,39 @@ Only expose the API to a LAN you trust.
 
 ## Supported hardware
 
-| Vendor | Model   | Kind           | Status         |
-| ------ | ------- | -------------- | -------------- |
-| Rigol  | DHO804  | Oscilloscope   | Verified       |
-| Rigol  | DP932E  | Power supply   | Verified       |
-| Rigol  | DM858   | Multimeter     | Verified       |
-| Any    | *       | Identifiable   | Raw SCPI fallback |
+Flagship — Verified on real bench units:
+
+| Vendor | Model   | Kind           | Status   |
+| ------ | ------- | -------------- | -------- |
+| Rigol  | DHO804  | Oscilloscope   | Verified |
+| Rigol  | DP932E  | Power supply   | Verified |
+| Rigol  | DM858   | Multimeter     | Verified |
+
+Preview — simulator-validated, awaiting hardware reports to promote:
+
+- **Rigol** — full DHO800 / DP900 / DM800 families, DL3000 electronic
+  loads, DG800 + DG900 signal generators.
+- **Siglent** — SDS HD / legacy-X-E oscilloscopes, SPD power supplies,
+  SDM multimeters, SDL electronic loads, SDG signal generators,
+  SSA3000X / SSA3000X-R spectrum analyzers.
+- **Keysight (+ legacy Agilent)** — E36 / EDU / E364x power supplies,
+  Truevolt 34450A / 34461A / 34465A / 34470A / 34410A / 34411A DMMs,
+  InfiniiVision 1000X / 2000X / 3000T / 4000X / 6000X scopes (incl.
+  MSO logic-lane variants), EL3 electronic loads, Trueform 33500B /
+  33600A signal generators.
+- **Owon** — XDM DMMs, SPE power supplies, XDS3000 oscilloscopes.
+  Listens on **TCP port 3000**; mDNS often absent — add manually.
+
+Anything else that answers `*IDN?` still shows up with a typed identity
+card and the raw SCPI console.
+
+Full matrix + lifecycle (`Verified` / `Community` / `Preview` /
+`Reported`) lives at **[docs/user/supported-hardware.md](docs/user/supported-hardware.md)**.
 
 Got other LXI gear? **[Report your hardware](.github/ISSUE_TEMPLATE/instrument-report.yml)**
-— paste the `*IDN?` string, what works, what does not, and we can grow the
-matrix.
+— paste the `*IDN?` + `*OPT?` string, what works, what does not, and we
+can grow the matrix. See [docs/contributing/adding-a-driver.md](docs/contributing/adding-a-driver.md)
+if you want to take on the driver yourself.
 
 ## Architecture at a glance
 

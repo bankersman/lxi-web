@@ -13,29 +13,29 @@ truth — this page just explains the larger themes.
 - **Epic 3** — LAN discovery, resilient connectivity, saved
   connections, device detail UX, user manual + landing page, Docker
   image + release workflow, `@lxi-web/core` npm publishing.
+- **Epic 4** — simulator framework (4.1), driver family + `*OPT?`
+  refinement pattern (4.2), three new instrument kinds (4.3 eload,
+  4.4 signal generator, 4.5 spectrum analyzer), three vendor packs
+  (4.6 Siglent, 4.7 Keysight + legacy Agilent, 4.8 Owon), and the
+  [supported-hardware matrix](./supported-hardware.md) plus the
+  [adding-a-driver guide](../contributing/adding-a-driver.md) (4.9).
 
-## In progress — Epic 4: simulator, families, new kinds, vendors
+## The Preview → Verified matrix is the social contract
 
-Epic 4 widens hardware coverage without requiring the maintainer to
-own every supported SKU. Four outcomes:
+New drivers ship as **Preview** — validated against the simulator,
+never exercised against real metal. They advance through the matrix
+as users file [hardware reports](./hardware-reports.md):
 
-1. A **simulator framework** rich enough that any new driver can be
-   exercised end-to-end without lab hardware (4.1).
-2. A **driver family** pattern that replaces one-file-per-SKU with
-   profile tables and `*OPT?`-based refinement at connect time (4.2).
-3. Three **new instrument kinds** — electronic load (4.3), signal /
-   arbitrary waveform generator (4.4), spectrum analyzer (4.5).
-4. Three **vendor packs** — Siglent (4.6), Keysight + legacy Agilent
-   (4.7), Owon (4.8).
+- `Preview` → `Community` when a user confirms a driver works on
+  their unit.
+- `Community` → `Verified` when a maintainer re-runs the driver on
+  the physical unit and records the firmware + date.
 
-A final step (4.9) folds everything into a
-[supported-hardware matrix](./hardware-reports.md) with a
-**Preview → Community → Verified** status lifecycle. Drivers
-validated only against the simulator ship as **Preview** and flip to
-**Verified** once a user files a hardware report confirming they
-work on real gear.
+This is the expected cadence for every future vendor / variant add.
+No epics required — [adding a driver](../contributing/adding-a-driver.md)
+is now a standard contributor workflow.
 
-## Further out
+## Further out — Epic 5 and beyond
 
 - **Epic 5** — cross-device orchestration (event bus, rule engine,
   sequences, correlated timeline, LXI trigger-bus research).

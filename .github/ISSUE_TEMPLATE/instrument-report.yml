@@ -6,19 +6,45 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping grow the supported-hardware matrix!
-        Please include as much detail as you can — the `*IDN?` string is
-        mandatory; everything else makes a future driver easier to write.
+        Thanks for helping grow the [supported-hardware matrix](https://github.com/lxi-web/lxi-web/blob/main/docs/user/supported-hardware.md)!
+
+        Reports move driver rows up the lifecycle: **Preview** → **Community** → **Verified**. Full `*IDN?` + `*OPT?` + SCPI captures are what turn a status bump into a same-day turnaround.
+
+        See the [hardware-reports guide](https://github.com/lxi-web/lxi-web/blob/main/docs/user/hardware-reports.md) and — if you're thinking about writing a driver yourself — the [contributing/adding-a-driver guide](https://github.com/lxi-web/lxi-web/blob/main/docs/contributing/adding-a-driver.md).
+
+  - type: dropdown
+    id: report_kind
+    attributes:
+      label: Report kind
+      description: Which lifecycle transition is this report for?
+      options:
+        - First hardware report (new SKU or new firmware family)
+        - Firmware update — confirm an existing driver still works
+        - Regression — an existing driver stopped working
+        - Promote Preview → Verified (I'm a maintainer or re-verifier)
+        - Raw-SCPI IDN capture only (no driver yet — `Reported` status)
+    validations:
+      required: true
 
   - type: textarea
     id: idn
     attributes:
       label: "`*IDN?` response"
-      description: Copy it verbatim from the overview card on the device page or from the raw SCPI console.
+      description: Copy verbatim from the overview card on the device page or from the raw SCPI console.
       placeholder: RIGOL TECHNOLOGIES,DHO804,DHO8A123456789,00.01.02
       render: text
     validations:
       required: true
+
+  - type: textarea
+    id: opt
+    attributes:
+      label: "`*OPT?` response"
+      description: Also verbatim. Lets the driver narrow / widen the capability surface based on licensed options. If the instrument does not support `*OPT?` or times out, write "unsupported" here.
+      placeholder: 0,SD-IIC,SD-SPI,SD-RS232
+      render: text
+    validations:
+      required: false
 
   - type: input
     id: vendor
@@ -44,6 +70,9 @@ body:
         - oscilloscope
         - power-supply
         - multimeter
+        - electronic-load
+        - signal-generator
+        - spectrum-analyzer
         - other
     validations:
       required: true
@@ -52,7 +81,31 @@ body:
     id: firmware
     attributes:
       label: Firmware version
+      description: Usually the 4th field of `*IDN?`. Firmware drift is the most common reason a family driver does not apply cleanly to every variant.
       placeholder: 00.01.02
+    validations:
+      required: true
+
+  - type: input
+    id: scpi_port
+    attributes:
+      label: SCPI port (if non-standard)
+      description: Leave blank if the instrument listens on the vendor default. Owon XDM / SPE / XDS use **3000** rather than 5025.
+      placeholder: "5025"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: discovery
+    attributes:
+      label: mDNS discovery
+      description: Did the "Scan the LAN" button find the instrument?
+      options:
+        - "Yes — appeared in Scan results"
+        - "No — had to add manually"
+        - "Not tested"
+    validations:
+      required: false
 
   - type: textarea
     id: worked
@@ -66,7 +119,7 @@ body:
     id: failed
     attributes:
       label: What failed
-      description: Commands that errored, readings that looked wrong, controls that did nothing.
+      description: Commands that errored, readings that looked wrong, controls that did nothing, panels that stayed blank.
     validations:
       required: false
 
@@ -74,8 +127,10 @@ body:
     id: scpi
     attributes:
       label: SCPI snippets that surprised you
-      description: Quirks, undocumented commands, stale responses, off-by-one indices. Raw transcript is fine.
+      description: Quirks, undocumented commands, stale responses, off-by-one indices. Raw transcript from the raw SCPI console is ideal — paste as-is.
       render: text
+    validations:
+      required: false
 
   - type: input
     id: build

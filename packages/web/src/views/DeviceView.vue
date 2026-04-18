@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
-import { ArrowLeft } from "lucide-vue-next";
+import { ArrowLeft, RefreshCcw } from "lucide-vue-next";
 import { shortIdentity } from "@lxi-web/core/browser";
 import { useSessionsStore } from "@/stores/sessions";
 import AppHeader from "@/components/AppHeader.vue";
@@ -26,6 +26,24 @@ const title = computed(() => {
 });
 
 const isConnected = computed(() => session.value?.status === "connected");
+const canReconnect = computed(() => session.value?.status === "error");
+
+const reconnecting = ref(false);
+const reconnectError = ref<string | null>(null);
+
+async function reconnect(): Promise<void> {
+  const s = session.value;
+  if (!s || reconnecting.value) return;
+  reconnecting.value = true;
+  reconnectError.value = null;
+  try {
+    await sessions.reconnect(s.id);
+  } catch (err) {
+    reconnectError.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    reconnecting.value = false;
+  }
+}
 </script>
 
 <template>
@@ -62,7 +80,23 @@ const isConnected = computed(() => session.value?.status === "connected");
               </p>
             </div>
           </div>
-          <StatusIndicator :status="session.status" />
+          <div class="flex items-center gap-2">
+            <button
+              v-if="canReconnect"
+              type="button"
+              class="inline-flex items-center gap-1.5 rounded-md border border-accent/40 px-2.5 py-1 text-xs font-medium text-accent hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="reconnecting"
+              @click="reconnect"
+            >
+              <RefreshCcw
+                class="h-3.5 w-3.5"
+                :class="reconnecting ? 'animate-spin' : ''"
+                aria-hidden="true"
+              />
+              {{ reconnecting ? "Reconnecting…" : "Reconnect" }}
+            </button>
+            <StatusIndicator :status="session.status" />
+          </div>
         </header>
         <p
           v-if="session.error"
@@ -70,6 +104,13 @@ const isConnected = computed(() => session.value?.status === "connected");
           role="alert"
         >
           {{ session.error.message }}
+        </p>
+        <p
+          v-if="reconnectError"
+          class="mt-3 rounded-md border border-state-error/30 bg-state-error/10 px-3 py-2 text-xs text-state-error"
+          role="alert"
+        >
+          {{ reconnectError }}
         </p>
       </section>
 

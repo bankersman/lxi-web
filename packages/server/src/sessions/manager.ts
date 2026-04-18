@@ -53,6 +53,7 @@ interface InternalSession {
   facade: InstrumentFacade | null;
   scpi: ScpiSession | null;
   error: string | null;
+  disposeCloseListener: (() => void) | null;
 }
 
 export class SessionManager {
@@ -109,6 +110,7 @@ export class SessionManager {
       facade: null,
       scpi: null,
       error: null,
+      disposeCloseListener: null,
     };
     this.#sessions.set(internal.id, internal);
     const summary = toSummary(internal);
@@ -118,10 +120,43 @@ export class SessionManager {
     return summary;
   }
 
+  /**
+   * Try to re-open an errored session in-place. The sessionId stays stable
+   * across reconnects so Vue Router URLs and WebSocket subscriptions survive
+   * a transient LAN glitch without any client-side remapping.
+   */
+  reconnect(id: string): SessionSummary | null {
+    const session = this.#sessions.get(id);
+    if (!session) return null;
+    if (session.status === "connecting") return toSummary(session);
+    if (session.status === "connected") return toSummary(session);
+
+    session.status = "connecting";
+    session.error = null;
+    session.identity = null;
+    session.driverId = null;
+    session.kind = "unknown";
+    session.facade = null;
+    session.scpi = null;
+    if (session.disposeCloseListener) {
+      session.disposeCloseListener();
+      session.disposeCloseListener = null;
+    }
+
+    const summary = toSummary(session);
+    this.#emitter.emit("update", summary);
+    void this.#establish(session);
+    return summary;
+  }
+
   async close(id: string): Promise<void> {
     const session = this.#sessions.get(id);
     if (!session) return;
     this.#sessions.delete(id);
+    if (session.disposeCloseListener) {
+      session.disposeCloseListener();
+      session.disposeCloseListener = null;
+    }
     if (session.scpi) {
       try {
         await session.scpi.close();
@@ -184,6 +219,12 @@ export class SessionManager {
         session.facade = null;
       }
       session.status = "connected";
+      // Listen for unexpected transport loss so we can move the card to the
+      // `error` state (and keep the sessionId) instead of leaving a ghost
+      // connected-but-dead entry.
+      session.disposeCloseListener = scpi.onClose((err) => {
+        this.#handleUnexpectedClose(session, err);
+      });
       this.#emitter.emit("update", toSummary(session));
     } catch (err) {
       session.status = "error";
@@ -196,8 +237,26 @@ export class SessionManager {
         }
         session.scpi = null;
       }
+      if (session.disposeCloseListener) {
+        session.disposeCloseListener();
+        session.disposeCloseListener = null;
+      }
       this.#emitter.emit("update", toSummary(session));
     }
+  }
+
+  #handleUnexpectedClose(session: InternalSession, err?: Error): void {
+    if (!this.#sessions.has(session.id)) return;
+    if (session.status !== "connected") return;
+    session.status = "error";
+    session.error = err?.message ?? "connection lost";
+    session.facade = null;
+    session.scpi = null;
+    if (session.disposeCloseListener) {
+      session.disposeCloseListener();
+      session.disposeCloseListener = null;
+    }
+    this.#emitter.emit("update", toSummary(session));
   }
 }
 

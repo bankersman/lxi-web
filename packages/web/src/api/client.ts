@@ -135,6 +135,15 @@ export const api = {
     await parse<{ ok: boolean }>(res);
   },
 
+  async reconnectSession(id: string): Promise<SessionSummary> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/reconnect`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    const body = await parse<{ session: SessionSummary }>(res);
+    return body.session;
+  },
+
   async browseDiscovery(timeoutMs?: number): Promise<DiscoveryResponse> {
     const url = new URL("/api/discovery", window.location.origin);
     if (timeoutMs !== undefined) url.searchParams.set("timeoutMs", String(timeoutMs));

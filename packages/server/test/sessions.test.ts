@@ -8,9 +8,12 @@ interface FakeScpi {
   onQueryFails(err: Error): FakeScpi;
   session: ScpiSession;
   closed: boolean;
+  /** Simulate an unexpected transport drop. */
+  triggerClose(err?: Error): void;
 }
 
 function makeFakeScpi(): FakeScpi {
+  const closeListeners = new Set<(err?: Error) => void>();
   const state: {
     idnReply?: string;
     idnFail?: Error;
@@ -41,12 +44,19 @@ function makeFakeScpi(): FakeScpi {
       async close(): Promise<void> {
         state.closed = true;
       },
+      onClose(listener: (err?: Error) => void) {
+        closeListeners.add(listener);
+        return () => closeListeners.delete(listener);
+      },
       get closed() {
         return state.closed;
       },
     } as unknown as ScpiSession,
     get closed() {
       return state.closed;
+    },
+    triggerClose(err) {
+      for (const l of closeListeners) l(err);
     },
   };
   return api;
@@ -150,4 +160,82 @@ test("max sessions cap rejects further opens", () => {
   });
   manager.open({ host: "a" });
   assert.throws(() => manager.open({ host: "b" }), /limit/);
+});
+
+test("unexpected transport drop flips the session to 'error' but keeps the id", async () => {
+  const fake = makeFakeScpi().onQueryIdn("RIGOL TECHNOLOGIES,DHO804,SN,FW");
+  const manager = new SessionManager({
+    scpiFactory: async () => ({ scpi: fake.session, port: fake.session }),
+  });
+
+  const initial = manager.open({ host: "10.0.0.10" });
+  await waitFor(
+    () => manager.get(initial.id),
+    (s) => s?.status === "connected",
+  );
+
+  fake.triggerClose(new Error("socket closed by peer"));
+
+  const afterDrop = await waitFor(
+    () => manager.get(initial.id),
+    (s) => s?.status === "error",
+  );
+  assert.equal(afterDrop!.id, initial.id, "sessionId stays stable across a drop");
+  assert.equal(afterDrop!.error?.message, "socket closed by peer");
+});
+
+test("reconnect re-establishes an errored session in place", async () => {
+  let attempt = 0;
+  const first = makeFakeScpi().onQueryFails(new Error("ECONNREFUSED"));
+  const second = makeFakeScpi().onQueryIdn("RIGOL TECHNOLOGIES,DHO804,SN,FW");
+  const manager = new SessionManager({
+    scpiFactory: async () => {
+      attempt += 1;
+      const fake = attempt === 1 ? first : second;
+      return { scpi: fake.session, port: fake.session };
+    },
+  });
+
+  const initial = manager.open({ host: "10.0.0.11" });
+  await waitFor(
+    () => manager.get(initial.id),
+    (s) => s?.status === "error",
+  );
+
+  const again = manager.reconnect(initial.id);
+  assert.ok(again);
+  assert.equal(again!.id, initial.id);
+  assert.equal(again!.status, "connecting");
+  assert.equal(again!.error, null);
+
+  const final = await waitFor(
+    () => manager.get(initial.id),
+    (s) => s?.status === "connected",
+  );
+  assert.equal(final!.kind, "oscilloscope");
+  assert.equal(attempt, 2);
+});
+
+test("reconnect is a no-op when the session is already connected", async () => {
+  const fake = makeFakeScpi().onQueryIdn("RIGOL,DHO804,SN,FW");
+  const manager = new SessionManager({
+    scpiFactory: async () => ({ scpi: fake.session, port: fake.session }),
+  });
+  const initial = manager.open({ host: "10.0.0.12" });
+  await waitFor(
+    () => manager.get(initial.id),
+    (s) => s?.status === "connected",
+  );
+  const summary = manager.reconnect(initial.id);
+  assert.equal(summary?.status, "connected");
+  assert.equal(summary?.id, initial.id);
+});
+
+test("reconnect on an unknown id returns null", () => {
+  const manager = new SessionManager({
+    scpiFactory: async () => {
+      throw new Error("should not be called");
+    },
+  });
+  assert.equal(manager.reconnect("does-not-exist"), null);
 });

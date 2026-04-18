@@ -91,3 +91,38 @@ test("malformed binary header raises ScpiProtocolError", async () => {
   setImmediate(() => t.emit("XYZ"));
   await assert.rejects(pending, ScpiProtocolError);
 });
+
+test("onClose fires on unexpected transport loss with the raw error", () => {
+  const t = new FakeTransport();
+  const s = new ScpiSession(t);
+  const seen: Array<Error | undefined> = [];
+  s.onClose((err) => seen.push(err));
+  const boom = new Error("socket closed by peer");
+  t.emitClose(boom);
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0], boom);
+  assert.equal(s.closed, true);
+});
+
+test("onClose does NOT fire on explicit close()", async () => {
+  const t = new FakeTransport();
+  const s = new ScpiSession(t);
+  let fired = 0;
+  s.onClose(() => {
+    fired += 1;
+  });
+  await s.close();
+  assert.equal(fired, 0);
+});
+
+test("onClose listener can be disposed", () => {
+  const t = new FakeTransport();
+  const s = new ScpiSession(t);
+  let fired = 0;
+  const off = s.onClose(() => {
+    fired += 1;
+  });
+  off();
+  t.emitClose(new Error("bye"));
+  assert.equal(fired, 0);
+});

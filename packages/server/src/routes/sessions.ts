@@ -52,6 +52,15 @@ export async function registerSessionRoutes(
     },
   );
 
+  app.post<{ Params: { id: string } }>(
+    "/api/sessions/:id/reconnect",
+    async (req, reply) => {
+      const summary = manager.reconnect(req.params.id);
+      if (!summary) return reply.code(404).send({ error: "not found" });
+      return { session: summary };
+    },
+  );
+
   app.post<{
     Params: { id: string };
     Body: { command?: unknown; expectReply?: unknown };

@@ -34,6 +34,8 @@ interface Job {
  * how to read both newline-terminated ASCII replies and IEEE 488.2 definite-
  * length binary blocks (`#<n><length><bytes>`).
  */
+type CloseListener = (error?: Error) => void;
+
 export class ScpiSession implements ScpiPort {
   readonly #transport: Transport;
   readonly #defaultTimeoutMs: number;
@@ -43,6 +45,7 @@ export class ScpiSession implements ScpiPort {
   #inFlight: Job | null = null;
   #closed = false;
   #disposeTransportListeners: Array<() => void> = [];
+  readonly #closeListeners = new Set<CloseListener>();
 
   constructor(transport: Transport, options: ScpiSessionOptions = {}) {
     this.#transport = transport;
@@ -68,6 +71,16 @@ export class ScpiSession implements ScpiPort {
 
   get closed(): boolean {
     return this.#closed;
+  }
+
+  /**
+   * Listen for **unexpected** transport loss (peer dropped the socket, TCP
+   * RST, read timeout). Explicit {@link close} does **not** invoke these
+   * listeners — the caller already knows.
+   */
+  onClose(listener: CloseListener): () => void {
+    this.#closeListeners.add(listener);
+    return () => this.#closeListeners.delete(listener);
   }
 
   write(command: string): Promise<void> {
@@ -272,6 +285,13 @@ export class ScpiSession implements ScpiPort {
     }
     while (this.#queue.length > 0) {
       this.#queue.shift()!.reject(toScpiError(wrapped));
+    }
+    for (const listener of this.#closeListeners) {
+      try {
+        listener(err);
+      } catch {
+        // Swallow listener errors — close notifications must not cascade.
+      }
     }
   }
 }

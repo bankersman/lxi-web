@@ -61,7 +61,7 @@ todos:
     status: completed
   - id: epic-3-2-resilient-connectivity
     content: Epic 3.2 — Resilient connectivity (reconnect/backoff, connection-lost UX, optional retry); session semantics documented; progress + docs/steps/3-2-*.md; commit
-    status: pending
+    status: completed
   - id: epic-3-3-session-persistence
     content: Epic 3.3 — Session persistence (saved connections, reopen last session on launch); no auth; progress + docs/steps/3-3-*.md; commit
     status: pending

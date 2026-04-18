@@ -19,6 +19,7 @@ function fakeScpi(opts: FakeScpiOptions | string): FakeScpiSession {
     typeof opts === "string" ? { idn: opts, queryHandler: undefined } : opts;
   const writes: string[] = [];
   const queries: string[] = [];
+  const closeListeners = new Set<(err?: Error) => void>();
   return {
     writes,
     queries,
@@ -35,6 +36,10 @@ function fakeScpi(opts: FakeScpiOptions | string): FakeScpiSession {
       return new Uint8Array();
     },
     async close(): Promise<void> {},
+    onClose(listener: (err?: Error) => void) {
+      closeListeners.add(listener);
+      return () => closeListeners.delete(listener);
+    },
     get closed() {
       return false;
     },
@@ -141,6 +146,52 @@ test("DELETE /api/sessions/:id closes and removes", async () => {
   assert.equal(deleted.statusCode, 200);
   const miss = await app.inject({ method: "GET", url: `/api/sessions/${id}` });
   assert.equal(miss.statusCode, 404);
+  await app.close();
+});
+
+test("POST /api/sessions/:id/reconnect retries an errored session and keeps the id", async () => {
+  let attempt = 0;
+  const manager = new SessionManager({
+    scpiFactory: async () => {
+      attempt += 1;
+      if (attempt === 1) throw new Error("ECONNREFUSED");
+      const s = fakeScpi("RIGOL,DHO804,SN,FW");
+      return { scpi: s, port: s };
+    },
+  });
+  const app = await buildServer({ logger: false, manager });
+
+  const opened = await app.inject({
+    method: "POST",
+    url: "/api/sessions",
+    payload: { host: "10.0.0.99" },
+  });
+  const id = (opened.json() as { session: SessionSummary }).session.id;
+  await waitForStatus(app, id, "error");
+
+  const res = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/reconnect`,
+  });
+  assert.equal(res.statusCode, 200);
+  const body = res.json() as { session: SessionSummary };
+  assert.equal(body.session.id, id);
+  assert.equal(body.session.status, "connecting");
+
+  const connected = await waitForStatus(app, id, "connected");
+  assert.equal(connected.kind, "oscilloscope");
+  assert.equal(attempt, 2);
+
+  await app.close();
+});
+
+test("POST /api/sessions/:id/reconnect returns 404 for unknown ids", async () => {
+  const app = await setupApp("RIGOL,DHO804,SN,FW");
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/sessions/does-not-exist/reconnect",
+  });
+  assert.equal(res.statusCode, 404);
   await app.close();
 });
 

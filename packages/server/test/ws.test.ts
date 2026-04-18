@@ -6,6 +6,7 @@ import { buildServer } from "../src/server.js";
 import { SessionManager } from "../src/sessions/manager.js";
 
 function fakeScpi(idn: string): ScpiSession {
+  const closeListeners = new Set<(err?: Error) => void>();
   return {
     async query(cmd: string): Promise<string> {
       if (cmd === "*IDN?") return idn;
@@ -16,6 +17,10 @@ function fakeScpi(idn: string): ScpiSession {
       return new Uint8Array();
     },
     async close(): Promise<void> {},
+    onClose(listener: (err?: Error) => void) {
+      closeListeners.add(listener);
+      return () => closeListeners.delete(listener);
+    },
     get closed() {
       return false;
     },

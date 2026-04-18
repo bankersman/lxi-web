@@ -192,6 +192,19 @@ export const useSessionsStore = defineStore("sessions", () => {
     byId.value = next;
   }
 
+  /**
+   * Ask the server to reopen an errored session in-place. The sessionId does
+   * not change, so the current route and any live subscriptions survive the
+   * reconnect — we only need to swap in the fresh summary.
+   */
+  async function reconnect(id: string): Promise<SessionSummary> {
+    const summary = await api.reconnectSession(id);
+    const next = new Map(byId.value);
+    next.set(summary.id, summary);
+    byId.value = next;
+    return summary;
+  }
+
   return {
     list,
     count,
@@ -200,6 +213,7 @@ export const useSessionsStore = defineStore("sessions", () => {
     refresh,
     open,
     remove,
+    reconnect,
     subscribeTopic,
     wsConnected,
     wsError,

@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { Waves } from "lucide-vue-next";
 import { api, type PsuTrackingInfo } from "@/api/client";
 
-const props = defineProps<{ sessionId: string; enabled: boolean }>();
+const props = defineProps<{
+  sessionId: string;
+  enabled: boolean;
+  /** Bump to force an immediate reload from the device. */
+  refreshKey?: number;
+}>();
 const emit = defineEmits<{ change: [enabled: boolean] }>();
 
 const info = ref<PsuTrackingInfo | null>(null);
@@ -22,12 +27,41 @@ async function load(): Promise<void> {
   }
 }
 
+// Poll periodically so the toggle reflects the instrument's actual state
+// (tracking can be toggled from the front panel or changed by *RCL too).
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+function startPolling(): void {
+  stopPolling();
+  pollTimer = setInterval(() => {
+    if (!busy.value) void load();
+  }, 3000);
+}
+function stopPolling(): void {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+onBeforeUnmount(stopPolling);
+
 watch(
   () => props.enabled,
   (on) => {
-    if (on) void load();
+    if (on) {
+      void load();
+      startPolling();
+    } else {
+      stopPolling();
+    }
   },
   { immediate: true },
+);
+
+watch(
+  () => props.refreshKey,
+  () => {
+    if (props.enabled) void load();
+  },
 );
 
 async function toggle(): Promise<void> {
@@ -37,10 +71,14 @@ async function toggle(): Promise<void> {
   actionError.value = null;
   try {
     await api.setPsuTracking(props.sessionId, next);
-    info.value = { ...info.value, enabled: next };
-    emit("change", next);
+    // Re-query the device so the UI reflects the *actual* state, not our
+    // optimistic guess — catches silent rejections and keeps CH1/CH2 and
+    // the toggle in lockstep.
+    await load();
+    emit("change", info.value?.enabled ?? next);
   } catch (err) {
     actionError.value = err instanceof Error ? err.message : String(err);
+    await load();
   } finally {
     busy.value = false;
   }

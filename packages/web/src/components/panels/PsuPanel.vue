@@ -88,15 +88,45 @@ function effectiveLimits(ch: PsuChannelState): { voltageMax: number; currentMax:
   return ch.limits;
 }
 
+/**
+ * User-editable set-point drafts. `lastSeen` is the last set-point we pulled
+ * from the instrument — if the device-reported set-point changes (e.g. the
+ * front panel was touched, a preset was recalled, or tracking slaved the
+ * value across channels) AND the draft still matches the previous reading,
+ * we quietly sync the draft to the new value. If the user has diverged from
+ * the reading (mid-edit), we leave their draft alone so Apply still works.
+ */
 const draft = reactive<Record<number, { voltage: number; current: number }>>({});
+const lastSeen = reactive<
+  Record<number, { voltage: number; current: number }>
+>({});
 watch(data, (channels) => {
   if (!channels) return;
   for (const ch of channels) {
-    if (!(ch.id in draft)) {
+    const prev = lastSeen[ch.id];
+    if (!(ch.id in draft) || !prev) {
       draft[ch.id] = { voltage: ch.setVoltage, current: ch.setCurrent };
+    } else {
+      const d = draft[ch.id]!;
+      if (d.voltage === prev.voltage && ch.setVoltage !== prev.voltage) {
+        d.voltage = ch.setVoltage;
+      }
+      if (d.current === prev.current && ch.setCurrent !== prev.current) {
+        d.current = ch.setCurrent;
+      }
     }
+    lastSeen[ch.id] = { voltage: ch.setVoltage, current: ch.setCurrent };
   }
 });
+
+function resyncDrafts(): void {
+  // Forget what we last saw so the next poll treats every channel as fresh
+  // and replaces the draft with the live reading — used after an explicit
+  // state-changing event (preset recall, pairing toggle) where stale drafts
+  // would lie to the user.
+  for (const key of Object.keys(lastSeen)) delete lastSeen[Number(key)];
+  for (const key of Object.keys(draft)) delete draft[Number(key)];
+}
 
 async function apply(channel: PsuChannelState): Promise<void> {
   const values = draft[channel.id];
@@ -117,6 +147,15 @@ const refreshKey = ref(0);
 function invalidateAll(): void {
   refreshKey.value += 1;
   void refresh();
+  void loadPairing();
+}
+
+function onRecalled(): void {
+  // A preset recall can rewrite every set-point, output state, OVP/OCP,
+  // pairing and tracking mode in one shot. Drop any in-flight drafts so the
+  // user doesn't see stale numbers in the Set voltage/current inputs.
+  resyncDrafts();
+  invalidateAll();
 }
 
 function onPairingChange(mode: PsuPairingMode): void {
@@ -130,17 +169,20 @@ function onPairingChange(mode: PsuPairingMode): void {
     <PsuPairingControl
       :session-id="sessionId"
       :enabled="enabled"
+      :refresh-key="refreshKey"
       @change="onPairingChange"
     />
     <PsuTrackingControl
       :session-id="sessionId"
       :enabled="enabled"
+      :refresh-key="refreshKey"
       @change="invalidateAll"
     />
     <PsuPresetsControl
       :session-id="sessionId"
       :enabled="enabled"
-      @recalled="invalidateAll"
+      :refresh-key="refreshKey"
+      @recalled="onRecalled"
     />
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-live="polite">

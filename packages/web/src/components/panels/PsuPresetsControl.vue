@@ -3,7 +3,12 @@ import { computed, ref, watch } from "vue";
 import { Save, Upload, Slash } from "lucide-vue-next";
 import { api, type PsuPresetsInfo } from "@/api/client";
 
-const props = defineProps<{ sessionId: string; enabled: boolean }>();
+const props = defineProps<{
+  sessionId: string;
+  enabled: boolean;
+  /** Bump to force a reload of the slot catalog. */
+  refreshKey?: number;
+}>();
 const emit = defineEmits<{ recalled: [slot: number] }>();
 
 const info = ref<PsuPresetsInfo | null>(null);
@@ -30,6 +35,13 @@ watch(
     if (on) void load();
   },
   { immediate: true },
+);
+
+watch(
+  () => props.refreshKey,
+  () => {
+    if (props.enabled) void load();
+  },
 );
 
 function requestSave(slot: number): void {

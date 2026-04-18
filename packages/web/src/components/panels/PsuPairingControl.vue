@@ -4,7 +4,12 @@ import { Link2, AlertTriangle } from "lucide-vue-next";
 import type { PsuPairingMode } from "@lxi-web/core/browser";
 import { api, type PsuPairingInfo } from "@/api/client";
 
-const props = defineProps<{ sessionId: string; enabled: boolean }>();
+const props = defineProps<{
+  sessionId: string;
+  enabled: boolean;
+  /** Bump to force an immediate reload from the device. */
+  refreshKey?: number;
+}>();
 const emit = defineEmits<{ change: [mode: PsuPairingMode] }>();
 
 const info = ref<PsuPairingInfo | null>(null);
@@ -40,6 +45,13 @@ watch(
     if (on) void load();
   },
   { immediate: true },
+);
+
+watch(
+  () => props.refreshKey,
+  () => {
+    if (props.enabled) void load();
+  },
 );
 
 function requestChange(mode: PsuPairingMode): void {

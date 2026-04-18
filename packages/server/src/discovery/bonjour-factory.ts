@@ -1,5 +1,5 @@
 import { Bonjour, type Service } from "bonjour-service";
-import type { MdnsBrowser, MdnsFactory, MdnsFactoryBuilder } from "./types.js";
+import type { MdnsBrowser, MdnsFactory, MdnsFactoryBuilder, MdnsService } from "./types.js";
 
 /**
  * Default mDNS factory backed by `bonjour-service`. Returns a
@@ -15,22 +15,29 @@ class BonjourAdapter implements MdnsFactory {
   readonly #instance = new Bonjour();
   readonly #browsers: MdnsBrowser[] = [];
 
-  find(options: { type: string }): MdnsBrowser {
-    const raw = this.#instance.find({ type: options.type });
+  find(options: { type?: string }, onUp: (service: MdnsService) => void): MdnsBrowser {
+    const map = (service: Service, fallbackType: string): MdnsService => ({
+      name: service.name ?? "",
+      type: service.type ?? fallbackType,
+      host: service.host ?? "",
+      port: service.port ?? 0,
+      addresses: service.addresses ?? [],
+      txt: (service.txt as Record<string, string> | undefined) ?? {},
+      fqdn: service.fqdn,
+      subtypes: service.subtypes,
+    });
+    let raw: ReturnType<Bonjour["find"]>;
+    if (options.type !== undefined) {
+      const kind = options.type;
+      raw = this.#instance.find({ type: kind }, (service: Service) => {
+        onUp(map(service, kind));
+      });
+    } else {
+      raw = this.#instance.find(null, (service: Service) => {
+        onUp(map(service, ""));
+      });
+    }
     const browser: MdnsBrowser = {
-      on: (event, listener) => {
-        if (event !== "up") return;
-        raw.on("up", (service: Service) => {
-          listener({
-            name: service.name ?? "",
-            type: service.type ?? options.type,
-            host: service.host ?? "",
-            port: service.port ?? 0,
-            addresses: service.addresses ?? [],
-            txt: (service.txt as Record<string, string> | undefined) ?? {},
-          });
-        });
-      },
       stop: () => {
         try {
           raw.stop();

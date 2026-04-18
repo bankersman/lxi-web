@@ -23,6 +23,8 @@ const scanBusy = ref(false);
 const scanError = ref<string | null>(null);
 const scanResults = ref<DiscoveryCandidate[]>([]);
 const scanRan = ref(false);
+/** When set, mDNS saw this many non-LXI advertisements (wildcard scan). */
+const scanNonInstrumentUps = ref<number | null>(null);
 
 watch(
   () => props.open,
@@ -34,6 +36,7 @@ watch(
       scanError.value = null;
       scanResults.value = [];
       scanRan.value = false;
+      scanNonInstrumentUps.value = null;
       await nextTick();
       firstField.value?.focus();
       document.addEventListener("keydown", onKey);
@@ -75,6 +78,8 @@ async function scan(): Promise<void> {
     const result = await api.browseDiscovery(3_000);
     scanResults.value = [...result.candidates];
     scanRan.value = true;
+    scanNonInstrumentUps.value =
+      result.nonInstrumentMdnsUps !== undefined ? result.nonInstrumentMdnsUps : null;
   } catch (err) {
     scanError.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -187,7 +192,17 @@ async function submit(event: Event): Promise<void> {
             <p class="text-xs text-fg-muted" aria-live="polite">
               <template v-if="scanBusy">Listening for advertisements…</template>
               <template v-else-if="scanResults.length === 0">
-                No instruments responded. Enter host / port manually below.
+                <span v-if="scanNonInstrumentUps != null && scanNonInstrumentUps > 0">
+                  Heard {{ scanNonInstrumentUps }} mDNS service advertisements that were not
+                  <code class="rounded bg-surface-2 px-1 py-0.5">_lxi._tcp</code>,
+                  <code class="rounded bg-surface-2 px-1 py-0.5">_scpi-raw._tcp</code>,
+                  <code class="rounded bg-surface-2 px-1 py-0.5">_hislip._tcp</code>, or
+                  <code class="rounded bg-surface-2 px-1 py-0.5">_visa._tcp</code>. Enter host
+                  / port manually below.
+                </span>
+                <span v-else>
+                  No instruments responded. Enter host / port manually below.
+                </span>
               </template>
               <template v-else>
                 Found {{ scanResults.length }}

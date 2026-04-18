@@ -39,6 +39,9 @@ export class DiscoveryService {
   readonly #maxTimeout: number;
   readonly #serviceTypes: readonly DiscoveryServiceType[];
   readonly #factoryBuilder: MdnsFactoryBuilder;
+  /** Only one mDNS browse at a time — parallel `GET /api/discovery` otherwise
+   *  spins up overlapping Bonjour stacks and teardown can drop the other's traffic. */
+  #browseChain: Promise<void> = Promise.resolve();
 
   constructor(options: DiscoveryServiceOptions = {}) {
     this.#defaultTimeout = options.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -58,7 +61,16 @@ export class DiscoveryService {
     return this.#serviceTypes;
   }
 
-  async browse(options: BrowseOptions = {}): Promise<DiscoveryResponse> {
+  browse(options: BrowseOptions = {}): Promise<DiscoveryResponse> {
+    const result = this.#browseChain.then(() => this.#runBrowse(options));
+    this.#browseChain = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  }
+
+  async #runBrowse(options: BrowseOptions): Promise<DiscoveryResponse> {
     const timeoutMs = clamp(
       options.timeoutMs ?? this.#defaultTimeout,
       50,
@@ -67,13 +79,19 @@ export class DiscoveryService {
 
     const factory = this.#factoryBuilder();
     const services: MdnsService[] = [];
-    const browsers = this.#serviceTypes.map((kind) => {
-      const browser = factory.find({ type: kind });
-      browser.on("up", (service) => {
+    let mdnsUpTotal = 0;
+    const allowed = new Set<DiscoveryServiceType>(this.#serviceTypes);
+    /** One wildcard DNS-SD browser (see `bonjour-service` `find({})`) so a single
+     *  `response` pipeline discovers every `_services._dns-sd._udp` PTR and
+     *  follow-up queries — avoids four parallel typed browsers on one socket. */
+    const browsers = [
+      factory.find({}, (service) => {
+        mdnsUpTotal += 1;
+        const kind = classifyAllowlistedInstrumentKind(service, allowed);
+        if (kind === null) return;
         services.push({ ...service, type: kind });
-      });
-      return browser;
-    });
+      }),
+    ];
 
     try {
       await delay(timeoutMs);
@@ -92,10 +110,14 @@ export class DiscoveryService {
       }
     }
 
+    const candidates = dedupe(services);
+    const nonInstrumentMdnsUps = mdnsUpTotal - services.length;
+
     return {
-      candidates: dedupe(services),
+      candidates,
       timeoutMs,
       serviceTypes: this.#serviceTypes,
+      ...(nonInstrumentMdnsUps > 0 ? { nonInstrumentMdnsUps } : {}),
     };
   }
 }
@@ -130,7 +152,7 @@ export function dedupe(services: readonly MdnsService[]): DiscoveryCandidate[] {
       };
       byHost.set(key, entry);
     }
-    const kind = normalizeType(svc.type);
+    const kind = normalizeDiscoveryServiceType(svc.type);
     if (!entry.portByType.has(kind)) entry.portByType.set(kind, svc.port);
     for (const addr of svc.addresses) entry.addresses.add(addr);
     for (const [k, v] of Object.entries(svc.txt)) {
@@ -174,12 +196,47 @@ function pickPort(
   return ports.values().next().value ?? 0;
 }
 
-function normalizeType(type: string): DiscoveryServiceType {
+export function normalizeDiscoveryServiceType(type: string): DiscoveryServiceType {
   const clean = type.replace(/^_/, "").replace(/\._tcp.*$/, "").toLowerCase();
   if (clean === "lxi" || clean === "scpi-raw" || clean === "hislip" || clean === "visa") {
     return clean;
   }
   return "other";
+}
+
+/**
+ * Map `_lxi._tcp` / `_scpi-raw._tcp` / … inside a DNS-SD FQDN when `service.type`
+ * from bonjour-service is empty or does not normalize (wildcard browse edge cases).
+ */
+function instrumentKindFromFqdn(fqdn: string): DiscoveryServiceType | null {
+  const lower = fqdn.toLowerCase();
+  const m = lower.match(/_((?:scpi-raw)|lxi|hislip|visa)\._tcp/);
+  if (!m?.[1]) return null;
+  const k = m[1];
+  if (k === "lxi" || k === "scpi-raw" || k === "hislip" || k === "visa") return k;
+  return null;
+}
+
+export function classifyAllowlistedInstrumentKind(
+  service: MdnsService,
+  allowed: ReadonlySet<DiscoveryServiceType>,
+): DiscoveryServiceType | null {
+  let kind = normalizeDiscoveryServiceType(service.type);
+  if (kind === "other" && service.fqdn) {
+    const fromFq = instrumentKindFromFqdn(service.fqdn);
+    if (fromFq) kind = fromFq;
+  }
+  if (kind === "other" && service.subtypes?.length) {
+    for (const st of service.subtypes) {
+      const k = normalizeDiscoveryServiceType(st);
+      if (k !== "other") {
+        kind = k;
+        break;
+      }
+    }
+  }
+  if (kind === "other" || !allowed.has(kind)) return null;
+  return kind;
 }
 
 function clamp(value: number, lo: number, hi: number): number {

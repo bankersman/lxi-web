@@ -13,15 +13,25 @@ export interface MdnsService {
   readonly port: number;
   readonly addresses: readonly string[];
   readonly txt: Readonly<Record<string, string>>;
+  /** SRV target name from mDNS, e.g. `Rigol._scpi-raw._tcp.local` — used when `type` is empty or odd. */
+  readonly fqdn?: string;
+  readonly subtypes?: readonly string[];
 }
 
 export interface MdnsBrowser {
-  on(event: "up", listener: (service: MdnsService) => void): void;
   stop(): void;
 }
 
 export interface MdnsFactory {
-  find(options: { type: string }): MdnsBrowser;
+  /**
+   * Subscribe to matching services. Implementations must invoke `onUp`
+   * **before** starting the underlying browse (see `bonjour-service`
+   * `find(opts, onup)`), so early mDNS responses are not dropped.
+   */
+  find(
+    options: { type?: string },
+    onUp: (service: MdnsService) => void,
+  ): MdnsBrowser;
   destroy(): void;
 }
 

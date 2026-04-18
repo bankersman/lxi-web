@@ -1,4 +1,9 @@
-export { DiscoveryService, dedupe } from "./service.js";
+export {
+  DiscoveryService,
+  dedupe,
+  normalizeDiscoveryServiceType,
+  classifyAllowlistedInstrumentKind,
+} from "./service.js";
 export type { DiscoveryServiceOptions, BrowseOptions } from "./service.js";
 export { createBonjourFactoryBuilder } from "./bonjour-factory.js";
 export { DEFAULT_SERVICE_TYPES } from "./types.js";

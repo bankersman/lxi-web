@@ -51,4 +51,11 @@ export interface DiscoveryResponse {
   readonly timeoutMs: number;
   /** Service types actually browsed this pass. */
   readonly serviceTypes: readonly DiscoveryServiceType[];
+  /**
+   * Wildcard DNS-SD scan only: how many mDNS `up` events were not
+   * `_lxi._tcp` / `_scpi-raw._tcp` / `_hislip` / `_visa`. When present and
+   * {@link candidates} is empty, the link had mDNS traffic but no lab
+   * instruments advertising those service types.
+   */
+  readonly nonInstrumentMdnsUps?: number;
 }

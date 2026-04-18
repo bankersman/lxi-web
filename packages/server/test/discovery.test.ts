@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  classifyAllowlistedInstrumentKind,
+  DEFAULT_SERVICE_TYPES,
   DiscoveryService,
   dedupe,
   type MdnsBrowser,
@@ -21,35 +23,29 @@ function scriptedFactory(hits: readonly ScriptedHit[]): {
 } {
   const destroyed = { count: 0 };
   const builder = (): MdnsFactory => {
-    const listeners = new Map<string, (service: MdnsService) => void>();
     const timers: NodeJS.Timeout[] = [];
 
     const factory: MdnsFactory = {
-      find({ type }): MdnsBrowser {
-        return {
-          on(event, listener) {
-            if (event === "up") listeners.set(type, listener);
-          },
-          stop() {},
-        };
+      find(opts, onUp): MdnsBrowser {
+        const selected =
+          opts.type !== undefined ? hits.filter((h) => h.type === opts.type) : [...hits];
+        for (const hit of selected) {
+          const fire = (): void => {
+            onUp(hit.service);
+          };
+          if (hit.delayMs && hit.delayMs > 0) {
+            timers.push(setTimeout(fire, hit.delayMs));
+          } else {
+            queueMicrotask(fire);
+          }
+        }
+        return { stop() {} };
       },
       destroy() {
         destroyed.count += 1;
         for (const t of timers) clearTimeout(t);
       },
     };
-
-    for (const hit of hits) {
-      const fire = (): void => {
-        const listener = listeners.get(hit.type);
-        listener?.(hit.service);
-      };
-      if (hit.delayMs && hit.delayMs > 0) {
-        timers.push(setTimeout(fire, hit.delayMs));
-      } else {
-        queueMicrotask(fire);
-      }
-    }
 
     return factory;
   };
@@ -123,6 +119,60 @@ test("dedupe skips entries with no host or invalid port", () => {
     },
   ]);
   assert.equal(candidates.length, 0);
+});
+
+test("classifyAllowlistedInstrumentKind infers kind from fqdn when type is empty", () => {
+  const allowed = new Set(DEFAULT_SERVICE_TYPES);
+  assert.equal(
+    classifyAllowlistedInstrumentKind(
+      {
+        name: "Rigol",
+        type: "",
+        host: "rigol.local",
+        port: 5025,
+        addresses: [],
+        txt: {},
+        fqdn: "Rigol._scpi-raw._tcp.local",
+      },
+      allowed,
+    ),
+    "scpi-raw",
+  );
+});
+
+test("DiscoveryService serializes concurrent browse() so mDNS stacks do not overlap", async () => {
+  const { builder, destroyed } = scriptedFactory([
+    {
+      type: "scpi-raw",
+      service: {
+        name: "Rigol DP932E",
+        type: "scpi-raw",
+        host: "dp932e.local",
+        port: 5025,
+        addresses: ["192.168.1.51"],
+        txt: {},
+      },
+    },
+    {
+      type: "lxi",
+      service: {
+        name: "Keysight 34465A",
+        type: "lxi",
+        host: "ks34465a.local",
+        port: 80,
+        addresses: ["192.168.1.52"],
+        txt: {},
+      },
+    },
+  ]);
+  const service = new DiscoveryService({
+    defaultTimeoutMs: 80,
+    factoryBuilder: builder,
+  });
+  const [first, second] = await Promise.all([service.browse(), service.browse()]);
+  assert.equal(first.candidates.length, 2);
+  assert.equal(second.candidates.length, 2);
+  assert.equal(destroyed.count, 2, "each browse tears down its own factory");
 });
 
 test("DiscoveryService.browse collects hits within the timeout and destroys the factory", async () => {

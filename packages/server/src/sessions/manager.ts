@@ -5,16 +5,23 @@ import {
   ScpiSession,
   TcpTransport,
   createDefaultRegistry,
+  createSystErrErrorQueue,
   parseIdn,
+  runAsyncWithTranscriptOrigin,
+  type DeviceErrorEntry,
   type DeviceIdentity,
   type DeviceKind,
   type DriverEntry,
   type InstrumentFacade,
   type ScpiPort,
+  type ScpiSessionOptions,
   type SessionStatus,
   type SessionSummary,
+  type TranscriptRecordInput,
+  type TranscriptSink,
 } from "@lxi-web/core";
 import { TypedEmitter } from "./emitter.js";
+import { DeviceErrorRing, TranscriptRing } from "./ring-buffers.js";
 
 export interface SessionManagerOptions {
   /** Cap on concurrent sessions. Default 16 (plenty for one bench). */
@@ -25,10 +32,12 @@ export interface SessionManagerOptions {
    * Factory for the low-level SCPI session. Swapped in tests with a fake
    * that never touches a real TCP socket.
    */
-  readonly scpiFactory?: (options: OpenOptions) => Promise<{
-    readonly scpi: ScpiSession;
+  readonly scpiFactory?: (options: OpenOptions & ScpiFactoryExtras) => Promise<{
+    readonly scpi: import("@lxi-web/core").ScpiSession;
     readonly port: ScpiPort;
   }>;
+  readonly transcriptRingMax?: number;
+  readonly deviceErrorRingMax?: number;
 }
 
 export interface OpenOptions {
@@ -36,9 +45,16 @@ export interface OpenOptions {
   readonly port?: number;
 }
 
+export interface ScpiFactoryExtras {
+  readonly transcriptSink?: TranscriptSink;
+  readonly scpiOptions?: Omit<ScpiSessionOptions, "transcriptSink">;
+}
+
 type SessionEvents = {
   update: [SessionSummary];
   removed: [{ id: string }];
+  deviceErrors: [{ sessionId: string; entries: DeviceErrorEntry[] }];
+  transcript: [{ sessionId: string; entries: import("@lxi-web/core").TranscriptEntry[] }];
 };
 
 interface InternalSession {
@@ -51,9 +67,12 @@ interface InternalSession {
   identity: DeviceIdentity | null;
   driverId: string | null;
   facade: InstrumentFacade | null;
-  scpi: ScpiSession | null;
+  scpi: import("@lxi-web/core").ScpiSession | null;
   error: string | null;
   disposeCloseListener: (() => void) | null;
+  transcriptRing: TranscriptRing | null;
+  deviceErrorRing: DeviceErrorRing | null;
+  disposeErrorPoller: (() => void) | null;
 }
 
 export class SessionManager {
@@ -62,11 +81,19 @@ export class SessionManager {
   readonly #registry: DriverRegistry;
   readonly #maxSessions: number;
   readonly #scpiFactory: NonNullable<SessionManagerOptions["scpiFactory"]>;
+  readonly #transcriptRingMax: number;
+  readonly #deviceErrorRingMax: number;
 
   constructor(options: SessionManagerOptions = {}) {
     this.#registry = options.registry ?? createDefaultRegistry();
     this.#maxSessions = options.maxSessions ?? 16;
     this.#scpiFactory = options.scpiFactory ?? defaultScpiFactory;
+    this.#transcriptRingMax =
+      options.transcriptRingMax ??
+      (Number(process.env.LXI_TRANSCRIPT_RING_MAX) || 2000);
+    this.#deviceErrorRingMax =
+      options.deviceErrorRingMax ??
+      (Number(process.env.LXI_DEVICE_ERROR_RING_MAX) || 200);
   }
 
   on<K extends keyof SessionEvents>(
@@ -87,6 +114,43 @@ export class SessionManager {
 
   getFacade(id: string): InstrumentFacade | null {
     return this.#sessions.get(id)?.facade ?? null;
+  }
+
+  getDeviceErrors(id: string): DeviceErrorEntry[] | null {
+    const s = this.#sessions.get(id);
+    if (!s?.deviceErrorRing) return null;
+    return s.deviceErrorRing.snapshot();
+  }
+
+  clearDeviceErrors(id: string): boolean {
+    const s = this.#sessions.get(id);
+    if (!s?.deviceErrorRing) return false;
+    s.deviceErrorRing.clear();
+    return true;
+  }
+
+  getTranscriptSince(
+    id: string,
+    sinceSeq: number,
+    limit: number,
+  ): import("@lxi-web/core").TranscriptEntry[] | null {
+    const s = this.#sessions.get(id);
+    if (!s?.transcriptRing) return null;
+    return s.transcriptRing.getSince(sinceSeq, limit);
+  }
+
+  transcriptMaxSeq(id: string): number | null {
+    const s = this.#sessions.get(id);
+    if (!s?.transcriptRing) return null;
+    return s.transcriptRing.maxSeq;
+  }
+
+  iterateTranscriptExport(
+    id: string,
+  ): Iterable<import("@lxi-web/core").TranscriptEntry> | null {
+    const s = this.#sessions.get(id);
+    if (!s?.transcriptRing) return null;
+    return s.transcriptRing.allInOrder();
   }
 
   /**
@@ -111,6 +175,9 @@ export class SessionManager {
       scpi: null,
       error: null,
       disposeCloseListener: null,
+      transcriptRing: null,
+      deviceErrorRing: null,
+      disposeErrorPoller: null,
     };
     this.#sessions.set(internal.id, internal);
     const summary = toSummary(internal);
@@ -120,11 +187,6 @@ export class SessionManager {
     return summary;
   }
 
-  /**
-   * Try to re-open an errored session in-place. The sessionId stays stable
-   * across reconnects so Vue Router URLs and WebSocket subscriptions survive
-   * a transient LAN glitch without any client-side remapping.
-   */
   reconnect(id: string): SessionSummary | null {
     const session = this.#sessions.get(id);
     if (!session) return null;
@@ -138,9 +200,15 @@ export class SessionManager {
     session.kind = "unknown";
     session.facade = null;
     session.scpi = null;
+    session.transcriptRing = null;
+    session.deviceErrorRing = null;
     if (session.disposeCloseListener) {
       session.disposeCloseListener();
       session.disposeCloseListener = null;
+    }
+    if (session.disposeErrorPoller) {
+      session.disposeErrorPoller();
+      session.disposeErrorPoller = null;
     }
 
     const summary = toSummary(session);
@@ -156,6 +224,10 @@ export class SessionManager {
     if (session.disposeCloseListener) {
       session.disposeCloseListener();
       session.disposeCloseListener = null;
+    }
+    if (session.disposeErrorPoller) {
+      session.disposeErrorPoller();
+      session.disposeErrorPoller = null;
     }
     if (session.scpi) {
       try {
@@ -182,23 +254,46 @@ export class SessionManager {
     if (!session || !session.scpi) {
       throw new Error(`session ${id} is not open`);
     }
-    if (expectReply) return session.scpi.query(command);
-    await session.scpi.write(command);
-    return null;
+    return runAsyncWithTranscriptOrigin({ kind: "rawScpi" }, async () => {
+      if (expectReply) return session.scpi!.query(command);
+      await session.scpi!.write(command);
+      return null;
+    });
+  }
+
+  /** Append a synthetic transcript line (e.g. Epic 5.2 panic). */
+  appendTranscript(id: string, input: TranscriptRecordInput): boolean {
+    const session = this.#sessions.get(id);
+    if (!session?.transcriptRing) return false;
+    const e = session.transcriptRing.push(input);
+    this.#emitter.emit("transcript", { sessionId: id, entries: [e] });
+    return true;
   }
 
   async #establish(session: InternalSession): Promise<void> {
+    const transcriptRing = new TranscriptRing(this.#transcriptRingMax);
+    const deviceErrorRing = new DeviceErrorRing(this.#deviceErrorRingMax);
+
+    const sink: TranscriptSink = {
+      record: (r: TranscriptRecordInput) => {
+        const e = transcriptRing.push(r);
+        this.#emitter.emit("transcript", { sessionId: session.id, entries: [e] });
+      },
+    };
+
     try {
       const { scpi, port } = await this.#scpiFactory({
         host: session.host,
         port: session.port,
+        transcriptSink: sink,
       });
       if (!this.#sessions.has(session.id)) {
-        // Removed while we were connecting — clean up and bail.
         await scpi.close();
         return;
       }
       session.scpi = scpi;
+      session.transcriptRing = transcriptRing;
+      session.deviceErrorRing = deviceErrorRing;
 
       const idnRaw = await scpi.query("*IDN?", { timeoutMs: 5_000 });
       if (!this.#sessions.has(session.id)) {
@@ -212,11 +307,6 @@ export class SessionManager {
       if (driver) {
         session.driverId = driver.id;
         session.kind = driver.kind;
-        // Drivers can advertise a `refine()` hook that probes `*OPT?` and
-        // other per-unit details before we commit to a capability profile.
-        // Refiners are tolerant of failures; if one throws we fall back to
-        // the declared `create` so a slow or flaky instrument still
-        // connects, just with the base profile.
         let create = driver.create;
         if (driver.refine) {
           try {
@@ -236,12 +326,43 @@ export class SessionManager {
         session.facade = null;
       }
       session.status = "connected";
-      // Listen for unexpected transport loss so we can move the card to the
-      // `error` state (and keep the sessionId) instead of leaving a ghost
-      // connected-but-dead entry.
       session.disposeCloseListener = scpi.onClose((err) => {
         this.#handleUnexpectedClose(session, err);
       });
+
+      if (session.kind !== "unknown") {
+        const eq = createSystErrErrorQueue(port);
+        let busy = false;
+        const timer = setInterval(() => {
+          void (async () => {
+            if (busy) return;
+            if (!this.#sessions.has(session.id)) return;
+            if (session.status !== "connected") return;
+            busy = true;
+            try {
+              await runAsyncWithTranscriptOrigin({ kind: "errorQueue" }, async () => {
+                const entries = await eq.drain();
+                if (entries.length === 0) return;
+                const ring = session.deviceErrorRing;
+                if (!ring) return;
+                ring.pushMany(entries);
+                this.#emitter.emit("deviceErrors", {
+                  sessionId: session.id,
+                  entries,
+                });
+              });
+            } finally {
+              busy = false;
+            }
+          })();
+        }, eq.pollIntervalMs);
+        if (typeof timer.unref === "function") timer.unref();
+        session.disposeErrorPoller = () => {
+          clearInterval(timer);
+          session.disposeErrorPoller = null;
+        };
+      }
+
       this.#emitter.emit("update", toSummary(session));
     } catch (err) {
       session.status = "error";
@@ -254,9 +375,15 @@ export class SessionManager {
         }
         session.scpi = null;
       }
+      session.transcriptRing = null;
+      session.deviceErrorRing = null;
       if (session.disposeCloseListener) {
         session.disposeCloseListener();
         session.disposeCloseListener = null;
+      }
+      if (session.disposeErrorPoller) {
+        session.disposeErrorPoller();
+        session.disposeErrorPoller = null;
       }
       this.#emitter.emit("update", toSummary(session));
     }
@@ -269,9 +396,15 @@ export class SessionManager {
     session.error = err?.message ?? "connection lost";
     session.facade = null;
     session.scpi = null;
+    session.transcriptRing = null;
+    session.deviceErrorRing = null;
     if (session.disposeCloseListener) {
       session.disposeCloseListener();
       session.disposeCloseListener = null;
+    }
+    if (session.disposeErrorPoller) {
+      session.disposeErrorPoller();
+      session.disposeErrorPoller = null;
     }
     this.#emitter.emit("update", toSummary(session));
   }
@@ -291,8 +424,10 @@ function toSummary(session: InternalSession): SessionSummary {
   };
 }
 
-async function defaultScpiFactory(options: OpenOptions): Promise<{
-  scpi: ScpiSession;
+async function defaultScpiFactory(
+  options: OpenOptions & ScpiFactoryExtras,
+): Promise<{
+  scpi: import("@lxi-web/core").ScpiSession;
   port: ScpiPort;
 }> {
   const transport = new TcpTransport({
@@ -301,7 +436,11 @@ async function defaultScpiFactory(options: OpenOptions): Promise<{
     connectTimeoutMs: 5_000,
   });
   await transport.connect();
-  const scpi = new ScpiSession(transport);
+  const extra = options.scpiOptions ?? {};
+  const scpi = new ScpiSession(transport, {
+    ...extra,
+    transcriptSink: options.transcriptSink,
+  });
   return { scpi, port: scpi };
 }
 

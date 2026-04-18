@@ -1,8 +1,37 @@
 import type { FastifyInstance } from "fastify";
 import type { WebSocket } from "@fastify/websocket";
-import type { ClientMessage, ServerMessage } from "@lxi-web/core";
+import type {
+  ClientMessage,
+  ObservabilityTopic,
+  ReadingTopic,
+  ServerMessage,
+} from "@lxi-web/core";
 import type { SessionManager } from "../sessions/manager.js";
+import { ObservabilityScheduler } from "../ws/observability-scheduler.js";
 import { ReadingScheduler } from "../ws/reading-scheduler.js";
+
+const READING_TOPICS = new Set<string>([
+  "dmm.reading",
+  "dmm.dualReading",
+  "psu.channels",
+  "psu.tracking",
+  "psu.protection",
+  "scope.channels",
+  "scope.timebase",
+  "eload.measurement",
+  "eload.state",
+  "sg.channels",
+  "sa.markers",
+  "sa.trace",
+]);
+
+function isReadingTopic(t: string): t is ReadingTopic {
+  return READING_TOPICS.has(t);
+}
+
+function isObservabilityTopic(t: string): t is ObservabilityTopic {
+  return t === "device.errors" || t === "session.transcript";
+}
 
 /**
  * The `/ws` endpoint serves two purposes:
@@ -28,6 +57,7 @@ export async function registerWebsocketRoute(
 ): Promise<void> {
   const clients = new Set<WebSocket>();
   const scheduler = new ReadingScheduler(manager);
+  const observability = new ObservabilityScheduler(manager);
 
   const broadcast = (message: ServerMessage): void => {
     const payload = JSON.stringify(message);
@@ -39,6 +69,7 @@ export async function registerWebsocketRoute(
   manager.on("update", (session) => broadcast({ type: "sessions:update", session }));
   manager.on("removed", ({ id }) => {
     scheduler.removeSession(id);
+    observability.removeSession(id);
     broadcast({ type: "sessions:removed", id });
   });
 
@@ -73,17 +104,26 @@ export async function registerWebsocketRoute(
         const key = `${parsed.sessionId}::${parsed.topic}`;
         if (subscriptions.has(key)) return;
         subscriptions.add(key);
-        scheduler.subscribe(parsed.sessionId, parsed.topic, subscriber);
+        if (isObservabilityTopic(parsed.topic)) {
+          observability.subscribe(parsed.sessionId, parsed.topic, subscriber);
+        } else if (isReadingTopic(parsed.topic)) {
+          scheduler.subscribe(parsed.sessionId, parsed.topic, subscriber);
+        }
       } else if (parsed.type === "unsubscribe") {
         const key = `${parsed.sessionId}::${parsed.topic}`;
         if (!subscriptions.delete(key)) return;
-        scheduler.unsubscribe(parsed.sessionId, parsed.topic, subscriber);
+        if (isObservabilityTopic(parsed.topic)) {
+          observability.unsubscribe(parsed.sessionId, parsed.topic, subscriber);
+        } else if (isReadingTopic(parsed.topic)) {
+          scheduler.unsubscribe(parsed.sessionId, parsed.topic, subscriber);
+        }
       }
     });
 
     const cleanup = (): void => {
       clients.delete(socket);
       scheduler.removeSubscriber(subscriber);
+      observability.removeSubscriber(subscriber);
       subscriptions.clear();
     };
     socket.on("close", cleanup);

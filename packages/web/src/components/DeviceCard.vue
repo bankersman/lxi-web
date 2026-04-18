@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { RefreshCcw, Trash2, ArrowRight } from "lucide-vue-next";
 import { shortIdentity, type SessionSummary } from "@lxi-web/core/browser";
 import { useSessionsStore } from "@/stores/sessions";
+import DeviceErrorsPill from "./DeviceErrorsPill.vue";
 import StatusIndicator from "./StatusIndicator.vue";
 import DeviceKindIcon from "./DeviceKindIcon.vue";
 import { kindLabel } from "@/lib/labels";
@@ -66,7 +67,15 @@ async function reconnect(): Promise<void> {
           <p class="truncate text-xs text-fg-muted">{{ subtitle }}</p>
         </div>
       </div>
-      <StatusIndicator :status="session.status" />
+      <div class="flex shrink-0 items-center gap-2">
+        <DeviceErrorsPill
+          v-if="session.kind !== 'unknown'"
+          :session-id="session.id"
+          :active="session.status === 'connected'"
+          compact
+        />
+        <StatusIndicator :status="session.status" />
+      </div>
     </header>
 
     <slot name="body" />

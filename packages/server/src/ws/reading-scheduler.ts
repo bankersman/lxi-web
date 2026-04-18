@@ -8,6 +8,7 @@ import type {
   ReadingTopic,
   ServerMessage,
 } from "@lxi-web/core";
+import { runAsyncWithTranscriptOrigin } from "@lxi-web/core";
 import type { SessionManager } from "../sessions/manager.js";
 
 /**
@@ -153,7 +154,10 @@ export class ReadingScheduler {
     if (!this.#loops.has(loop.key)) return;
     loop.inFlight = true;
     try {
-      const payload = await this.#read(loop.sessionId, loop.topic);
+      const payload = await runAsyncWithTranscriptOrigin(
+        { kind: "poller", topic: loop.topic },
+        () => this.#read(loop.sessionId, loop.topic),
+      );
       if (!this.#loops.has(loop.key)) return;
       const measuredAt = Date.now();
       loop.lastPayload = { value: payload, measuredAt };

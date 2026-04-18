@@ -62,7 +62,9 @@ import type {
   PsuPairingMode,
   PsuProtectionKind,
   PsuProtectionState,
+  DeviceErrorEntry,
   SessionSummary,
+  TranscriptEntry,
   SignalGeneratorArbitraryCapability,
   SignalGeneratorArbitrarySample,
   SignalGeneratorBurstCapability,
@@ -212,6 +214,41 @@ export const api = {
     });
     const body = await parse<{ reply: string | null }>(res);
     return body.reply ?? null;
+  },
+
+  async getTranscriptPage(
+    id: string,
+    sinceSeq: number,
+    limit = 200,
+  ): Promise<{ entries: TranscriptEntry[]; maxSeq: number }> {
+    const url = new URL(
+      `/api/sessions/${encodeURIComponent(id)}/transcript`,
+      window.location.origin,
+    );
+    url.searchParams.set("since", String(sinceSeq));
+    url.searchParams.set("limit", String(limit));
+    const res = await fetch(url.pathname + url.search);
+    return parse<{ entries: TranscriptEntry[]; maxSeq: number }>(res);
+  },
+
+  async clearDeviceErrors(id: string): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/errors/clear`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  transcriptExportUrl(id: string): string {
+    return `/api/sessions/${encodeURIComponent(id)}/transcript/export`;
+  },
+
+  async getDeviceErrors(id: string): Promise<DeviceErrorEntry[]> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/device-errors`,
+    );
+    const body = await parse<{ entries: DeviceErrorEntry[] }>(res);
+    return body.entries;
   },
 
   async getScopeChannels(id: string): Promise<OscilloscopeChannelState[]> {

@@ -2,14 +2,14 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import type {
   ClientMessage,
-  ReadingTopic,
   ServerMessage,
   SessionSummary,
+  WsSubscriptionTopic,
 } from "@lxi-web/core/browser";
 import { api } from "@/api/client";
 import { useSavedConnectionsStore } from "./savedConnections";
 
-type TopicKey = `${string}::${ReadingTopic}`;
+type TopicKey = `${string}::${WsSubscriptionTopic}`;
 
 interface TopicListener {
   onUpdate(payload: unknown, measuredAt: number): void;
@@ -49,7 +49,7 @@ export const useSessionsStore = defineStore("sessions", () => {
     return byId.value.get(id);
   }
 
-  function keyOf(sessionId: string, topic: ReadingTopic): TopicKey {
+  function keyOf(sessionId: string, topic: WsSubscriptionTopic): TopicKey {
     return `${sessionId}::${topic}` as TopicKey;
   }
 
@@ -89,6 +89,14 @@ export const useSessionsStore = defineStore("sessions", () => {
       const set = listeners.get(keyOf(message.sessionId, message.topic));
       if (!set) return;
       for (const l of set) l.onError(message.message, message.at);
+    } else if (message.type === "deviceErrors:batch") {
+      const set = listeners.get(keyOf(message.sessionId, "device.errors"));
+      if (!set) return;
+      for (const l of set) l.onUpdate(message.entries, message.at);
+    } else if (message.type === "sessionTranscript:batch") {
+      const set = listeners.get(keyOf(message.sessionId, "session.transcript"));
+      if (!set) return;
+      for (const l of set) l.onUpdate(message.entries, message.at);
     }
   }
 
@@ -110,7 +118,9 @@ export const useSessionsStore = defineStore("sessions", () => {
       // Re-send every active subscription so live readings resume after a
       // server restart or network blip without any component-side state.
       for (const key of listeners.keys()) {
-        const [sessionId, topic] = key.split("::") as [string, ReadingTopic];
+        const sep = key.indexOf("::");
+        const sessionId = key.slice(0, sep);
+        const topic = key.slice(sep + 2) as WsSubscriptionTopic;
         send({ type: "subscribe", sessionId, topic });
         subscribedOnServer.add(key);
       }
@@ -151,7 +161,7 @@ export const useSessionsStore = defineStore("sessions", () => {
    */
   function subscribeTopic(
     sessionId: string,
-    topic: ReadingTopic,
+    topic: WsSubscriptionTopic,
     listener: TopicListener,
   ): () => void {
     const key = keyOf(sessionId, topic);

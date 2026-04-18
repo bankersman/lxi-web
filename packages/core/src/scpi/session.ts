@@ -7,12 +7,16 @@ import {
   ScpiProtocolError,
   ScpiTimeoutError,
 } from "./errors.js";
+import { getTranscriptOrigin } from "./transcript-context.js";
+import type { TranscriptSink } from "./transcript-sink.js";
 
 export interface ScpiSessionOptions {
   /** Default reply timeout for `query` / `queryBinary`. Default 5000 ms. */
   readonly defaultTimeoutMs?: number;
   /** Terminator appended to outgoing commands. Default is LF (`"\n"`). */
   readonly terminator?: string;
+  /** When set, every SCPI exchange is recorded (non-blocking). */
+  readonly transcriptSink?: TranscriptSink;
 }
 
 const LF = 0x0a;
@@ -50,11 +54,13 @@ export class ScpiSession implements ScpiPort {
   #closed = false;
   #disposeTransportListeners: Array<() => void> = [];
   readonly #closeListeners = new Set<CloseListener>();
+  readonly #transcriptSink?: TranscriptSink;
 
   constructor(transport: Transport, options: ScpiSessionOptions = {}) {
     this.#transport = transport;
     this.#defaultTimeoutMs = options.defaultTimeoutMs ?? 5000;
     this.#terminatorBytes = new TextEncoder().encode(options.terminator ?? "\n");
+    this.#transcriptSink = options.transcriptSink;
     this.#disposeTransportListeners.push(
       transport.onData((chunk) => this.#handleData(chunk)),
       transport.onClose((err) => this.#handleClose(err)),
@@ -88,11 +94,32 @@ export class ScpiSession implements ScpiPort {
   }
 
   write(command: string): Promise<void> {
+    const t0 = performance.now();
+    const sink = this.#transcriptSink;
     return this.#enqueue<void>({
       command,
       mode: "none",
       timeoutMs: this.#defaultTimeoutMs,
-    });
+    }).then(
+      () => {
+        sink?.record({
+          direction: "write",
+          command,
+          elapsedMs: performance.now() - t0,
+          origin: getTranscriptOrigin(),
+        });
+      },
+      (err: unknown) => {
+        sink?.record({
+          direction: "write",
+          command,
+          response: err instanceof Error ? err.message : String(err),
+          elapsedMs: performance.now() - t0,
+          origin: getTranscriptOrigin(),
+        });
+        throw err;
+      },
+    );
   }
 
   /**
@@ -104,32 +131,102 @@ export class ScpiSession implements ScpiPort {
    * we care about prefers the definite-length form.
    */
   writeBinary(command: string, data: Uint8Array): Promise<void> {
+    const t0 = performance.now();
+    const sink = this.#transcriptSink;
+    const label = `${command}<binary ${data.length} bytes>`;
     return this.#enqueue<void>({
       command: null,
       mode: "none",
       timeoutMs: this.#defaultTimeoutMs,
       binaryCommand: command,
       binaryData: data,
-    });
+    }).then(
+      () => {
+        sink?.record({
+          direction: "block-write",
+          command: label,
+          elapsedMs: performance.now() - t0,
+          origin: getTranscriptOrigin(),
+        });
+      },
+      (err: unknown) => {
+        sink?.record({
+          direction: "block-write",
+          command: label,
+          response: err instanceof Error ? err.message : String(err),
+          elapsedMs: performance.now() - t0,
+          origin: getTranscriptOrigin(),
+        });
+        throw err;
+      },
+    );
   }
 
   query(command: string, options: ScpiQueryOptions = {}): Promise<string> {
+    const t0 = performance.now();
+    const sink = this.#transcriptSink;
+    const timeoutMs = options.timeoutMs ?? this.#defaultTimeoutMs;
     return this.#enqueue<string>({
       command,
       mode: "line",
-      timeoutMs: options.timeoutMs ?? this.#defaultTimeoutMs,
-    });
+      timeoutMs,
+    }).then(
+      (reply) => {
+        sink?.record({
+          direction: "query",
+          command,
+          response: reply,
+          elapsedMs: performance.now() - t0,
+          origin: getTranscriptOrigin(),
+        });
+        return reply;
+      },
+      (err: unknown) => {
+        sink?.record({
+          direction: "query",
+          command,
+          response: err instanceof Error ? err.message : String(err),
+          elapsedMs: performance.now() - t0,
+          origin: getTranscriptOrigin(),
+        });
+        throw err;
+      },
+    );
   }
 
   queryBinary(
     command: string,
     options: ScpiQueryOptions = {},
   ): Promise<Uint8Array> {
+    const t0 = performance.now();
+    const sink = this.#transcriptSink;
+    const timeoutMs = options.timeoutMs ?? this.#defaultTimeoutMs;
     return this.#enqueue<Uint8Array>({
       command,
       mode: "binary",
-      timeoutMs: options.timeoutMs ?? this.#defaultTimeoutMs,
-    });
+      timeoutMs,
+    }).then(
+      (bytes) => {
+        sink?.record({
+          direction: "block-query",
+          command,
+          response: `<binary ${bytes.length} bytes>`,
+          elapsedMs: performance.now() - t0,
+          origin: getTranscriptOrigin(),
+        });
+        return bytes;
+      },
+      (err: unknown) => {
+        sink?.record({
+          direction: "block-query",
+          command,
+          response: err instanceof Error ? err.message : String(err),
+          elapsedMs: performance.now() - t0,
+          origin: getTranscriptOrigin(),
+        });
+        throw err;
+      },
+    );
   }
 
   async close(): Promise<void> {

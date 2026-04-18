@@ -13,6 +13,7 @@ import {
 import { shortIdentity, type SessionSummary } from "@lxi-web/core/browser";
 import { useSessionsStore } from "@/stores/sessions";
 import { useSavedConnectionsStore } from "@/stores/savedConnections";
+import DeviceErrorsPill from "./DeviceErrorsPill.vue";
 import StatusIndicator from "./StatusIndicator.vue";
 import DeviceKindIcon from "./DeviceKindIcon.vue";
 import { kindLabel } from "@/lib/labels";
@@ -144,6 +145,11 @@ function focusRawConsole(): void {
           />
           {{ reconnecting ? "Reconnecting…" : "Reconnect" }}
         </button>
+        <DeviceErrorsPill
+          v-if="session.kind !== 'unknown'"
+          :session-id="session.id"
+          :active="session.status === 'connected'"
+        />
         <StatusIndicator :status="session.status" />
       </div>
     </header>

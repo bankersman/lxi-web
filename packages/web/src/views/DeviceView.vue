@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ArrowLeft } from "lucide-vue-next";
 import { useSessionsStore } from "@/stores/sessions";
@@ -12,8 +12,11 @@ import EloadPanel from "@/components/panels/EloadPanel.vue";
 import SgPanel from "@/components/panels/SgPanel.vue";
 import SaPanel from "@/components/panels/SaPanel.vue";
 import RawConsole from "@/components/panels/RawConsole.vue";
+import TranscriptPanel from "@/components/panels/TranscriptPanel.vue";
 
 const props = defineProps<{ sessionId: string }>();
+
+const scpiTab = ref<"transcript" | "raw">("transcript");
 
 const router = useRouter();
 const sessions = useSessionsStore();
@@ -80,16 +83,50 @@ const isConnected = computed(() => session.value?.status === "connected");
           :disabled="!isConnected"
         />
 
-        <details
+        <section
           v-if="session.kind !== 'unknown'"
-          id="raw-scpi"
           class="mt-6 rounded-[var(--radius-card)] border border-border bg-surface-2 p-4"
         >
-          <summary class="cursor-pointer text-sm font-semibold">Raw SCPI</summary>
-          <div class="mt-3">
+          <div class="mb-3 flex flex-wrap gap-1 border-b border-border pb-2" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              class="rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              :class="
+                scpiTab === 'transcript'
+                  ? 'bg-accent/15 text-accent'
+                  : 'text-fg-muted hover:bg-surface-3'
+              "
+              :aria-selected="scpiTab === 'transcript'"
+              @click="scpiTab = 'transcript'"
+            >
+              Transcript
+            </button>
+            <button
+              id="raw-scpi-tab"
+              type="button"
+              role="tab"
+              class="rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              :class="
+                scpiTab === 'raw'
+                  ? 'bg-accent/15 text-accent'
+                  : 'text-fg-muted hover:bg-surface-3'
+              "
+              :aria-selected="scpiTab === 'raw'"
+              @click="scpiTab = 'raw'"
+            >
+              Raw SCPI
+            </button>
+          </div>
+          <TranscriptPanel
+            v-show="scpiTab === 'transcript'"
+            :session-id="session.id"
+            :disabled="!isConnected"
+          />
+          <div v-show="scpiTab === 'raw'" id="raw-scpi">
             <RawConsole :session-id="session.id" :disabled="!isConnected" />
           </div>
-        </details>
+        </section>
       </template>
 
       <section

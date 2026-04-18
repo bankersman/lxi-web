@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import type { TranscriptRecordInput } from "../src/dto/transcript.js";
 import {
   ScpiClosedError,
   ScpiProtocolError,
@@ -125,4 +126,23 @@ test("onClose listener can be disposed", () => {
   off();
   t.emitClose(new Error("bye"));
   assert.equal(fired, 0);
+});
+
+test("transcriptSink receives query exchange", async () => {
+  const t = new FakeTransport();
+  const recorded: TranscriptRecordInput[] = [];
+  const s = new ScpiSession(t, {
+    transcriptSink: {
+      record(e: TranscriptRecordInput): void {
+        recorded.push(e);
+      },
+    },
+  });
+  const pending = s.query("*IDN?");
+  setImmediate(() => t.emit("X\n"));
+  await pending;
+  assert.equal(recorded.length, 1);
+  assert.equal(recorded[0]?.direction, "query");
+  assert.equal(recorded[0]?.command, "*IDN?");
+  assert.equal(recorded[0]?.response, "X");
 });

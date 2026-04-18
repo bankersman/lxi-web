@@ -1,4 +1,5 @@
 import type { SessionSummary } from "./session.js";
+import type { DeviceErrorEntry, TranscriptEntry } from "./transcript.js";
 
 /**
  * Topics clients can subscribe to for live, push-based instrument state.
@@ -24,6 +25,12 @@ export type ReadingTopic =
   | "sa.markers"
   | "sa.trace";
 
+/** Bench-safety / SCPI observability streams (Epic 5.1). */
+export type ObservabilityTopic = "device.errors" | "session.transcript";
+
+/** Any topic the dashboard may `subscribe` to over `/ws`. */
+export type WsSubscriptionTopic = ReadingTopic | ObservabilityTopic;
+
 /** Server-to-client WebSocket message envelope. */
 export type ServerMessage =
   | { type: "sessions:init"; sessions: readonly SessionSummary[] }
@@ -45,10 +52,22 @@ export type ServerMessage =
       message: string;
       /** Wall-clock ms of the failed attempt. */
       at: number;
+    }
+  | {
+      type: "deviceErrors:batch";
+      sessionId: string;
+      entries: readonly DeviceErrorEntry[];
+      at: number;
+    }
+  | {
+      type: "sessionTranscript:batch";
+      sessionId: string;
+      entries: readonly TranscriptEntry[];
+      at: number;
     };
 
 /** Client-to-server WebSocket message envelope. */
 export type ClientMessage =
   | { type: "ping" }
-  | { type: "subscribe"; sessionId: string; topic: ReadingTopic }
-  | { type: "unsubscribe"; sessionId: string; topic: ReadingTopic };
+  | { type: "subscribe"; sessionId: string; topic: WsSubscriptionTopic }
+  | { type: "unsubscribe"; sessionId: string; topic: WsSubscriptionTopic };

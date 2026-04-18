@@ -101,6 +101,6 @@ opts in.
 
 If you run `@lxi-web/core` against an instrument we do not ship a driver
 for, consider filing a
-[hardware report](../../.github/ISSUE_TEMPLATE/instrument-report.yml).
+[hardware report](https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml).
 A report is enough for us to add a pattern entry to the registry so the
 same `*IDN?` routes you to the right façade next release.

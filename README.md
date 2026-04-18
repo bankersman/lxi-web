@@ -92,7 +92,7 @@ card and the raw SCPI console.
 Full matrix + lifecycle (`Verified` / `Community` / `Preview` /
 `Reported`) lives at **[docs/user/supported-hardware.md](docs/user/supported-hardware.md)**.
 
-Got other LXI gear? **[Report your hardware](.github/ISSUE_TEMPLATE/instrument-report.yml)**
+Got other LXI gear? **[Report your hardware](https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml)**
 — paste the `*IDN?` + `*OPT?` string, what works, what does not, and we
 can grow the matrix. See [docs/contributing/adding-a-driver.md](docs/contributing/adding-a-driver.md)
 if you want to take on the driver yourself.
@@ -119,9 +119,9 @@ More detail in [PLAN.md](PLAN.md) and [progress.md](progress.md).
 
 ## Contributing
 
-- **Bugs**: [bug report](.github/ISSUE_TEMPLATE/bug.yml).
-- **New features**: [feature request](.github/ISSUE_TEMPLATE/feature.yml).
-- **Instruments**: [hardware report](.github/ISSUE_TEMPLATE/instrument-report.yml).
+- **Bugs**: [bug report](https://github.com/bankersman/lxi-web/issues/new?template=bug.yml).
+- **New features**: [feature request](https://github.com/bankersman/lxi-web/issues/new?template=feature.yml).
+- **Instruments**: [hardware report](https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml).
 - **Roadmap**: [progress.md](progress.md).
 
 ## License

@@ -46,5 +46,5 @@
 
 1. Check [docs/user/hardware-reports.md](./hardware-reports.md) for
    known quirks of your model.
-2. Open a [bug report](../../.github/ISSUE_TEMPLATE/bug.yml) with the
+2. Open a [bug report](https://github.com/bankersman/lxi-web/issues/new?template=bug.yml) with the
    `*IDN?` string and the raw SCPI log if relevant.

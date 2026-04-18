@@ -13,7 +13,7 @@ which `Preview` → `Community` → `Verified` happens.
 | Status        | Meaning |
 | ------------- | --- |
 | **Verified**  | Driver exercised against real hardware by a maintainer and confirmed working end-to-end. Firmware + date of the last verification is recorded in the Notes column. |
-| **Community** | A user filed a [hardware report](../../.github/ISSUE_TEMPLATE/instrument-report.yml) confirming the driver works on their unit, but a maintainer has not re-verified it yet. |
+| **Community** | A user filed a [hardware report](https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml) confirming the driver works on their unit, but a maintainer has not re-verified it yet. |
 | **Preview**   | Driver + simulator personality ship, but no real unit has been confirmed. Safe to try — the raw SCPI console is always there as a fallback. |
 | **Reported**  | Someone sent a `*IDN?` capture and a SCPI log; no driver has been written yet. Raw SCPI works; typed panels do not. |
 
@@ -23,7 +23,7 @@ report" CTA. There is intentionally no UI pill in the app itself; the
 status lives in documentation so it can be updated per-report without a
 release.
 
-Something you use is missing? [File a hardware report](../../.github/ISSUE_TEMPLATE/instrument-report.yml)
+Something you use is missing? [File a hardware report](https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml)
 with your `*IDN?` response, `*OPT?` output, and firmware version.
 
 ## Oscilloscopes

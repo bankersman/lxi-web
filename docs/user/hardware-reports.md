@@ -44,7 +44,7 @@ always start from a real `*IDN?` capture regardless of matrix status.
 ## Filing a report
 
 Use the
-[instrument-report](../../.github/ISSUE_TEMPLATE/instrument-report.yml)
+[instrument-report](https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml)
 issue template. The template asks for exactly the fields a maintainer
 needs — please fill them in rather than condensing:
 

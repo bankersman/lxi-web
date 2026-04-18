@@ -100,3 +100,23 @@ export type {
   El3Profile,
   Trueform33500Profile,
 } from "./drivers/keysight/index.js";
+export {
+  OwonXdm,
+  OwonSpe,
+  OwonXds,
+  registerOwonDrivers,
+  XDM_VARIANTS,
+  XDM_DEFAULT,
+  SPE_VARIANTS,
+  SPE_DEFAULT,
+  XDS_VARIANTS,
+  XDS_DEFAULT,
+  refineXdmProfile,
+  refineSpeProfile,
+  refineXdsProfile,
+} from "./drivers/owon/index.js";
+export type {
+  XdmProfile,
+  SpeProfile,
+  XdsProfile,
+} from "./drivers/owon/index.js";

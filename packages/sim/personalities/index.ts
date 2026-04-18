@@ -22,6 +22,10 @@ import { keysightTruevolt34470aPersonality } from "./keysight/truevolt-34470a.js
 import { keysightInfiniivisionDsox2024aPersonality } from "./keysight/infiniivision-dsox2024a.js";
 import { keysightInfiniivisionDsox3034tPersonality } from "./keysight/infiniivision-dsox3034t.js";
 import { keysightEl34243aPersonality } from "./keysight/el34243a.js";
+import { owonXdm2041Personality } from "./owon/xdm2041.js";
+import { owonXdm1041Personality } from "./owon/xdm1041.js";
+import { owonSpe3103Personality } from "./owon/spe3103.js";
+import { owonXds3104aePersonality } from "./owon/xds3104ae.js";
 
 export { genericUnknownPersonality } from "./generic-unknown.js";
 export { rigolDho804Personality } from "./rigol/dho804.js";
@@ -46,6 +50,10 @@ export { keysightTruevolt34470aPersonality } from "./keysight/truevolt-34470a.js
 export { keysightInfiniivisionDsox2024aPersonality } from "./keysight/infiniivision-dsox2024a.js";
 export { keysightInfiniivisionDsox3034tPersonality } from "./keysight/infiniivision-dsox3034t.js";
 export { keysightEl34243aPersonality } from "./keysight/el34243a.js";
+export { owonXdm2041Personality } from "./owon/xdm2041.js";
+export { owonXdm1041Personality } from "./owon/xdm1041.js";
+export { owonSpe3103Personality } from "./owon/spe3103.js";
+export { owonXds3104aePersonality } from "./owon/xds3104ae.js";
 
 /**
  * Registry with every personality this package ships with. Consumers can
@@ -77,5 +85,9 @@ export function createDefaultPersonalityRegistry(): PersonalityRegistry {
   registry.register(keysightInfiniivisionDsox2024aPersonality);
   registry.register(keysightInfiniivisionDsox3034tPersonality);
   registry.register(keysightEl34243aPersonality);
+  registry.register(owonXdm2041Personality);
+  registry.register(owonXdm1041Personality);
+  registry.register(owonSpe3103Personality);
+  registry.register(owonXds3104aePersonality);
   return registry;
 }

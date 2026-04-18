@@ -182,5 +182,9 @@ test("default personality registry ships the full built-in roster", () => {
   assert.ok(ids.has("keysight-infiniivision-dsox2024a"));
   assert.ok(ids.has("keysight-infiniivision-dsox3034t"));
   assert.ok(ids.has("keysight-el34243a"));
+  assert.ok(ids.has("owon-xdm2041"));
+  assert.ok(ids.has("owon-xdm1041"));
+  assert.ok(ids.has("owon-spe3103"));
+  assert.ok(ids.has("owon-xds3104ae"));
   assert.ok(ids.has("generic-unknown"));
 });

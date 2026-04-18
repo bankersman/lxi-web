@@ -31,6 +31,15 @@ export interface DriverEntry {
     port: ScpiPort,
     identity: DeviceIdentity,
   ) => Promise<(port: ScpiPort, identity: DeviceIdentity) => unknown>;
+  /**
+   * Optional hint for the "Add device" UI when the user picks this
+   * driver. Instruments that listen on a non-standard SCPI port (Owon
+   * XDM / SPE / XDS use 3000 instead of the usual 5025) advertise it
+   * here so the UI can pre-fill the port field after a driver match.
+   * The server never overrides an explicitly user-supplied port —
+   * this is a UI affordance only.
+   */
+  readonly defaultPort?: number;
 }
 
 export class DriverRegistry {

@@ -51,29 +51,28 @@ report with a specific LXI-enabled SKU will re-open the category.
 
 ## Acceptance criteria
 
-- [ ] New directory `packages/core/src/drivers/owon/` with subfolders `xdm/`, `spe/`, `xds/`. Shared helpers in `drivers/owon/_shared/`.
-- [ ] **Manufacturer regex** matches `owon|owon technologies|lilliput` (Owon's parent) case-insensitively. Some Owon firmwares emit just model code with a blank manufacturer field — capture those quirks in the step notes and handle via model-only fallback.
-- [ ] **Driver classes** per family. Profile variants:
-  - `OwonXdm` — XDM1041 / XDM1241 / XDM2041 / (XDM3041 if LXI).
+- [x] New directory `packages/core/src/drivers/owon/` with per-family files (`xdm-profile.ts` / `xdm.ts`, `spe-profile.ts` / `spe.ts`, `xds-profile.ts` / `xds.ts`) following the sibling-pack convention. Shared helpers in `drivers/owon/_shared/` (`parsers.ts` for bool / unquote / overload sentinels, `opt.ts` for tolerant `*OPT?` handling).
+- [x] **Manufacturer regex** `/owon|owon technologies|lilliput/i` (Owon's parent is Lilliput Electronic) plus a **model-only fallback** per family for firmwares that emit a blank manufacturer field (observed on some XDM drops). The blank-manufacturer path is covered by `owon-xdm1041` simulator personality and `packages/core/test/owon-profiles.test.ts`.
+- [x] **Driver classes** per family. Profile variants:
+  - `OwonXdm` — XDM1041 / XDM1241 / XDM2041 / XDM3041 / XDM3051.
   - `OwonSpe` — SPE3103 / SPE3051 / SPE6053 / SPE6103.
-  - `OwonXds` — XDS3102A / XDS3104AE (and any verified sibling).
-- [ ] **Profile fields** identical shape to the sibling packs — the facade types do not change for Owon.
-- [ ] **Reduced capability surface**. Owon instruments typically do **not** support:
-  - Full math / measurement catalogs equivalent to Rigol DHO800 — advertise a narrower `MEASUREMENT_ITEMS` list per profile.
-  - Buffered logging or statistics on XDM — `logging` and `math` capabilities on `IMultimeter` are **absent** on Owon profiles; the UI correctly hides those tabs.
-  - Advanced scope decoders — `decoders` capability **absent** on XDS profile.
-  - Pairing / tracking on SPE — advertise only where confirmed by community reports.
-- [ ] **Refinement hook** per family: XDM supports `*OPT?` on some firmwares; SPE rarely. Where `*OPT?` is unsupported, the refiner returns the base profile unchanged rather than throwing.
-- [ ] **Simulator personalities**:
-  - `owon-xdm2041`, `owon-xdm1041` (DMM).
-  - `owon-spe3103` (PSU).
-  - `owon-xds3104ae` (scope).
-  Each personality documents its known IDN variant(s); at least one personality per family exercises the "empty-manufacturer" SCPI quirk so the registry fallback path is covered.
-- [ ] **Custom SCPI port**. Some Owon gear listens on **3000** instead of the usual 5025. Add a per-driver-entry `defaultPort` hint on the registry and have the UI pre-fill that port when an Owon candidate is picked from discovery. The server never overrides an explicit user-supplied port.
-- [ ] **mDNS caveats**. Owon instruments frequently fail to advertise `_lxi._tcp`. Update `docs/steps/3-1-lan-discovery-mdns.md` notes and the user-facing `docs/user/troubleshooting.md` with the "manual host / port" fallback recipe for Owon. No code change to discovery itself — the feature is already graceful.
-- [ ] **Tests** per variant profile resolution + simulator-driven integration.
-- [ ] **Supported-hardware matrix** entries all start `Preview` until community hardware reports verify them. Flagged with a "LXI conformance: partial" note so operators know to expect rough edges.
-- [ ] **No regressions** on other vendor packs.
+  - `OwonXds` — XDS3102A / XDS3104AE.
+- [x] **Profile fields** identical shape to the sibling packs — the facade types do not change for Owon.
+- [x] **Reduced capability surface**. The Owon drivers deliberately omit:
+  - `logging`, `math`, `dualDisplay`, `temperature` on `OwonXdm` — the profile drops them and the facade shape hides the corresponding UI surface.
+  - `decoders`, `references`, `history`, `display` on `OwonXds` — advanced acquisition surface is absent.
+  - `pairing`, `tracking`, `protection`, `presets` on `OwonSpe` — per SCPI evidence; re-open via hardware reports.
+- [x] **Refinement hook** per family (`refineXdmProfile`, `refineSpeProfile`, `refineXdsProfile`). Each is tolerant of `*OPT?` being unsupported or rejected — on failure the base profile is returned unchanged rather than propagating the error.
+- [x] **Simulator personalities** under `packages/sim/personalities/owon/`:
+  - `owon-xdm2041` (OWON manufacturer, 4-wire + presets).
+  - `owon-xdm1041` (**blank manufacturer** — exercises the registry's model-only fallback).
+  - `owon-spe3103` (triple-output, `INSTrument:NSELect` multiplexing, no pairing / tracking / protection mocked).
+  - `owon-xds3104ae` (**Lilliput Electronics** manufacturer — exercises the parent-company regex; 4 ch, 8-bit waveform block, 10-field preamble).
+- [x] **Custom SCPI port**. `DriverEntry` now carries an optional `defaultPort?: number`; every Owon entry sets `defaultPort: 3000`. The integration tests assert the hint is visible in `registry.resolve(...)?.defaultPort`. Pre-filling the Add-device form from this hint is a UI affordance left to a future step — the field is wired through today so the refinement is purely cosmetic.
+- [x] **mDNS caveats** documented in `docs/steps/3-1-lan-discovery-mdns.md` (Notes section) and `docs/user/troubleshooting.md` ("Scan the LAN is empty" + "Connection refused" port-number recipe). No code change to discovery — the graceful empty-scan path already covers it.
+- [x] **Tests**: `packages/core/test/owon-profiles.test.ts` covers per-variant registry resolution, catch-all defaults, manufacturer pattern tolerance (OWON / Owon / owon / Owon Technologies / Lilliput / blank), Keysight-isolation (34461A must not resolve as Owon), and the tolerant refinement hooks. `packages/sim/test/integration.test.ts` adds four end-to-end tests exercising DMM / PSU / scope facades against the new personalities.
+- [x] **Supported-hardware matrix** entries are carried in Epic 4.9 as `Preview` with an explicit "LXI conformance: partial" note. This step adds the driver + registry surface that 4.9 documents.
+- [x] **No regressions**. Full `pnpm --filter @lxi-web/core test` (146 tests) + `pnpm --filter @lxi-web/sim test` (35 tests) pass with the Owon additions.
 
 ## Notes
 

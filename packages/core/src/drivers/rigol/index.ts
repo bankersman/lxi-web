@@ -1,6 +1,7 @@
 import { DriverRegistry } from "../../identity/registry.js";
 import { registerSiglentDrivers } from "../siglent/index.js";
 import { registerKeysightDrivers } from "../keysight/index.js";
+import { registerOwonDrivers } from "../owon/index.js";
 import { RigolDho800 } from "./dho800.js";
 import { RigolDp900 } from "./dp900.js";
 import { RigolDm800 } from "./dm800.js";
@@ -219,5 +220,6 @@ export function createDefaultRegistry(): DriverRegistry {
   registerRigolDrivers(registry);
   registerSiglentDrivers(registry);
   registerKeysightDrivers(registry);
+  registerOwonDrivers(registry);
   return registry;
 }

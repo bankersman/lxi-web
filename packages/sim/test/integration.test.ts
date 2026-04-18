@@ -35,12 +35,19 @@ import { keysightTruevolt34461aPersonality } from "../personalities/keysight/tru
 import { keysightInfiniivisionDsox2024aPersonality } from "../personalities/keysight/infiniivision-dsox2024a.js";
 import { keysightInfiniivisionDsox3034tPersonality } from "../personalities/keysight/infiniivision-dsox3034t.js";
 import { keysightEl34243aPersonality } from "../personalities/keysight/el34243a.js";
+import { owonXdm2041Personality } from "../personalities/owon/xdm2041.js";
+import { owonXdm1041Personality } from "../personalities/owon/xdm1041.js";
+import { owonSpe3103Personality } from "../personalities/owon/spe3103.js";
+import { owonXds3104aePersonality } from "../personalities/owon/xds3104ae.js";
 import type {
   KeysightE36,
   KeysightTrueVolt,
   KeysightInfiniiVision,
   KeysightEl3,
   KeysightTrueform33500,
+  OwonXdm,
+  OwonSpe,
+  OwonXds,
 } from "@lxi-web/core";
 
 async function withSimulator<T>(
@@ -430,6 +437,102 @@ test("pnpm test:sim — Keysight EL34243A personality + eload driver round-trips
     assert.equal(state.setpoints.cc, 2.0);
     const m = await eload.measure();
     assert.ok(m.current >= 0);
+  });
+});
+
+test("pnpm test:sim — Owon XDM2041 personality + DMM driver reads mode + value", async () => {
+  await withSimulator(owonXdm2041Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "XDM2041");
+    assert.match(parsed.manufacturer, /owon/i);
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "owon-xdm2041");
+    assert.equal(entry?.kind, "multimeter");
+    assert.equal(entry?.defaultPort, 3000);
+    const dmm = entry!.create(session, parsed) as OwonXdm;
+    await dmm.setMode("dcVoltage");
+    assert.equal(await dmm.getMode(), "dcVoltage");
+    const reading = await dmm.read();
+    assert.ok(Number.isFinite(reading.value));
+    assert.equal(reading.mode, "dcVoltage");
+    assert.equal(reading.unit, "V");
+    // XDM2041 is the 5½-digit profile — 4-wire is available.
+    assert.ok(dmm.supportedModes.includes("fourWireResistance"));
+    // Preset capability is advertised because the profile carries slots.
+    assert.ok(dmm.presets);
+  });
+});
+
+test("pnpm test:sim — Owon XDM1041 resolves via empty-manufacturer fallback", async () => {
+  await withSimulator(owonXdm1041Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    // Fixture exercises the blank-manufacturer quirk.
+    assert.equal(parsed.manufacturer, "");
+    assert.equal(parsed.model, "XDM1041");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.ok(entry, "XDM1041 must resolve despite empty manufacturer");
+    assert.equal(entry!.kind, "multimeter");
+    assert.equal(entry!.defaultPort, 3000);
+    const dmm = entry!.create(session, parsed) as OwonXdm;
+    // XDM1041 is the 4½-digit profile — 4-wire is absent.
+    assert.ok(!dmm.supportedModes.includes("fourWireResistance"));
+    // No preset capability on the 4½-digit variant.
+    assert.equal(dmm.presets, undefined);
+    const reading = await dmm.read();
+    assert.ok(Number.isFinite(reading.value));
+  });
+});
+
+test("pnpm test:sim — Owon SPE3103 personality + PSU driver round-trips channel state", async () => {
+  await withSimulator(owonSpe3103Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "SPE3103");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "owon-spe3103");
+    assert.equal(entry?.kind, "powerSupply");
+    assert.equal(entry?.defaultPort, 3000);
+    const psu = entry!.create(session, parsed) as OwonSpe;
+    await psu.setChannelVoltage(1, 5.0);
+    await psu.setChannelCurrent(1, 0.5);
+    await psu.setChannelOutput(1, true);
+    const channels = await psu.getChannels();
+    assert.equal(channels.length, 3);
+    const ch1 = channels.find((c) => c.id === 1)!;
+    assert.equal(ch1.setVoltage, 5);
+    assert.equal(ch1.output, true);
+    // SPE does not advertise pairing / tracking / protection / presets.
+    assert.equal(psu.pairing, undefined);
+    assert.equal(psu.tracking, undefined);
+    assert.equal(psu.presets, undefined);
+  });
+});
+
+test("pnpm test:sim — Owon XDS3104AE personality + scope resolves via Lilliput manufacturer", async () => {
+  await withSimulator(owonXds3104aePersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "XDS3104AE");
+    // IDN deliberately advertises Lilliput (Owon parent).
+    assert.match(parsed.manufacturer, /lilliput/i);
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "owon-xds3104ae");
+    assert.equal(entry?.kind, "oscilloscope");
+    assert.equal(entry?.defaultPort, 3000);
+    const scope = entry!.create(session, parsed) as OwonXds;
+    const timebase = await scope.getTimebase();
+    assert.ok(Number.isFinite(timebase.scale));
+    await scope.setChannelEnabled(1, true);
+    const channels = await scope.getChannels();
+    assert.equal(channels.length, 4);
+    const waveform = await scope.readWaveform(1);
+    assert.ok(waveform.y.length > 0);
+    // Decoders / references / history / math are intentionally absent.
+    assert.equal(scope.display, undefined);
+    // Advanced trigger types are deliberately not advertised.
+    assert.deepEqual(scope.trigger.types, ["edge"]);
   });
 });
 

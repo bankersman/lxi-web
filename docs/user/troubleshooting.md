@@ -5,7 +5,8 @@
 - The instrument is powered off, not on the LAN, or on a different
   subnet.
 - The SCPI-raw port is wrong. Rigol defaults to **5555**;
-  Keysight / Tektronix commonly use **5025**.
+  Keysight / Tektronix commonly use **5025**; **Owon** XDM / SPE / XDS
+  listen on **3000**.
 - A host firewall is blocking outbound TCP from the server. Whitelist
   the target host / port.
 
@@ -23,6 +24,10 @@
   `--network host` on Linux, or add the instrument manually.
 - The instrument may not advertise via DNS-SD at all. Use **Enter
   host & port** instead.
+- **Owon** instruments (XDM / SPE / XDS) frequently skip
+  `_lxi._tcp` advertisement entirely. They will never show up in
+  the Scan list even on the same subnet. Add them manually with the
+  instrument's static IP and port **3000** (not 5025).
 
 ## Auto-connect stops reopening saved devices
 

@@ -32,6 +32,9 @@ function fakeScpi(opts: FakeScpiOptions | string): FakeScpiSession {
     async write(cmd: string): Promise<void> {
       writes.push(cmd);
     },
+    async writeBinary(cmd: string, _data: Uint8Array): Promise<void> {
+      writes.push(cmd);
+    },
     async queryBinary(): Promise<Uint8Array> {
       return new Uint8Array();
     },
@@ -1251,6 +1254,176 @@ test("eload mode endpoint rejects non-eload sessions", async () => {
   const res = await app.inject({
     method: "GET",
     url: `/api/sessions/${id}/eload/state`,
+  });
+  assert.equal(res.statusCode, 409);
+  await app.close();
+});
+
+// ---- 4.4 signal generator ----
+
+async function openSg(): Promise<{
+  app: Awaited<ReturnType<typeof buildServer>>;
+  id: string;
+  session: () => FakeScpiSession | null;
+}> {
+  const state = new Map<string, string>([
+    [":OUTPut1?", "OFF"],
+    [":OUTPut2?", "OFF"],
+    [":OUTPut1:IMPedance?", "50"],
+    [":OUTPut2:IMPedance?", "50"],
+    [":SOURce1:FUNCtion?", "SIN"],
+    [":SOURce2:FUNCtion?", "SIN"],
+    [":SOURce1:FREQuency?", "1000"],
+    [":SOURce2:FREQuency?", "1000"],
+    [":SOURce1:VOLTage?", "1.0"],
+    [":SOURce2:VOLTage?", "1.0"],
+    [":SOURce1:VOLTage:OFFSet?", "0"],
+    [":SOURce2:VOLTage:OFFSet?", "0"],
+    [":SOURce1:PHASe?", "0"],
+    [":SOURce2:PHASe?", "0"],
+    [":SOURce1:FUNCtion:SQUare:DCYCle?", "50"],
+    [":SOURce2:FUNCtion:SQUare:DCYCle?", "50"],
+    [":SOURce1:FUNCtion:RAMP:SYMMetry?", "50"],
+    [":SOURce2:FUNCtion:RAMP:SYMMetry?", "50"],
+    [":SOURce1:FUNCtion:PULSe:WIDTh?", "0.001"],
+    [":SOURce2:FUNCtion:PULSe:WIDTh?", "0.001"],
+    [":SOURce1:FUNCtion:PULSe:TRANsition:LEADing?", "1e-8"],
+    [":SOURce2:FUNCtion:PULSe:TRANsition:LEADing?", "1e-8"],
+    [":SOURce1:FUNCtion:PULSe:TRANsition:TRAiling?", "1e-8"],
+    [":SOURce2:FUNCtion:PULSe:TRANsition:TRAiling?", "1e-8"],
+  ]);
+  const handler = (cmd: string): string | undefined => state.get(cmd) ?? "0";
+  const { app, session } = await setupAppCapturing(
+    "RIGOL TECHNOLOGIES,DG812,SN,FW",
+    handler,
+  );
+  const opened = await app.inject({
+    method: "POST",
+    url: "/api/sessions",
+    payload: { host: "10.0.0.14" },
+  });
+  const id = (opened.json() as { session: SessionSummary }).session.id;
+  await waitForStatus(app, id, "connected");
+  return { app, id, session };
+}
+
+test("sg channels endpoint returns snapshot and capabilities", async () => {
+  const { app, id } = await openSg();
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/sessions/${id}/sg/channels`,
+  });
+  assert.equal(res.statusCode, 200);
+  const body = res.json() as {
+    channels: Array<{ id: number; waveform: { type: string } }>;
+    capabilities: { modulation: unknown; arbitrary: unknown };
+  };
+  assert.equal(body.channels.length, 2);
+  assert.equal(body.channels[0].waveform.type, "sine");
+  assert.ok(body.capabilities.modulation);
+  assert.ok(body.capabilities.arbitrary);
+  await app.close();
+});
+
+test("sg waveform endpoint validates input and forwards SCPI", async () => {
+  const { app, id, session } = await openSg();
+
+  const badType = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/sg/channels/1/waveform`,
+    payload: { type: "garbage", frequencyHz: 1000, amplitudeVpp: 1, offsetV: 0 },
+  });
+  assert.equal(badType.statusCode, 400);
+
+  const overLimit = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/sg/channels/1/waveform`,
+    payload: {
+      type: "sine",
+      frequencyHz: 1e12,
+      amplitudeVpp: 1,
+      offsetV: 0,
+    },
+  });
+  assert.equal(overLimit.statusCode, 400);
+
+  const ok = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/sg/channels/1/waveform`,
+    payload: {
+      type: "square",
+      frequencyHz: 5_000,
+      amplitudeVpp: 2,
+      offsetV: 0.1,
+      dutyPct: 25,
+    },
+  });
+  assert.equal(ok.statusCode, 200);
+
+  const writes = session()?.writes ?? [];
+  assert.ok(writes.some((w) => w === ":SOURce1:FUNCtion SQU"));
+  assert.ok(writes.some((w) => w === ":SOURce1:FREQuency 5000"));
+  assert.ok(writes.some((w) => w === ":SOURce1:FUNCtion:SQUare:DCYCle 25"));
+  await app.close();
+});
+
+test("sg enabled / impedance endpoints forward SCPI", async () => {
+  const { app, id, session } = await openSg();
+
+  const enable = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/sg/channels/2/enabled`,
+    payload: { enabled: true },
+  });
+  assert.equal(enable.statusCode, 200);
+
+  const imp = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/sg/channels/1/impedance`,
+    payload: { mode: "highZ" },
+  });
+  assert.equal(imp.statusCode, 200);
+
+  const badImp = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/sg/channels/1/impedance`,
+    payload: { mode: "75ohm" },
+  });
+  assert.equal(badImp.statusCode, 400);
+
+  const writes = session()?.writes ?? [];
+  assert.ok(writes.some((w) => w === ":OUTPut2 ON"));
+  assert.ok(writes.some((w) => w === ":OUTPut1:IMPedance INFinity"));
+  await app.close();
+});
+
+test("sg arbitrary upload endpoint forwards int16 samples", async () => {
+  const { app, id, session } = await openSg();
+  const samples = [0, 0.5, 1, 0.5, 0, -0.5, -1, -0.5];
+  const res = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/sg/channels/1/arbitrary/upload`,
+    payload: { name: "TEST", samples },
+  });
+  assert.equal(res.statusCode, 200);
+  const writes = session()?.writes ?? [];
+  // writeBinary is captured in the same `writes` array via the fake.
+  assert.ok(writes.some((w) => /TRACe:DATA:DAC16/.test(w)));
+  await app.close();
+});
+
+test("sg endpoints reject non-signal-generator sessions", async () => {
+  const app = await setupApp("RIGOL,DP932E,SN,FW");
+  const opened = await app.inject({
+    method: "POST",
+    url: "/api/sessions",
+    payload: { host: "10.0.0.15" },
+  });
+  const id = (opened.json() as { session: SessionSummary }).session.id;
+  await waitForStatus(app, id, "connected");
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/sessions/${id}/sg/channels`,
   });
   assert.equal(res.statusCode, 409);
   await app.close();

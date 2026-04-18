@@ -35,6 +35,7 @@ export default defineConfig({
             { text: "Power supply", link: "/manual/power-supply" },
             { text: "Multimeter", link: "/manual/multimeter" },
             { text: "Electronic load", link: "/manual/electronic-load" },
+            { text: "Signal generator", link: "/manual/signal-generator" },
             { text: "Raw SCPI", link: "/manual/raw-scpi" },
           ],
         },

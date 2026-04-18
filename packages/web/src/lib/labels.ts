@@ -2,6 +2,7 @@ import type {
   DeviceKind,
   ElectronicLoadMode,
   MultimeterMode,
+  SignalGeneratorWaveformType,
 } from "@lxi-web/core/browser";
 
 export function kindLabel(kind: DeviceKind): string {
@@ -14,9 +15,29 @@ export function kindLabel(kind: DeviceKind): string {
       return "Multimeter";
     case "electronicLoad":
       return "Electronic load";
+    case "signalGenerator":
+      return "Signal generator";
     default:
       return "Unidentified";
   }
+}
+
+const SG_WAVEFORM_LABELS: Readonly<
+  Record<SignalGeneratorWaveformType, string>
+> = {
+  sine: "Sine",
+  square: "Square",
+  ramp: "Ramp",
+  pulse: "Pulse",
+  noise: "Noise",
+  dc: "DC",
+  arbitrary: "Arbitrary",
+};
+
+export function signalGeneratorWaveformLabel(
+  type: SignalGeneratorWaveformType,
+): string {
+  return SG_WAVEFORM_LABELS[type];
 }
 
 const ELOAD_MODE_LABELS: Readonly<Record<ElectronicLoadMode, string>> = {

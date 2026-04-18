@@ -9,6 +9,7 @@ type Reply = string | Uint8Array | ((cmd: string) => string | Uint8Array);
  */
 export class FakeScpiPort implements ScpiPort {
   readonly writes: string[] = [];
+  readonly binaryWrites: Array<{ command: string; data: Uint8Array }> = [];
   readonly queries: string[] = [];
   readonly #replies: Array<{ readonly pattern: RegExp; readonly reply: Reply }> = [];
   #fallback: Reply = "";
@@ -26,6 +27,11 @@ export class FakeScpiPort implements ScpiPort {
 
   write(command: string): Promise<void> {
     this.writes.push(command);
+    return Promise.resolve();
+  }
+
+  writeBinary(command: string, data: Uint8Array): Promise<void> {
+    this.binaryWrites.push({ command, data });
     return Promise.resolve();
   }
 

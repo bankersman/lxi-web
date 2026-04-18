@@ -10,6 +10,7 @@ import ScopeMiniPanel from "@/components/panels/ScopeMiniPanel.vue";
 import PsuMiniPanel from "@/components/panels/PsuMiniPanel.vue";
 import DmmMiniPanel from "@/components/panels/DmmMiniPanel.vue";
 import EloadMiniPanel from "@/components/panels/EloadMiniPanel.vue";
+import SgMiniPanel from "@/components/panels/SgMiniPanel.vue";
 
 const sessions = useSessionsStore();
 const saved = useSavedConnectionsStore();
@@ -152,6 +153,11 @@ async function reopenAllSaved(): Promise<void> {
             />
             <EloadMiniPanel
               v-else-if="session.kind === 'electronicLoad'"
+              :session-id="session.id"
+              :enabled="session.status === 'connected'"
+            />
+            <SgMiniPanel
+              v-else-if="session.kind === 'signalGenerator'"
               :session-id="session.id"
               :enabled="session.status === 'connected'"
             />

@@ -157,13 +157,17 @@ test("TCP simulator serves *IDN? to a real socket", async () => {
   await sim.close();
 });
 
-test("default personality registry ships DHO804/DP932E/DM858/DL3021/SDL1020X-E + generic-unknown", () => {
+test("default personality registry ships the full built-in roster", () => {
   const reg = createDefaultPersonalityRegistry();
   const ids = new Set(reg.list().map((p) => p.id));
   assert.ok(ids.has("rigol-dho804"));
   assert.ok(ids.has("rigol-dp932e"));
   assert.ok(ids.has("rigol-dm858"));
   assert.ok(ids.has("rigol-dl3021"));
+  assert.ok(ids.has("rigol-dg812"));
+  assert.ok(ids.has("rigol-dg932"));
   assert.ok(ids.has("siglent-sdl1020x-e"));
+  assert.ok(ids.has("siglent-sdg2042x"));
+  assert.ok(ids.has("keysight-33511b"));
   assert.ok(ids.has("generic-unknown"));
 });

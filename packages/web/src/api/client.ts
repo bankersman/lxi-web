@@ -63,6 +63,19 @@ import type {
   PsuProtectionKind,
   PsuProtectionState,
   SessionSummary,
+  SignalGeneratorArbitraryCapability,
+  SignalGeneratorArbitrarySample,
+  SignalGeneratorBurstCapability,
+  SignalGeneratorBurstConfig,
+  SignalGeneratorChannelState,
+  SignalGeneratorModulationCapability,
+  SignalGeneratorModulationConfig,
+  SignalGeneratorOutputImpedance,
+  SignalGeneratorSweepCapability,
+  SignalGeneratorSweepConfig,
+  SignalGeneratorSyncCapability,
+  SignalGeneratorSyncState,
+  SignalGeneratorWaveform,
   TimebaseState,
 } from "@lxi-web/core/browser";
 
@@ -914,6 +927,180 @@ export const api = {
     );
     await parse<{ ok: boolean }>(res);
   },
+
+  // ---- 4.4 signal generator ----
+
+  async getSgChannels(id: string): Promise<SgChannelsInfo> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/sg/channels`);
+    return parse<SgChannelsInfo>(res);
+  },
+
+  async setSgEnabled(
+    id: string,
+    channel: number,
+    enabled: boolean,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/channels/${channel}/enabled`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ enabled }) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async setSgImpedance(
+    id: string,
+    channel: number,
+    mode: SignalGeneratorOutputImpedance,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/channels/${channel}/impedance`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ mode }) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async setSgWaveform(
+    id: string,
+    channel: number,
+    config: SignalGeneratorWaveform,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/channels/${channel}/waveform`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(config) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getSgModulation(id: string, channel: number): Promise<SgModulationInfo> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/channels/${channel}/modulation`,
+    );
+    return parse<SgModulationInfo>(res);
+  },
+
+  async setSgModulation(
+    id: string,
+    channel: number,
+    config: SignalGeneratorModulationConfig,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/channels/${channel}/modulation`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(config) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getSgSweep(id: string, channel: number): Promise<SgSweepInfo> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/channels/${channel}/sweep`,
+    );
+    return parse<SgSweepInfo>(res);
+  },
+
+  async setSgSweep(
+    id: string,
+    channel: number,
+    config: SignalGeneratorSweepConfig,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/channels/${channel}/sweep`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(config) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getSgBurst(id: string, channel: number): Promise<SgBurstInfo> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/channels/${channel}/burst`,
+    );
+    return parse<SgBurstInfo>(res);
+  },
+
+  async setSgBurst(
+    id: string,
+    channel: number,
+    config: SignalGeneratorBurstConfig,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/channels/${channel}/burst`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(config) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getSgArbitrary(id: string): Promise<SgArbitraryInfo> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/arbitrary`,
+    );
+    return parse<SgArbitraryInfo>(res);
+  },
+
+  async uploadSgArbitrary(
+    id: string,
+    channel: number,
+    name: string,
+    samples: readonly number[],
+  ): Promise<{ sampleId: string; sampleCount: number }> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/channels/${channel}/arbitrary/upload`,
+      {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ name, samples }),
+      },
+    );
+    return parse<{ sampleId: string; sampleCount: number }>(res);
+  },
+
+  async deleteSgArbitrary(id: string, sampleId: string): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/arbitrary/${encodeURIComponent(sampleId)}`,
+      { method: "DELETE" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getSgSync(id: string): Promise<SgSyncInfo> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/sg/sync`);
+    return parse<SgSyncInfo>(res);
+  },
+
+  async alignSgPhase(id: string): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/sync/align`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async setSgCommonClock(id: string, enabled: boolean): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/sync/common-clock`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ enabled }) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getSgPresets(id: string): Promise<PresetsInfo> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/sg/presets`);
+    return parse<PresetsInfo>(res);
+  },
+
+  async saveSgPreset(id: string, slot: number): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/presets/${slot}/save`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async recallSgPreset(id: string, slot: number): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sg/presets/${slot}/recall`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
 };
 
 // ---- DTO helper types for responses ----
@@ -1049,4 +1236,46 @@ export interface EloadBatteryInfo {
   readonly supported: boolean;
   readonly capability?: ElectronicLoadBatteryCapability;
   readonly state?: ElectronicLoadBatteryState;
+}
+
+export interface SgChannelsInfo {
+  readonly channels: readonly SignalGeneratorChannelState[];
+  readonly capabilities: {
+    readonly modulation: SignalGeneratorModulationCapability | null;
+    readonly sweep: SignalGeneratorSweepCapability | null;
+    readonly burst: SignalGeneratorBurstCapability | null;
+    readonly arbitrary: SignalGeneratorArbitraryCapability | null;
+    readonly sync: SignalGeneratorSyncCapability | null;
+    readonly presets: { readonly slots: number } | null;
+  };
+}
+
+export interface SgModulationInfo {
+  readonly supported: boolean;
+  readonly capability?: SignalGeneratorModulationCapability;
+  readonly config?: SignalGeneratorModulationConfig;
+}
+
+export interface SgSweepInfo {
+  readonly supported: boolean;
+  readonly capability?: SignalGeneratorSweepCapability;
+  readonly config?: SignalGeneratorSweepConfig;
+}
+
+export interface SgBurstInfo {
+  readonly supported: boolean;
+  readonly capability?: SignalGeneratorBurstCapability;
+  readonly config?: SignalGeneratorBurstConfig;
+}
+
+export interface SgArbitraryInfo {
+  readonly supported: boolean;
+  readonly capability?: SignalGeneratorArbitraryCapability;
+  readonly samples?: readonly SignalGeneratorArbitrarySample[];
+}
+
+export interface SgSyncInfo {
+  readonly supported: boolean;
+  readonly capability?: SignalGeneratorSyncCapability;
+  readonly state?: SignalGeneratorSyncState;
 }

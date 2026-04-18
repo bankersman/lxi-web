@@ -7,6 +7,7 @@ export type DeviceKind =
   | "powerSupply"
   | "multimeter"
   | "electronicLoad"
+  | "signalGenerator"
   | "unknown";
 
 export const DEVICE_KINDS: readonly DeviceKind[] = [
@@ -14,5 +15,6 @@ export const DEVICE_KINDS: readonly DeviceKind[] = [
   "powerSupply",
   "multimeter",
   "electronicLoad",
+  "signalGenerator",
   "unknown",
 ] as const;

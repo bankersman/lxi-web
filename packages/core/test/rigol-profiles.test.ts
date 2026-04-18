@@ -99,6 +99,7 @@ test("refineDp900Profile trims channel count when SYSTem:CHANnel:COUNt? reports 
       return new Uint8Array();
     },
     async write(): Promise<void> {},
+    async writeBinary(): Promise<void> {},
   };
   const refined = await refineDp900Profile(base!, port);
   assert.equal(refined.channels.length, 2);
@@ -143,6 +144,7 @@ function fakePort(): ScpiPort {
       return new Uint8Array();
     },
     async write(): Promise<void> {},
+    async writeBinary(): Promise<void> {},
   };
 }
 
@@ -157,5 +159,6 @@ function makeOptPort(response: string): ScpiPort {
       return new Uint8Array();
     },
     async write(): Promise<void> {},
+    async writeBinary(): Promise<void> {},
   };
 }

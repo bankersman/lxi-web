@@ -9,12 +9,17 @@ import {
   RigolDp900,
   RigolDm858,
   RigolDl3000,
+  RigolDg900,
 } from "@lxi-web/core";
 import { rigolDho804Personality } from "../personalities/rigol/dho804.js";
 import { rigolDp932ePersonality } from "../personalities/rigol/dp932e.js";
 import { rigolDm858Personality } from "../personalities/rigol/dm858.js";
 import { rigolDl3021Personality } from "../personalities/rigol/dl3021.js";
+import { rigolDg812Personality } from "../personalities/rigol/dg812.js";
+import { rigolDg932Personality } from "../personalities/rigol/dg932.js";
 import { siglentSdl1020xEPersonality } from "../personalities/siglent/sdl1020x-e.js";
+import { siglentSdg2042xPersonality } from "../personalities/siglent/sdg2042x.js";
+import { keysight33511bPersonality } from "../personalities/keysight/33511b.js";
 
 async function withSimulator<T>(
   personality: Parameters<typeof rigolDho804Personality extends never ? never : (p: typeof rigolDho804Personality) => void>[0],
@@ -103,6 +108,80 @@ test("pnpm test:sim — Siglent SDL1020X-E personality reserves IDN + answers *I
     assert.match(parsed.manufacturer, /siglent/i);
     assert.equal(parsed.model, "SDL1020X-E");
     // No driver is registered yet (lands in 4.6); registry returns no entry.
+    const registry = createDefaultRegistry();
+    assert.equal(registry.resolve(parsed), null);
+  });
+});
+
+test("pnpm test:sim — ScpiSession connects to DG812 personality + SG driver", async () => {
+  await withSimulator(rigolDg812Personality, async (session) => {
+    const idn = await session.query("*IDN?");
+    const parsed = parseIdn(idn);
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "rigol-dg812");
+    assert.equal(entry?.kind, "signalGenerator");
+    const sg = entry!.create(session, parsed) as RigolDg900;
+    assert.equal(sg.kind, "signalGenerator");
+    // Round-trip a waveform: set, then read back.
+    await sg.setWaveform(1, {
+      type: "sine",
+      frequencyHz: 12_345,
+      amplitudeVpp: 2.5,
+      offsetV: 0.1,
+    });
+    const state = await sg.getChannelState(1);
+    assert.equal(state.waveform.type, "sine");
+    assert.equal(Math.round(state.actual.frequencyHz), 12_345);
+  });
+});
+
+test("pnpm test:sim — DG932 clamps requested frequency to the profile ceiling", async () => {
+  await withSimulator(rigolDg932Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "rigol-dg932");
+    const sg = entry!.create(session, parsed) as RigolDg900;
+    // 35 MHz is the DG932 ceiling; the driver refuses a 40 MHz request.
+    await assert.rejects(
+      async () =>
+        sg.setWaveform(1, {
+          type: "sine",
+          frequencyHz: 40_000_000,
+          amplitudeVpp: 1,
+          offsetV: 0,
+        }),
+      /frequency/i,
+    );
+    // Within bounds still works.
+    await sg.setWaveform(1, {
+      type: "square",
+      frequencyHz: 1_000_000,
+      amplitudeVpp: 1,
+      offsetV: 0,
+      dutyPct: 25,
+    });
+    const state = await sg.getChannelState(1);
+    assert.equal(state.waveform.type, "square");
+  });
+});
+
+test("pnpm test:sim — Siglent SDG2042X personality reserves IDN for 4.6", async () => {
+  await withSimulator(siglentSdg2042xPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.match(parsed.manufacturer, /siglent/i);
+    assert.equal(parsed.model, "SDG2042X");
+    const registry = createDefaultRegistry();
+    assert.equal(registry.resolve(parsed), null);
+  });
+});
+
+test("pnpm test:sim — Keysight 33511B personality reserves IDN for 4.7", async () => {
+  await withSimulator(keysight33511bPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.match(parsed.manufacturer, /keysight/i);
+    assert.equal(parsed.model, "33511B");
     const registry = createDefaultRegistry();
     assert.equal(registry.resolve(parsed), null);
   });

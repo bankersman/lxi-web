@@ -3,6 +3,7 @@ import type {
   IMultimeter,
   IOscilloscope,
   IPowerSupply,
+  ISignalGenerator,
   ReadingTopic,
   ServerMessage,
 } from "@lxi-web/core";
@@ -25,6 +26,7 @@ const TOPIC_INTERVAL_MS: Readonly<Record<ReadingTopic, number>> = {
   "scope.timebase": 3000,
   "eload.measurement": 750,
   "eload.state": 2000,
+  "sg.channels": 2000,
 };
 
 interface Subscriber {
@@ -275,6 +277,12 @@ export class ReadingScheduler {
           throw new Error("session is not an electronic load");
         }
         return await (facade as IElectronicLoad).getState();
+      }
+      case "sg.channels": {
+        if (facade.kind !== "signalGenerator") {
+          throw new Error("session is not a signal generator");
+        }
+        return await (facade as ISignalGenerator).getChannels();
       }
     }
   }

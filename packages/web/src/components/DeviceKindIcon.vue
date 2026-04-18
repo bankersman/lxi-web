@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import {
   Activity,
+  AudioWaveform,
   BatteryCharging,
   Gauge,
   HelpCircle,
@@ -21,6 +22,8 @@ const icon = computed(() => {
       return Gauge;
     case "electronicLoad":
       return PlugZap;
+    case "signalGenerator":
+      return AudioWaveform;
     default:
       return HelpCircle;
   }

@@ -25,6 +25,10 @@ interface Job {
   readonly command: string | null;
   readonly mode: ReadMode;
   readonly timeoutMs: number;
+  /** Command prefix when the frame carries an IEEE block tail. */
+  readonly binaryCommand?: string;
+  /** Payload bytes for an IEEE definite-length block. */
+  readonly binaryData?: Uint8Array;
   resolve: PendingResolve;
   reject: PendingReject;
 }
@@ -91,6 +95,24 @@ export class ScpiSession implements ScpiPort {
     });
   }
 
+  /**
+   * Send a SCPI command followed by an IEEE 488.2 definite-length binary
+   * block. The block header (`#<n><length>`) is synthesised here so callers
+   * only need to supply the command prefix and the raw payload.
+   *
+   * `#0<data>\n` (indefinite-length) is not supported because every vendor
+   * we care about prefers the definite-length form.
+   */
+  writeBinary(command: string, data: Uint8Array): Promise<void> {
+    return this.#enqueue<void>({
+      command: null,
+      mode: "none",
+      timeoutMs: this.#defaultTimeoutMs,
+      binaryCommand: command,
+      binaryData: data,
+    });
+  }
+
   query(command: string, options: ScpiQueryOptions = {}): Promise<string> {
     return this.#enqueue<string>({
       command,
@@ -147,7 +169,9 @@ export class ScpiSession implements ScpiPort {
     this.#inFlight = job;
 
     try {
-      if (job.command !== null) {
+      if (job.binaryCommand !== undefined && job.binaryData !== undefined) {
+        await this.#sendBinary(job.binaryCommand, job.binaryData);
+      } else if (job.command !== null) {
         await this.#sendCommand(job.command);
       }
       if (job.mode === "none") {
@@ -166,6 +190,26 @@ export class ScpiSession implements ScpiPort {
     const framed = new Uint8Array(body.length + this.#terminatorBytes.length);
     framed.set(body, 0);
     framed.set(this.#terminatorBytes, body.length);
+    return this.#transport.write(framed);
+  }
+
+  #sendBinary(command: string, data: Uint8Array): Promise<void> {
+    const head = new TextEncoder().encode(command);
+    const lengthDigits = String(data.length);
+    const header = new TextEncoder().encode(
+      `#${lengthDigits.length}${lengthDigits}`,
+    );
+    const framed = new Uint8Array(
+      head.length + header.length + data.length + this.#terminatorBytes.length,
+    );
+    let offset = 0;
+    framed.set(head, offset);
+    offset += head.length;
+    framed.set(header, offset);
+    offset += header.length;
+    framed.set(data, offset);
+    offset += data.length;
+    framed.set(this.#terminatorBytes, offset);
     return this.#transport.write(framed);
   }
 

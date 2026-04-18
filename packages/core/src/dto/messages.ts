@@ -19,7 +19,8 @@ export type ReadingTopic =
   | "scope.channels"
   | "scope.timebase"
   | "eload.measurement"
-  | "eload.state";
+  | "eload.state"
+  | "sg.channels";
 
 /** Server-to-client WebSocket message envelope. */
 export type ServerMessage =

@@ -9,6 +9,7 @@ import ScopePanel from "@/components/panels/ScopePanel.vue";
 import PsuPanel from "@/components/panels/PsuPanel.vue";
 import DmmPanel from "@/components/panels/DmmPanel.vue";
 import EloadPanel from "@/components/panels/EloadPanel.vue";
+import SgPanel from "@/components/panels/SgPanel.vue";
 import RawConsole from "@/components/panels/RawConsole.vue";
 
 const props = defineProps<{ sessionId: string }>();
@@ -59,6 +60,11 @@ const isConnected = computed(() => session.value?.status === "connected");
         />
         <EloadPanel
           v-else-if="session.kind === 'electronicLoad'"
+          :session-id="session.id"
+          :enabled="isConnected"
+        />
+        <SgPanel
+          v-else-if="session.kind === 'signalGenerator'"
           :session-id="session.id"
           :enabled="isConnected"
         />

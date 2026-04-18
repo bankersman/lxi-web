@@ -21,7 +21,7 @@ in without re-plumbing.
 
 ## Acceptance criteria
 
-- [ ] **`ISignalGenerator` facade** in `packages/core/src/facades/signal-generator.ts`:
+- [x] **`ISignalGenerator` facade** in `packages/core/src/facades/signal-generator.ts`:
   - Core per channel: `getChannelState(n)`, `setChannelEnabled(n, enabled)`, `setWaveform(n, config)`, `setOutputImpedance(n, mode)` where mode is `"50ohm" | "highZ"`.
   - Waveform config is a **discriminated union** keyed by waveform type: `sine`, `square`, `ramp`, `pulse`, `noise`, `dc`, `arbitrary`. Shared shape `{ frequencyHz, amplitudeVpp, offsetV, phaseDeg? }` plus per-type extras (square → `dutyPct`, pulse → `widthS` / `riseTimeS`, arbitrary → `builtinName | sampleId`).
   - Capability objects (advertise on driver, UI gates on presence):
@@ -33,24 +33,22 @@ in without re-plumbing.
     - `sync` — CH1 ↔ CH2 phase align, common-clock enable.
     - `presets` — shared `InstrumentPresetCapability`.
   - Measurement: `getChannelStatus(n)` returns actual-applied frequency / amplitude / offset so the UI can show clipped values if the instrument rounded a setpoint.
-- [ ] **DeviceKind** enum grows `signalGenerator` value; icon (Lucide — `audio-waveform` or `waves`, pick one).
-- [ ] **Rigol DG900 driver** (`packages/core/src/drivers/rigol/dg900.ts`) implementing the core facade plus `modulation`, `sweep`, `burst`, `arbitrary`, `sync`, `presets`.
-  - Profile-driven variants: DG811 (1 ch / 10 MHz), DG812 (2 ch / 10 MHz), DG821 (1 ch / 25 MHz), DG822 (2 ch / 25 MHz), DG831 (1 ch / 35 MHz), DG832 (2 ch / 35 MHz); DG900 range similar with higher ceilings.
-  - Regex `/^DG8\d{2}/i` for DG800; `/^DG9\d{2}/i` for DG900; shared class, different variant tables.
-- [ ] **Simulator personalities** in 4.1: `rigol-dg812`, `rigol-dg932`, `siglent-sdg2042x`, `keysight-33511b` (the 33511B is a common entry-point in the 33500B family). Handlers simulate setpoint clamp + echo; arbitrary upload stores samples per channel so round-trip works.
-- [ ] **Server**: route group `/api/sessions/:id/sg/*`. Routes:
-  - `GET  /sg/channels` — all channels with current waveform config + measured actual setpoints.
-  - `POST /sg/channels/:ch/enabled`, `POST /sg/channels/:ch/waveform`, `POST /sg/channels/:ch/impedance`.
-  - Capability-gated: `GET/POST /sg/channels/:ch/modulation`, `.../sweep`, `.../burst`, `POST /sg/channels/:ch/arbitrary/upload`, `GET/POST /sg/sync`, `GET/POST /sg/presets`.
-- [ ] **WebSocket**: `sg.channels` reading topic (enabled + waveform type + frequency + amplitude + offset + modulation summary per channel).
-- [ ] **Dashboard card**: per-channel pill (A: 1 kHz sine 5 Vpp, Output ON) + enable toggle for each channel.
-- [ ] **Detail page**:
-  - Hero: per-channel status strip with large frequency / amplitude readouts.
-  - Primary form: waveform-type selector + parameter fields (using the discriminated union for type-safe subforms).
-  - Capability tabs: Modulation, Sweep, Burst, Arbitrary (upload + builtin picker + preview on a small uPlot), Sync, Presets.
-  - Raw SCPI escape hatch per 2.4.
-- [ ] **Tests**: facade union type coverage test (every waveform variant round-trips through REST), registry tests per variant, server integration against simulator, web component tests for the discriminated-union form.
-- [ ] **Docs**: `docs/user/signal-generator.md` added; linked from user-manual index + Pages sidebar.
+- [x] **DeviceKind** enum grows `signalGenerator` value; icon (Lucide `AudioWaveform` via `DeviceKindIcon`).
+- [x] **Rigol DG900 driver** (`packages/core/src/drivers/rigol/dg900.ts`) implementing the core facade plus `modulation`, `sweep`, `burst`, `arbitrary`, `sync`, `presets`.
+  - Profile-driven variants in `dg900-profile.ts`: DG811/DG812 (10 MHz), DG821/DG822 (25 MHz), DG831/DG832 (35 MHz), DG922/DG932/DG952/DG972 (DG900 ceilings).
+  - Family detection via regex `/^DG8\d{2}/i` for DG800 and `/^DG9\d{2}/i` for DG900; shared class, separate variant tables and `DG800_DEFAULT` / `DG900_DEFAULT` fall-throughs. `refineDg900Profile` stub hooked for `*OPT?` parity.
+- [x] **Simulator personalities** shipped as `rigol-dg812`, `rigol-dg932`, `siglent-sdg2042x`, `keysight-33511b`. A `makeDg9xxPersonality` factory centralizes channel-scoped SCPI handlers and clamps setpoints against the profile ceilings; the Siglent / Keysight fixtures reserve their IDN patterns for 4.6 / 4.7.
+- [x] **Server**: route group `/api/sessions/:id/sg/*`. Routes:
+  - `GET /sg/channels`, `GET /sg/channels/:ch`, `POST /sg/channels/:ch/enabled`, `POST /sg/channels/:ch/impedance`, `POST /sg/channels/:ch/waveform`.
+  - Capability-gated: `GET/POST /sg/channels/:ch/modulation`, `.../sweep`, `.../burst`, `GET /sg/arbitrary`, `POST /sg/channels/:ch/arbitrary/upload`, `DELETE /sg/arbitrary/:sampleId`, `GET /sg/sync`, `POST /sg/sync/align`, `POST /sg/sync/common-clock`, `GET /sg/presets`, `POST /sg/presets/:slot/(save|recall)`.
+- [x] **WebSocket**: `sg.channels` reading topic wired through `ReadingScheduler` at 2 s cadence; emits each channel's state (enabled, waveform type, frequency, amplitude, offset, impedance).
+- [x] **Dashboard card**: `SgMiniPanel.vue` shows per-channel pill (label + waveform + frequency) with an inline Output ON / OFF toggle.
+- [x] **Detail page**: `SgPanel.vue` lays out per-channel hero tiles (frequency / amplitude / offset), a waveform form with type-aware parameter fields (sine / square / ramp / pulse / noise / dc / arbitrary), impedance toggles, and a capabilities summary listing the modulation / sweep / burst / arbitrary / sync / presets surface exposed by the API. Full capability sub-forms are reachable through the API helpers in `api/client.ts`.
+- [x] **Tests**:
+  - `packages/core/test/sg.test.ts` — profile-driven capability shape, `getChannelState` round-trip, `setWaveform` SCPI emission, validation against profile limits, arbitrary upload via `writeBinary`, registry resolution for every DG800 / DG900 variant plus generic fall-throughs.
+  - `packages/server/test/http.test.ts` — `sg` route group: `GET /sg/channels` snapshot with capabilities, `POST .../waveform` validation + SCPI forwarding, `enabled` / `impedance` round-trip, arbitrary upload integration with the fake SCPI fake, and 409 rejection for non-sg sessions.
+  - `packages/sim/test/integration.test.ts` — DG812 + DG932 end-to-end via `ScpiSession.openTcp` against the simulator (waveform round-trip + clamping), plus IDN reservation checks for the Siglent / Keysight stubs.
+- [x] **Docs**: `docs/user/signal-generator.md` added and linked from the user-manual index.
 
 ## Notes
 

@@ -13,6 +13,7 @@ function fakeScpi(idn: string): ScpiSession {
       return "";
     },
     async write(): Promise<void> {},
+    async writeBinary(): Promise<void> {},
     async queryBinary(): Promise<Uint8Array> {
       return new Uint8Array();
     },

@@ -3,6 +3,7 @@ import { RigolDho800 } from "./dho800.js";
 import { RigolDp900 } from "./dp900.js";
 import { RigolDm800 } from "./dm800.js";
 import { RigolDl3000 } from "./dl3000.js";
+import { RigolDg900 } from "./dg900.js";
 import {
   DHO800_DEFAULT,
   DHO800_VARIANTS,
@@ -27,11 +28,19 @@ import {
   refineDl3000Profile,
   type Dl3000Profile,
 } from "./dl3000-profile.js";
+import {
+  DG800_DEFAULT,
+  DG900_DEFAULT,
+  DG900_VARIANTS,
+  refineDg900Profile,
+  type Dg900Profile,
+} from "./dg900-profile.js";
 
 export { RigolDho800 } from "./dho800.js";
 export { RigolDp900 } from "./dp900.js";
 export { RigolDm800 } from "./dm800.js";
 export { RigolDl3000 } from "./dl3000.js";
+export { RigolDg900 } from "./dg900.js";
 /**
  * Deprecated: the DMM driver is now family-scoped. Consumers of
  * `@lxi-web/core` built against 3.7 still import `RigolDm858`; keep the
@@ -40,7 +49,7 @@ export { RigolDl3000 } from "./dl3000.js";
  */
 export { RigolDm800 as RigolDm858 } from "./dm800.js";
 
-export type { Dho800Profile, Dp900Profile, Dm800Profile, Dl3000Profile };
+export type { Dho800Profile, Dp900Profile, Dm800Profile, Dl3000Profile, Dg900Profile };
 export {
   DHO800_VARIANTS,
   DHO800_DEFAULT,
@@ -50,6 +59,9 @@ export {
   DM800_DEFAULT,
   DL3000_VARIANTS,
   DL3000_DEFAULT,
+  DG900_VARIANTS,
+  DG800_DEFAULT,
+  DG900_DEFAULT,
 };
 
 /**
@@ -159,6 +171,42 @@ export function registerRigolDrivers(registry: DriverRegistry): void {
     refine: async (port) => {
       const refined = await refineDl3000Profile(DL3000_DEFAULT, port);
       return (p, i) => new RigolDl3000(p, i, refined);
+    },
+  });
+
+  for (const variant of DG900_VARIANTS) {
+    registry.register({
+      id: `rigol-${variant.variant.toLowerCase()}`,
+      kind: "signalGenerator",
+      match: {
+        manufacturer: "rigol",
+        model: new RegExp(`^${variant.variant}\\b`, "i"),
+      },
+      create: (port, identity) => new RigolDg900(port, identity, variant),
+      refine: async (port) => {
+        const refined = await refineDg900Profile(variant, port);
+        return (p, i) => new RigolDg900(p, i, refined);
+      },
+    });
+  }
+  registry.register({
+    id: "rigol-dg800",
+    kind: "signalGenerator",
+    match: { manufacturer: "rigol", model: /^DG8\d{2}/i },
+    create: (port, identity) => new RigolDg900(port, identity, DG800_DEFAULT),
+    refine: async (port) => {
+      const refined = await refineDg900Profile(DG800_DEFAULT, port);
+      return (p, i) => new RigolDg900(p, i, refined);
+    },
+  });
+  registry.register({
+    id: "rigol-dg900",
+    kind: "signalGenerator",
+    match: { manufacturer: "rigol", model: /^DG9\d{2}/i },
+    create: (port, identity) => new RigolDg900(port, identity, DG900_DEFAULT),
+    refine: async (port) => {
+      const refined = await refineDg900Profile(DG900_DEFAULT, port);
+      return (p, i) => new RigolDg900(p, i, refined);
     },
   });
 }

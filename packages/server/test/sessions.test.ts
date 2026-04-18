@@ -38,6 +38,9 @@ function makeFakeScpi(): FakeScpi {
       async write(cmd: string): Promise<void> {
         state.writes.push(cmd);
       },
+      async writeBinary(cmd: string, _data: Uint8Array): Promise<void> {
+        state.writes.push(cmd);
+      },
       async queryBinary(): Promise<Uint8Array> {
         return new Uint8Array();
       },

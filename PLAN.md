@@ -106,16 +106,19 @@ todos:
     status: completed
   - id: epic-4-10-vendor-pack-tektronix
     content: Epic 4.10 — Vendor pack — Tektronix. Profile-driven drivers under drivers/tektronix/ covering TBS/MDO/MSO/DPO scope families (TBS1000C/2000B, MDO3000/4000C, MSO/DPO 2000B/3000/4000B/5 Series/6 Series), AFG function generators (AFG1000/3000C/31000), PWS bench PSUs (PWS2000/4000), and MDO built-in SA via the 4.5 facade. Manufacturer regex /tektronix/i; dual-path waveform decode (CURVE? vs WFMOutpre?); simulator personalities per representative variant; *OPT? refinement for decoders / MSO digital channels / RF option; Preview status. RSA real-time SA and AWG7000/5200 AWGs deferred. Progress + docs/steps/4-10-*.md; commit
-    status: pending
+    status: completed
   - id: epic-4-11-vendor-pack-rohde-schwarz
     content: Epic 4.11 — Vendor pack — Rohde & Schwarz (+ legacy Hameg). Profile-driven drivers under drivers/rnds/ covering RTB/RTM/RTA/MXO scopes, NGE/NGL/NGM/NGP/NGU PSUs, HMC bench DMMs, SMA/SMB/SMBV and HMF/HMC804x signal generators, FPC/FPL/HMS spectrum analyzers. Manufacturer regex matches Rohde&Schwarz variants and legacy HAMEG. Simulator personalities per family; *OPT? refinement. FSW/FSVA/ESR flagship SAs and NGU SMU surface deferred. Preview status. Progress + docs/steps/4-11-*.md; commit
-    status: pending
+    status: completed
   - id: epic-4-12-vendor-pack-fluke
     content: Epic 4.12 — Vendor pack — Fluke (DMM-centric, narrow). Profile-driven FlukeBenchDmm driver under drivers/fluke/ covering 8808A / 8845A / 8846A / 8588A / 8508A. Manufacturer regex /fluke/i plus CR+LF termination tolerance and legacy *ID? fallback. Optional FlukeCalibrator driver (5520A/5522A/5730A) via IPowerSupply facade. Simulator personalities fluke-8845a / 8846a / 8588a. ScopeMeter handhelds and process tools explicitly out of scope. Preview status. Progress + docs/steps/4-12-*.md; commit
-    status: pending
+    status: completed
   - id: epic-4-13-vendor-pack-gw-instek
     content: Epic 4.13 — Vendor pack — GW Instek. Profile-driven drivers under drivers/gw-instek/ covering GDS scopes, GPP/GPD/PSW/PFR PSUs (GPD as reduced-capability sub-profile, no OVP/presets), GDM DMMs, AFG signal generators, GSP spectrum analyzers. Manufacturer regex tolerates GW Instek / GWINSTEK / GW-INSTEK. Conservative catch-alls per family, wider-than-usual *OPT? refinement. ASCII-preamble waveform decoder. Simulator personalities per family. PEL e-loads optional sub-scope. Preview status. Progress + docs/steps/4-13-*.md; commit
-    status: pending
+    status: completed
+  - id: epic-4-9-followup-matrix-refresh
+    content: Epic 4.9 follow-up — extend docs/user/supported-hardware.md + README flagship-Preview list + docs/user/hardware-reports.md + docs/user/roadmap.md + .github/ISSUE_TEMPLATE/instrument-report.yml with the 4.10/4.11/4.12/4.13 vendors (Tektronix TBS/MSO/AFG/PWS, R&S RTB/NGE/HMC/SMA/HMF/FPC, Fluke 8800/8500/55xx, GW Instek GDS/GPP/GPD/PSW/GDM/AFG/GSP). Port + discovery table grows rows for Tektronix 4000, Fluke CR+LF termination caveat, GW Instek 1026. progress.md v2 backlog updated with per-vendor follow-ups (RSA / AWG7000 / FSW / NGU SMU / modulation tree / ScopeMeter / PEL). Commit.
+    status: completed
   - id: epic-5-1-scpi-observability
     content: Epic 5.1 — SCPI observability. IErrorQueue capability on ScpiSession drained by a per-session poller (default 2 s) into a SessionManager ring; new WS topic device.errors. TranscriptSink captures every write/query/binary-block exchange with direction/timestamp/elapsed/origin into a ring (default 2000); REST /api/sessions/:id/transcript + /transcript/export (NDJSON); WS topic session.transcript. UI pill on overview card + dashboard card for device errors; new Transcript tab next to Raw SCPI with virtualised list, filters, pause, download. Raw SCPI inputs auto-tag into the transcript. Progress + docs/steps/5-1-*.md; commit
     status: pending

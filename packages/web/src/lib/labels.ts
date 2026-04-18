@@ -1,4 +1,8 @@
-import type { DeviceKind, MultimeterMode } from "@lxi-web/core/browser";
+import type {
+  DeviceKind,
+  ElectronicLoadMode,
+  MultimeterMode,
+} from "@lxi-web/core/browser";
 
 export function kindLabel(kind: DeviceKind): string {
   switch (kind) {
@@ -8,9 +12,33 @@ export function kindLabel(kind: DeviceKind): string {
       return "Power supply";
     case "multimeter":
       return "Multimeter";
+    case "electronicLoad":
+      return "Electronic load";
     default:
       return "Unidentified";
   }
+}
+
+const ELOAD_MODE_LABELS: Readonly<Record<ElectronicLoadMode, string>> = {
+  cc: "Constant Current",
+  cv: "Constant Voltage",
+  cr: "Constant Resistance",
+  cp: "Constant Power",
+};
+
+export function electronicLoadModeLabel(mode: ElectronicLoadMode): string {
+  return ELOAD_MODE_LABELS[mode];
+}
+
+const ELOAD_MODE_UNIT: Readonly<Record<ElectronicLoadMode, string>> = {
+  cc: "A",
+  cv: "V",
+  cr: "Ω",
+  cp: "W",
+};
+
+export function electronicLoadModeUnit(mode: ElectronicLoadMode): string {
+  return ELOAD_MODE_UNIT[mode];
 }
 
 const MODE_LABELS: Readonly<Record<MultimeterMode, string>> = {

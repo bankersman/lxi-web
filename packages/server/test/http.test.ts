@@ -1090,3 +1090,168 @@ test("scope decoder endpoint validates bus + protocol and configures bus", async
   assert.deepEqual(pBody.packets, []);
   await app.close();
 });
+
+// ---- 4.3 electronic load ----
+
+async function openEload(): Promise<{
+  app: Awaited<ReturnType<typeof buildServer>>;
+  id: string;
+  session: () => FakeScpiSession | null;
+}> {
+  const state = new Map<string, string>([
+    [":SOURce:INPut:STATe?", "OFF"],
+    [":SOURce:FUNCtion?", "CURR"],
+    [":SOURce:CURRent:LEVel:IMMediate?", "1.0"],
+    [":SOURce:VOLTage:LEVel:IMMediate?", "5.0"],
+    [":SOURce:RESistance:LEVel:IMMediate?", "100"],
+    [":SOURce:POWer:LEVel:IMMediate?", "10"],
+    [":MEASure:VOLTage?", "12.0"],
+    [":MEASure:CURRent?", "1.0"],
+    [":MEASure:POWer?", "12.0"],
+    [":MEASure:RESistance?", "12"],
+    [":SOURce:VOLTage:PROTection:STATe?", "OFF"],
+    [":SOURce:VOLTage:PROTection:LEVel?", "150"],
+    [":SOURce:VOLTage:PROTection:TRIPped?", "0"],
+    [":SOURce:CURRent:PROTection:STATe?", "OFF"],
+    [":SOURce:CURRent:PROTection:LEVel?", "40"],
+    [":SOURce:CURRent:PROTection:TRIPped?", "0"],
+    [":SOURce:POWer:PROTection:STATe?", "OFF"],
+    [":SOURce:POWer:PROTection:LEVel?", "200"],
+    [":SOURce:POWer:PROTection:TRIPped?", "0"],
+    [":SYSTem:OTP?", "0"],
+  ]);
+  const handler = (cmd: string): string | undefined => state.get(cmd);
+  const { app, session } = await setupAppCapturing(
+    "RIGOL,DL3021,SN,FW",
+    handler,
+  );
+  const opened = await app.inject({
+    method: "POST",
+    url: "/api/sessions",
+    payload: { host: "10.0.0.10" },
+  });
+  const id = (opened.json() as { session: SessionSummary }).session.id;
+  await waitForStatus(app, id, "connected");
+  return { app, id, session };
+}
+
+test("eload state endpoint returns snapshot and capabilities", async () => {
+  const { app, id } = await openEload();
+  const res = await app.inject({ method: "GET", url: `/api/sessions/${id}/eload/state` });
+  assert.equal(res.statusCode, 200);
+  const body = res.json() as {
+    state: { mode: string; enabled: boolean };
+    limits: { currentMax: number };
+    capabilities: { protection: unknown; battery: unknown; dynamic: unknown };
+  };
+  assert.equal(body.state.mode, "cc");
+  assert.equal(body.state.enabled, false);
+  assert.equal(body.limits.currentMax, 40);
+  assert.ok(body.capabilities.protection);
+  assert.ok(body.capabilities.battery);
+  assert.ok(body.capabilities.dynamic);
+  await app.close();
+});
+
+test("eload mode/setpoint endpoints validate input and forward SCPI", async () => {
+  const { app, id, session } = await openEload();
+
+  const badMode = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/eload/mode`,
+    payload: { mode: "dc" },
+  });
+  assert.equal(badMode.statusCode, 400);
+
+  const ok = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/eload/mode`,
+    payload: { mode: "cv" },
+  });
+  assert.equal(ok.statusCode, 200);
+
+  const sp = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/eload/setpoint`,
+    payload: { mode: "cc", value: 2.5 },
+  });
+  assert.equal(sp.statusCode, 200);
+
+  const overLimit = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/eload/setpoint`,
+    payload: { mode: "cc", value: 999 },
+  });
+  assert.equal(overLimit.statusCode, 400);
+
+  const enable = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/eload/enabled`,
+    payload: { enabled: true },
+  });
+  assert.equal(enable.statusCode, 200);
+
+  const writes = session()?.writes ?? [];
+  assert.ok(writes.includes(":SOURce:FUNCtion VOLTage"));
+  assert.ok(writes.includes(":SOURce:CURRent:LEVel:IMMediate 2.5"));
+  assert.ok(writes.includes(":SOURce:INPut:STATe ON"));
+  await app.close();
+});
+
+test("eload protection endpoint gates otp and clamps to profile ranges", async () => {
+  const { app, id } = await openEload();
+
+  const info = await app.inject({
+    method: "GET",
+    url: `/api/sessions/${id}/eload/protection`,
+  });
+  assert.equal(info.statusCode, 200);
+  const body = info.json() as { supported: boolean; capability: { kinds: string[] } };
+  assert.equal(body.supported, true);
+  assert.ok(body.capability.kinds.includes("otp"));
+
+  const otp = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/eload/protection/otp`,
+    payload: { enabled: false },
+  });
+  assert.equal(otp.statusCode, 400);
+
+  const bad = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/eload/protection/ovp`,
+    payload: { level: 9999 },
+  });
+  assert.equal(bad.statusCode, 400);
+
+  const ok = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/eload/protection/ovp`,
+    payload: { enabled: true, level: 120 },
+  });
+  assert.equal(ok.statusCode, 200);
+
+  const clear = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/eload/protection/ocp/clear`,
+  });
+  assert.equal(clear.statusCode, 200);
+  await app.close();
+});
+
+test("eload mode endpoint rejects non-eload sessions", async () => {
+  const app = await setupApp("RIGOL,DP932E,SN,FW");
+  const opened = await app.inject({
+    method: "POST",
+    url: "/api/sessions",
+    payload: { host: "10.0.0.12" },
+  });
+  const id = (opened.json() as { session: SessionSummary }).session.id;
+  await waitForStatus(app, id, "connected");
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/sessions/${id}/eload/state`,
+  });
+  assert.equal(res.statusCode, 409);
+  await app.close();
+});

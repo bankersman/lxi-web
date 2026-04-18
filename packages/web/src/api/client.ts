@@ -1,5 +1,17 @@
 import type {
   DiscoveryResponse,
+  ElectronicLoadBatteryCapability,
+  ElectronicLoadBatteryConfig,
+  ElectronicLoadBatteryState,
+  ElectronicLoadDynamicCapability,
+  ElectronicLoadDynamicConfig,
+  ElectronicLoadLimits,
+  ElectronicLoadMeasurement,
+  ElectronicLoadMode,
+  ElectronicLoadProtectionCapability,
+  ElectronicLoadProtectionKind,
+  ElectronicLoadProtectionState,
+  ElectronicLoadState,
   MultimeterAutoZero,
   MultimeterDualDisplayCapability,
   MultimeterDualReading,
@@ -766,6 +778,142 @@ export const api = {
     const body = await parse<{ packets: readonly OscilloscopeDecoderPacket[] }>(res);
     return body.packets;
   },
+
+  // ---- 4.3 electronic load ----
+
+  async getEloadState(id: string): Promise<EloadStateInfo> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/eload/state`);
+    return parse<EloadStateInfo>(res);
+  },
+
+  async setEloadEnabled(id: string, enabled: boolean): Promise<void> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/eload/enabled`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ enabled }),
+    });
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async setEloadMode(id: string, mode: ElectronicLoadMode): Promise<void> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/eload/mode`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ mode }),
+    });
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async setEloadSetpoint(
+    id: string,
+    mode: ElectronicLoadMode,
+    value: number,
+  ): Promise<void> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/eload/setpoint`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ mode, value }),
+    });
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async measureEload(id: string): Promise<ElectronicLoadMeasurement> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/eload/measure`);
+    const body = await parse<{ measurement: ElectronicLoadMeasurement }>(res);
+    return body.measurement;
+  },
+
+  async getEloadProtection(id: string): Promise<EloadProtectionInfo> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/eload/protection`,
+    );
+    return parse<EloadProtectionInfo>(res);
+  },
+
+  async setEloadProtection(
+    id: string,
+    kind: ElectronicLoadProtectionKind,
+    body: { enabled?: boolean; level?: number },
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/eload/protection/${kind}`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async clearEloadProtection(
+    id: string,
+    kind: ElectronicLoadProtectionKind,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/eload/protection/${kind}/clear`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getEloadDynamic(id: string): Promise<EloadDynamicInfo> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/eload/dynamic`);
+    return parse<EloadDynamicInfo>(res);
+  },
+
+  async setEloadDynamic(
+    id: string,
+    config: ElectronicLoadDynamicConfig,
+  ): Promise<void> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/eload/dynamic`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify(config),
+    });
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getEloadBattery(id: string): Promise<EloadBatteryInfo> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/eload/battery`);
+    return parse<EloadBatteryInfo>(res);
+  },
+
+  async startEloadBattery(
+    id: string,
+    config: ElectronicLoadBatteryConfig,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/eload/battery/start`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(config) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async stopEloadBattery(id: string): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/eload/battery/stop`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getEloadPresets(id: string): Promise<PresetsInfo> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/eload/presets`);
+    return parse<PresetsInfo>(res);
+  },
+
+  async saveEloadPreset(id: string, slot: number): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/eload/presets/${slot}/save`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async recallEloadPreset(id: string, slot: number): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/eload/presets/${slot}/recall`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
 };
 
 // ---- DTO helper types for responses ----
@@ -869,4 +1017,36 @@ export interface ScopeBusesInfo {
   readonly supported: boolean;
   readonly capability?: OscilloscopeDecoderCapability;
   readonly buses?: readonly OscilloscopeDecoderState[];
+}
+
+export interface EloadStateInfo {
+  readonly state: ElectronicLoadState;
+  readonly limits: ElectronicLoadLimits;
+  readonly capabilities: {
+    readonly protection: ElectronicLoadProtectionCapability | null;
+    readonly dynamic: ElectronicLoadDynamicCapability | null;
+    readonly battery: ElectronicLoadBatteryCapability | null;
+    readonly logging: MultimeterLoggingCapability | null;
+    readonly presets: { readonly slots: number } | null;
+  };
+}
+
+export interface EloadProtectionInfo {
+  readonly supported: boolean;
+  readonly capability?: ElectronicLoadProtectionCapability;
+  readonly state?: Readonly<
+    Partial<Record<ElectronicLoadProtectionKind, ElectronicLoadProtectionState>>
+  >;
+}
+
+export interface EloadDynamicInfo {
+  readonly supported: boolean;
+  readonly capability?: ElectronicLoadDynamicCapability;
+  readonly config?: ElectronicLoadDynamicConfig;
+}
+
+export interface EloadBatteryInfo {
+  readonly supported: boolean;
+  readonly capability?: ElectronicLoadBatteryCapability;
+  readonly state?: ElectronicLoadBatteryState;
 }

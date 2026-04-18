@@ -8,6 +8,7 @@ import DeviceOverviewCard from "@/components/DeviceOverviewCard.vue";
 import ScopePanel from "@/components/panels/ScopePanel.vue";
 import PsuPanel from "@/components/panels/PsuPanel.vue";
 import DmmPanel from "@/components/panels/DmmPanel.vue";
+import EloadPanel from "@/components/panels/EloadPanel.vue";
 import RawConsole from "@/components/panels/RawConsole.vue";
 
 const props = defineProps<{ sessionId: string }>();
@@ -53,6 +54,11 @@ const isConnected = computed(() => session.value?.status === "connected");
         />
         <DmmPanel
           v-else-if="session.kind === 'multimeter'"
+          :session-id="session.id"
+          :enabled="isConnected"
+        />
+        <EloadPanel
+          v-else-if="session.kind === 'electronicLoad'"
           :session-id="session.id"
           :enabled="isConnected"
         />

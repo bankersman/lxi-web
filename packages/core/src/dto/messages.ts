@@ -17,7 +17,9 @@ export type ReadingTopic =
   | "psu.tracking"
   | "psu.protection"
   | "scope.channels"
-  | "scope.timebase";
+  | "scope.timebase"
+  | "eload.measurement"
+  | "eload.state";
 
 /** Server-to-client WebSocket message envelope. */
 export type ServerMessage =

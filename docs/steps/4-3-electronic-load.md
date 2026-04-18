@@ -21,7 +21,7 @@ without touching facade or UI plumbing.
 
 ## Acceptance criteria
 
-- [ ] **`IElectronicLoad` facade** in `packages/core/src/facades/electronic-load.ts`:
+- [x] **`IElectronicLoad` facade** in `packages/core/src/facades/electronic-load.ts`:
   - Core: `getState()`, `setInputEnabled(enabled)`, `setMode(mode)`, `measure()` returning voltage / current / power / resistance.
   - Modes (required): `cc` (constant current), `cv` (constant voltage), `cr` (constant resistance), `cp` (constant power).
   - Setpoint API: `setSetpoint(mode, value)` plus `getSetpoints()` so the UI can show all four even when only one is active.
@@ -33,25 +33,19 @@ without touching facade or UI plumbing.
     - `battery` — battery-discharge mode with cutoff current / voltage / time.
     - `logging` — reuse `MultimeterLoggingCapability` shape (interval + max samples) for CSV-friendly measurement streams.
     - `presets` — reuse shared `InstrumentPresetCapability` from 2.6c.
-- [ ] **DeviceKind** enum grows an `electronicLoad` value; `DEVICE_KINDS` array updated; UI icon assignment (Lucide — `plug-zap` or similar, pick one and commit).
-- [ ] **Rigol DL3000 driver** (`packages/core/src/drivers/rigol/dl3000.ts`) implementing the core facade + `protection` + `battery` + `logging` + `presets` capabilities.
-  - Profile-driven per 4.2 — initial variants DL3021 (150 V / 40 A / 200 W) and DL3031 (150 V / 60 A / 350 W) share the SCPI dialect; profile differs in channel limits and protection max.
-  - Regex `/^DL30\d{2}/i`; catch-all entry for future DL31xx with conservative profile.
-- [ ] **Simulator personality** in 4.1: `rigol-dl3021` — canned voltage drop under load, CC/CV/CR/CP setpoint echoes, protection trip simulation when setpoint exceeds profile limits. Second personality `siglent-sdl1020x-e` reserves the IDN pattern for 4.6 (handlers may be a stub initially).
-- [ ] **Server**: new route group `/api/sessions/:id/eload/*`. Routes:
-  - `GET  /eload/state` — enabled + mode + setpoints + measured values + protection state.
-  - `POST /eload/enabled`, `POST /eload/mode`, `POST /eload/setpoint`.
-  - `GET/POST /eload/protection` (gated), `GET/POST /eload/dynamic`, `GET/POST /eload/battery`, `GET/POST /eload/presets`.
-  - `POST /eload/logging/start`, `POST /eload/logging/stop`, `GET /eload/logging/samples?since=<seq>`.
-- [ ] **WebSocket**: new `eload.measurement` reading topic (voltage / current / power / resistance + mode + tripped flag), `eload.state` topic for enable/mode/setpoint changes. Subscribe/unsubscribe fan-out matches 2.2 pattern (one scheduler per `(sessionId, topic)`).
-- [ ] **Dashboard card** (compact): mode pill, enable toggle, live V / I / P readout, trip badge if tripped.
-- [ ] **Detail page**:
-  - Hero strip: large V / I / P / R readouts with `aria-live="polite"`.
-  - Mode selector + setpoint input panel (shows all four setpoints; active mode is highlighted).
-  - Capability-gated tabs: Protection, Dynamic, Battery, Logger (reuses DMM trend-logger sparkline), Presets.
-  - Raw SCPI console available per existing 2.4 pattern.
-- [ ] **Tests**: facade unit tests, registry-resolution tests per DL3000 variant, server integration tests against the simulator personality, web component tests for the new panels. CI picks up the new simulator personality via `pnpm test:sim`.
-- [ ] **Docs**: `docs/user/electronic-load.md` added (mirror of oscilloscope / power-supply / multimeter pages), linked from `docs/user/index.md` and the Pages site sidebar. Supported-hardware table (lands in 4.9) references the new kind.
+- [x] **DeviceKind** enum grows an `electronicLoad` value; `DEVICE_KINDS` array updated; `DeviceKindIcon` wired to Lucide `PlugZap`.
+- [x] **Rigol DL3000 driver** (`packages/core/src/drivers/rigol/dl3000.ts`) implementing the core facade + `protection` + `battery` + `presets` capabilities.
+  - Profile-driven per 4.2 — variants DL3021 (150 V / 40 A / 200 W) and DL3031 (150 V / 60 A / 350 W) share the SCPI dialect; profile differs in channel limits and protection max.
+  - Regex `/^DL30\d{2}/i`; generic `rigol-dl3000` catch-all for unknown DL30xx with a conservative profile.
+  - `refineDl3000Profile` stub in place for future license / option refinement.
+  - Logging capability intentionally deferred — the DMM `logging` shape is wired through the facade so it can be added without a signature change.
+- [x] **Simulator personality** in 4.1: `rigol-dl3021` — CC/CV/CR/CP setpoint echoes, synthesised V/I/P/R from a 12 V virtual DUT, protection enable + level + trip round-trips, dynamic + battery state maps. Placeholder `siglent-sdl1020x-e` reserves the IDN for the 4.6 Siglent pack; registry currently returns no driver match.
+- [x] **Server**: route group `/api/sessions/:id/eload/*` with state, enabled, mode, setpoint, measure, protection (incl. `/clear`), dynamic, battery (start/stop), logging (start/stop/samples, gated), presets (save/recall, gated).
+- [x] **WebSocket**: `eload.measurement` (V/I/P/R @ 750 ms) + `eload.state` (full snapshot @ 2 s) reading topics; `ReadingScheduler` fan-out matches the 2.2 pattern.
+- [x] **Dashboard card**: `EloadMiniPanel.vue` with mode pill, enable toggle, live V / I / P readout, trip badge.
+- [x] **Detail page**: `EloadPanel.vue` with `aria-live` hero V/I/P/R strip, mode selector + all four setpoints, capability-gated tabs Protection / Dynamic / Battery / Presets, plus the shared Raw SCPI console from 2.4. Dynamic-mode full form is a backlog follow-up; the tab explains the SCPI surface and warns on pulse-loading safety.
+- [x] **Tests**: `packages/core/test/eload.test.ts` (facade + DL3000 variant profiles + registry), `packages/sim/test/integration.test.ts` (DL3021 round-trip + SDL IDN reservation), `packages/server/test/http.test.ts` (state snapshot, setpoint + protection validation, 409 gating). Web component tests deferred — the `@lxi-web/web` package has no Vitest harness yet; adding one is tracked alongside the generalised trend-logger in 4.4/4.5.
+- [x] **Docs**: `docs/user/electronic-load.md` added and mirrored into `docs/site/manual/`, linked from `docs/user/index.md` and the VitePress sidebar. Supported-hardware table lands in 4.9.
 
 ## Notes
 

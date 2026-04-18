@@ -34,6 +34,7 @@ export default defineConfig({
             { text: "Oscilloscope", link: "/manual/oscilloscope" },
             { text: "Power supply", link: "/manual/power-supply" },
             { text: "Multimeter", link: "/manual/multimeter" },
+            { text: "Electronic load", link: "/manual/electronic-load" },
             { text: "Raw SCPI", link: "/manual/raw-scpi" },
           ],
         },

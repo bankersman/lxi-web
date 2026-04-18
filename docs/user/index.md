@@ -24,7 +24,8 @@ device.
 - [Installation](./installation.md) — Docker and from-source.
 - [Getting started](./getting-started.md) — first connect walk-through.
 - [Oscilloscope](./oscilloscope.md) / [Power supply](./power-supply.md)
-  / [Multimeter](./multimeter.md) — per-kind feature tour.
+  / [Multimeter](./multimeter.md) /
+  [Electronic load](./electronic-load.md) — per-kind feature tour.
 - [Raw SCPI](./raw-scpi.md) — the fallback for unknown instruments.
 - [Troubleshooting](./troubleshooting.md) — common pitfalls.
 - [Hardware reports](./hardware-reports.md) — how to get your

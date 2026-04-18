@@ -2,6 +2,7 @@ import { DriverRegistry } from "../../identity/registry.js";
 import { RigolDho800 } from "./dho800.js";
 import { RigolDp900 } from "./dp900.js";
 import { RigolDm800 } from "./dm800.js";
+import { RigolDl3000 } from "./dl3000.js";
 import {
   DHO800_DEFAULT,
   DHO800_VARIANTS,
@@ -20,10 +21,17 @@ import {
   refineDm800Profile,
   type Dm800Profile,
 } from "./dm800-profile.js";
+import {
+  DL3000_DEFAULT,
+  DL3000_VARIANTS,
+  refineDl3000Profile,
+  type Dl3000Profile,
+} from "./dl3000-profile.js";
 
 export { RigolDho800 } from "./dho800.js";
 export { RigolDp900 } from "./dp900.js";
 export { RigolDm800 } from "./dm800.js";
+export { RigolDl3000 } from "./dl3000.js";
 /**
  * Deprecated: the DMM driver is now family-scoped. Consumers of
  * `@lxi-web/core` built against 3.7 still import `RigolDm858`; keep the
@@ -32,7 +40,7 @@ export { RigolDm800 } from "./dm800.js";
  */
 export { RigolDm800 as RigolDm858 } from "./dm800.js";
 
-export type { Dho800Profile, Dp900Profile, Dm800Profile };
+export type { Dho800Profile, Dp900Profile, Dm800Profile, Dl3000Profile };
 export {
   DHO800_VARIANTS,
   DHO800_DEFAULT,
@@ -40,6 +48,8 @@ export {
   DP900_DEFAULT,
   DM800_VARIANTS,
   DM800_DEFAULT,
+  DL3000_VARIANTS,
+  DL3000_DEFAULT,
 };
 
 /**
@@ -123,6 +133,32 @@ export function registerRigolDrivers(registry: DriverRegistry): void {
     refine: async (port) => {
       const refined = await refineDm800Profile(DM800_DEFAULT, port);
       return (p, i) => new RigolDm800(p, i, refined);
+    },
+  });
+
+  for (const variant of DL3000_VARIANTS) {
+    registry.register({
+      id: `rigol-${variant.variant.toLowerCase()}`,
+      kind: "electronicLoad",
+      match: {
+        manufacturer: "rigol",
+        model: new RegExp(`^${variant.variant}\\b`, "i"),
+      },
+      create: (port, identity) => new RigolDl3000(port, identity, variant),
+      refine: async (port) => {
+        const refined = await refineDl3000Profile(variant, port);
+        return (p, i) => new RigolDl3000(p, i, refined);
+      },
+    });
+  }
+  registry.register({
+    id: "rigol-dl3000",
+    kind: "electronicLoad",
+    match: { manufacturer: "rigol", model: /^DL30\d{2}/i },
+    create: (port, identity) => new RigolDl3000(port, identity, DL3000_DEFAULT),
+    refine: async (port) => {
+      const refined = await refineDl3000Profile(DL3000_DEFAULT, port);
+      return (p, i) => new RigolDl3000(p, i, refined);
     },
   });
 }

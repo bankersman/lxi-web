@@ -8,10 +8,13 @@ import {
   RigolDho800,
   RigolDp900,
   RigolDm858,
+  RigolDl3000,
 } from "@lxi-web/core";
 import { rigolDho804Personality } from "../personalities/rigol/dho804.js";
 import { rigolDp932ePersonality } from "../personalities/rigol/dp932e.js";
 import { rigolDm858Personality } from "../personalities/rigol/dm858.js";
+import { rigolDl3021Personality } from "../personalities/rigol/dl3021.js";
+import { siglentSdl1020xEPersonality } from "../personalities/siglent/sdl1020x-e.js";
 
 async function withSimulator<T>(
   personality: Parameters<typeof rigolDho804Personality extends never ? never : (p: typeof rigolDho804Personality) => void>[0],
@@ -71,6 +74,37 @@ test("pnpm test:sim — ScpiSession connects to DM858 personality + DMM driver",
     assert.equal(entry?.id, "rigol-dm858");
     const dmm = entry!.create(session, parsed) as RigolDm858;
     assert.equal(dmm.kind, "multimeter");
+  });
+});
+
+test("pnpm test:sim — ScpiSession connects to DL3021 personality + eload driver", async () => {
+  await withSimulator(rigolDl3021Personality, async (session) => {
+    const idn = await session.query("*IDN?");
+    const parsed = parseIdn(idn);
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "rigol-dl3021");
+    assert.equal(entry?.kind, "electronicLoad");
+    const eload = entry!.create(session, parsed) as RigolDl3000;
+    assert.equal(eload.kind, "electronicLoad");
+    const state = await eload.getState();
+    assert.equal(state.mode, "cc");
+    await eload.setInputEnabled(true);
+    await eload.setSetpoint("cc", 2.0);
+    const m = await eload.measure();
+    assert.ok(m.current >= 0);
+  });
+});
+
+test("pnpm test:sim — Siglent SDL1020X-E personality reserves IDN + answers *IDN?", async () => {
+  await withSimulator(siglentSdl1020xEPersonality, async (session) => {
+    const idn = await session.query("*IDN?");
+    const parsed = parseIdn(idn);
+    assert.match(parsed.manufacturer, /siglent/i);
+    assert.equal(parsed.model, "SDL1020X-E");
+    // No driver is registered yet (lands in 4.6); registry returns no entry.
+    const registry = createDefaultRegistry();
+    assert.equal(registry.resolve(parsed), null);
   });
 });
 

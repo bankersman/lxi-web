@@ -1,4 +1,5 @@
 import type {
+  IElectronicLoad,
   IMultimeter,
   IOscilloscope,
   IPowerSupply,
@@ -22,6 +23,8 @@ const TOPIC_INTERVAL_MS: Readonly<Record<ReadingTopic, number>> = {
   "psu.protection": 3000,
   "scope.channels": 3000,
   "scope.timebase": 3000,
+  "eload.measurement": 750,
+  "eload.state": 2000,
 };
 
 interface Subscriber {
@@ -260,6 +263,18 @@ export class ReadingScheduler {
           throw new Error("session is not an oscilloscope");
         }
         return await (facade as IOscilloscope).getTimebase();
+      }
+      case "eload.measurement": {
+        if (facade.kind !== "electronicLoad") {
+          throw new Error("session is not an electronic load");
+        }
+        return await (facade as IElectronicLoad).measure();
+      }
+      case "eload.state": {
+        if (facade.kind !== "electronicLoad") {
+          throw new Error("session is not an electronic load");
+        }
+        return await (facade as IElectronicLoad).getState();
       }
     }
   }

@@ -7,6 +7,7 @@ export {
   RigolDp900,
   RigolDm800,
   RigolDm858,
+  RigolDl3000,
   registerRigolDrivers,
   createDefaultRegistry,
   DHO800_VARIANTS,
@@ -15,12 +16,16 @@ export {
   DP900_DEFAULT,
   DM800_VARIANTS,
   DM800_DEFAULT,
+  DL3000_VARIANTS,
+  DL3000_DEFAULT,
 } from "./drivers/rigol/index.js";
 export type {
   Dho800Profile,
   Dp900Profile,
   Dm800Profile,
+  Dl3000Profile,
 } from "./drivers/rigol/index.js";
 export { refineDho800Profile } from "./drivers/rigol/dho800-profile.js";
 export { refineDp900Profile } from "./drivers/rigol/dp900-profile.js";
 export { refineDm800Profile } from "./drivers/rigol/dm800-profile.js";
+export { refineDl3000Profile } from "./drivers/rigol/dl3000-profile.js";

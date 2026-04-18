@@ -102,3 +102,20 @@ export type {
   InstrumentPresetCapability,
 } from "./multimeter.js";
 export { DEFAULT_MULTIMETER_UNITS } from "./multimeter.js";
+export type {
+  IElectronicLoad,
+  ElectronicLoadMode,
+  ElectronicLoadLimits,
+  ElectronicLoadSetpoints,
+  ElectronicLoadMeasurement,
+  ElectronicLoadState,
+  ElectronicLoadProtectionKind,
+  ElectronicLoadProtectionRange,
+  ElectronicLoadProtectionState,
+  ElectronicLoadProtectionCapability,
+  ElectronicLoadDynamicConfig,
+  ElectronicLoadDynamicCapability,
+  ElectronicLoadBatteryConfig,
+  ElectronicLoadBatteryState,
+  ElectronicLoadBatteryCapability,
+} from "./electronic-load.js";

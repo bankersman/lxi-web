@@ -56,12 +56,12 @@ export class RigolDp900 implements IPowerSupply {
   }
 
   async getPairingMode(): Promise<PsuPairingMode> {
-    const raw = await this.port.query(":PAIR?");
+    const raw = await this.port.query(":OUTPut:PAIR?");
     return parsePairingMode(raw);
   }
 
   async setPairingMode(mode: PsuPairingMode): Promise<void> {
-    await this.port.write(`:PAIR ${encodePairingMode(mode)}`);
+    await this.port.write(`:OUTPut:PAIR ${encodePairingMode(mode)}`);
   }
 
   async measureChannel(channel: number): Promise<PsuMeasurement> {
@@ -115,9 +115,9 @@ function parsePairingMode(raw: string): PsuPairingMode {
 function encodePairingMode(mode: PsuPairingMode): string {
   switch (mode) {
     case "series":
-      return "SER";
+      return "SERies";
     case "parallel":
-      return "PAR";
+      return "PARallel";
     default:
       return "OFF";
   }

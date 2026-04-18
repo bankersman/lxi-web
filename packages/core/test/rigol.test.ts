@@ -116,9 +116,9 @@ test("DP900 setChannelVoltage / output send expected commands", async () => {
   ]);
 });
 
-test("DP900 pairing: advertises OFF/SER/PAR and round-trips the SCPI query", async () => {
+test("DP900 pairing: advertises modes and parses :OUTPut:PAIR? reply", async () => {
   const psu = new RigolDp900(
-    new FakeScpiPort().onQuery(/^:PAIR\?$/, "SER"),
+    new FakeScpiPort().onQuery(/^:OUTPut:PAIR\?$/, "SERIES"),
     parseIdn("RIGOL,DP932E,SN,FW"),
   );
   assert.deepEqual(psu.pairing?.modes, ["off", "series", "parallel"]);
@@ -126,12 +126,12 @@ test("DP900 pairing: advertises OFF/SER/PAR and round-trips the SCPI query", asy
   assert.equal(await psu.getPairingMode!(), "series");
 });
 
-test("DP900 setPairingMode emits :PAIR with the abbreviated argument", async () => {
+test("DP900 setPairingMode emits :OUTPut:PAIR with the expected argument", async () => {
   const port = new FakeScpiPort();
   const psu = new RigolDp900(port, parseIdn("RIGOL,DP932E,SN,FW"));
   await psu.setPairingMode!("parallel");
   await psu.setPairingMode!("off");
-  assert.deepEqual(port.writes, [":PAIR PAR", ":PAIR OFF"]);
+  assert.deepEqual(port.writes, [":OUTPut:PAIR PARallel", ":OUTPut:PAIR OFF"]);
 });
 
 test("DM858 setMode sends the matching CONFigure command", async () => {

@@ -3,7 +3,8 @@
 Hardware reports are how we grow the
 [supported-hardware matrix](./supported-hardware.md). The project
 ships typed drivers for a steadily-growing catalog of Rigol / Siglent
-/ Keysight / Owon instruments; anything outside that catalog falls
+/ Keysight / Owon / Tektronix / Rohde &amp; Schwarz / Fluke / GW Instek
+instruments; anything outside that catalog falls
 back to a typed identity card plus the raw SCPI console. A hardware
 report is what turns a new-to-us instrument into either a **new row**
 (community-contributed driver) or a **status bump** on an existing
@@ -55,7 +56,9 @@ needs — please fill them in rather than condensing:
   entry has to assume the conservative configuration.
 - **Firmware version** — typically the 4th field of `*IDN?`. We
   sometimes need to know which firmware was tested because Owon /
-  Siglent firmwares drift between major revisions.
+  Siglent / GW Instek firmwares drift between major revisions, and
+  Fluke 8500-series reference DMMs + legacy 55xx calibrators require
+  **CR+LF termination** that we pin per firmware.
 - **Vendor + model + device kind** — the category dropdown drives the
   label we put on the matrix row.
 - **Report kind** — is this a first hardware report, a firmware-update

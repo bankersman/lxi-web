@@ -15,8 +15,10 @@ truth — this page just explains the larger themes.
   image + release workflow, `@lxi-web/core` npm publishing.
 - **Epic 4** — simulator framework (4.1), driver family + `*OPT?`
   refinement pattern (4.2), three new instrument kinds (4.3 eload,
-  4.4 signal generator, 4.5 spectrum analyzer), three vendor packs
-  (4.6 Siglent, 4.7 Keysight + legacy Agilent, 4.8 Owon), and the
+  4.4 signal generator, 4.5 spectrum analyzer), seven vendor packs
+  (4.6 Siglent, 4.7 Keysight + legacy Agilent, 4.8 Owon, 4.10
+  Tektronix, 4.11 Rohde &amp; Schwarz + HAMEG legacy, 4.12 Fluke, 4.13
+  GW Instek), and the
   [supported-hardware matrix](./supported-hardware.md) plus the
   [adding-a-driver guide](../contributing/adding-a-driver.md) (4.9).
 

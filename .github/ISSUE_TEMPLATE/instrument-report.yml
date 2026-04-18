@@ -90,7 +90,7 @@ body:
     id: scpi_port
     attributes:
       label: SCPI port (if non-standard)
-      description: Leave blank if the instrument listens on the vendor default. Owon XDM / SPE / XDS use **3000** rather than 5025.
+      description: Leave blank if the instrument listens on the vendor default. Owon XDM / SPE / XDS use **3000** rather than 5025; GW Instek GDS / GSP / GPP listen on **1026**; Tektronix benches often use **4000**.
       placeholder: "5025"
     validations:
       required: false

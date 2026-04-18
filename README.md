@@ -85,6 +85,21 @@ Preview — simulator-validated, awaiting hardware reports to promote:
   33600A signal generators.
 - **Owon** — XDM DMMs, SPE power supplies, XDS3000 oscilloscopes.
   Listens on **TCP port 3000**; mDNS often absent — add manually.
+- **Tektronix** — TBS2000B + DPO/MSO2000B/3000/4000B/5-6 Series scopes
+  (incl. MDO3000 / MDO4000C), AFG1000 / AFG3000C / AFG31000 signal
+  generators, PWS2000 / PWS4000 power supplies.
+- **Rohde &amp; Schwarz (+ HAMEG legacy)** — RTB2000 / RTM3000 / RTA4000 /
+  MXO / HMO oscilloscopes, NGE / NGL / NGM / NGP / NGU / HMP / HMC8043
+  power supplies, HMC8012 / HMC8015 bench DMMs, SMA / SMB / SMBV RF
+  signal generators, HMF arbitrary generators, FPC / FPL / HMS entry
+  spectrum analyzers.
+- **Fluke** — 8800-series bench DMMs (8808A / 8845A / 8846A), 8500-series
+  reference DMMs (8588A / 8508A, CR+LF termination), 5500 / 5700-series
+  multi-function calibrators.
+- **GW Instek** — GDS-1000B / 2000E / 3000 / MSO-2000 / MDO-2000EX
+  oscilloscopes, GPP / GPD / PSW power supplies, GDM-8000 / 9000 bench
+  DMMs, AFG-2000 / 3000 / MFG-2000 signal generators, GSP spectrum
+  analyzers.
 
 Anything else that answers `*IDN?` still shows up with a typed identity
 card and the raw SCPI console.

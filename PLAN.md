@@ -134,6 +134,9 @@ todos:
   - id: epic-6-2-detail-page-ia-audit
     content: Epic 6.2 — Detail-page information architecture audit. Per-kind audit (touch frequency × density) with before/after screenshots; reorder so hero + safety-critical readouts sit first (PSU channels from 5th to 1st, trip state on hero row; DMM primary + mode + range on hero row; e-load V/I/P/R + trip on hero; SG per-channel hero with waveform pill + output toggle; SA hero trace + peak marker). Collapse setup-only blocks behind tabs, densify API-sandbox-feeling blocks into scannable tables + chip bars. Overview card action-row rebalance (Disconnect pushed right). Transcript tab positioning. Dashboard card mini-controls follow same hierarchy. Update 3-4-device-detail-ux.md to reflect new section order. No backend changes. Progress + docs/steps/6-2-*.md; commit
     status: pending
+  - id: epic-6-3-report-to-github
+    content: Epic 6.3 — One-click GitHub report (post–Epic 5). Overview-card Report menu opens github.com issues/new with instrument-report.yml or bug.yml prefilled from session identity (*IDN?, *OPT? on DeviceIdentity), host/port, kind, discovery path, GET /api/meta/build (commit + image digest), recent device.errors ring + transcript tail from 5.1 REST; URL length cap with overflow to clipboard + toast. Optional device-scope shortcut. No GitHub API token — browser opens prefilled form only. Depends on 5.1. Progress + docs/steps/6-3-*.md; commit
+    status: pending
   - id: epic-x-1-event-bus
     content: Epic X.1 — Cross-device event bus + action catalog on @lxi-web/core; façade event sources for scope/PSU/DMM; REST for schema/catalog/invoke; WebSocket events channel with filters and ring-buffer backfill. Deferred from Epic 5; lower priority than bench-safety (Epic 5) and UX pass (Epic 6). Progress + docs/steps/x-1-*.md; commit
     status: deferred
@@ -262,7 +265,7 @@ Optional later: **Tauri/Electron** still reuses `packages/core`; not in v1 scope
 
 - **`git init` immediately** as the first implementation step (with a sensible root `.gitignore`). **Commit after every subplan/step** below completes — one focused commit per milestone (conventional prefixes welcome: `feat`, `fix`, `chore`, `docs`).
 - **`progress.md`** at the **repository root**: a living **checklist** that mirrors the subplan order (same items as the YAML todos in this plan). **Update it when starting a step** (optional “Started” date) and **when finishing** (check the box, add “Done” date and one-line summary if useful). This file is the human-facing source of truth for “where we are”; keep it in sync with reality before each commit that closes a step.
-- **One markdown file per subplan** under **`docs/steps/`** (filenames aligned with subplans, e.g. `1-1-transport-and-scpi-core.md`, `1-2-identity-and-routing.md`, … through `2-7-scope-advanced-features.md` for v1 + per-kind deep-dives, `5-1-…` through `5-3-…` for Epic 5 bench safety, `6-1-…` through `6-2-…` for Epic 6 UX pass, `x-1-…` through `x-5-…` for the deferred Epic X orchestration work). Each file holds: **goal**, **acceptance criteria** (checkboxes), **links** to the relevant plan section, and **notes** (decisions, model numbers tested). **Bootstrap** (second todo) may add **stub** files with headings and empty criteria to be filled when work begins, or create each file at the **start** of that subplan — either approach is fine; pick one and stay consistent.
+- **One markdown file per subplan** under **`docs/steps/`** (filenames aligned with subplans, e.g. `1-1-transport-and-scpi-core.md`, `1-2-identity-and-routing.md`, … through `2-7-scope-advanced-features.md` for v1 + per-kind deep-dives, `5-1-…` through `5-3-…` for Epic 5 bench safety, `6-1-…` through `6-3-…` for Epic 6 UX pass, `x-1-…` through `x-5-…` for the deferred Epic X orchestration work). Each file holds: **goal**, **acceptance criteria** (checkboxes), **links** to the relevant plan section, and **notes** (decisions, model numbers tested). **Bootstrap** (second todo) may add **stub** files with headings and empty criteria to be filled when work begins, or create each file at the **start** of that subplan — either approach is fine; pick one and stay consistent.
 - **Do not** bundle unrelated subplans into one commit; if a step is large, internal WIP commits on a branch are fine, but merge to `main` (or default branch) with a clear **final** commit message per subplan when possible.
 
 ---
@@ -817,9 +820,11 @@ flowchart TB
 
 **Goal:** Take a second, opinionated look at how the dashboard reads
 and behaves for a solo bench operator, now that every device kind
-exists. Make the app keyboard-first where it counts, and audit every
+exists. Make the app keyboard-first where it counts, audit every
 detail page's information architecture so the hero and most-used
-blocks surface first on every kind.
+blocks surface first on every kind, and turn connected sessions into
+one-click hardware / bug reports with GitHub issue forms prefilled
+from live identity + SCPI observability data (after Epic 5.1).
 
 ### Intent
 
@@ -836,6 +841,12 @@ blocks surface first on every kind.
   estate than the hero. Rank every block by touch frequency × risk,
   reorder, collapse setup-only blocks, and densify raw-form blocks
   into scannable tables and chip bars.
+- **Prefilled GitHub reports.** After Epic 5.1 ships device-error and
+  transcript rings, the dashboard can assemble a support payload
+  without asking the operator to copy-paste `*IDN?` by hand. One
+  action opens `issues/new?template=…` with query parameters matching
+  the YAML form field `id:` values; long transcript tails spill to the
+  clipboard instead of breaking the URL.
 
 ### Subplans (Epic 6)
 
@@ -865,14 +876,33 @@ blocks surface first on every kind.
   documented section order. No backend changes.  
   See [docs/steps/6-2-detail-page-ia-audit.md](docs/steps/6-2-detail-page-ia-audit.md).
 
+- **6.3 — One-click GitHub report (hardware / bug)**  
+  Depends on **Epic 5.1** (device-error ring + session transcript +
+  REST replay). Add `DeviceIdentity.rawOpt` (verbatim `*OPT?` or
+  vendor-equivalent captured during the same refine path that already
+  queries options) plus `GET /api/meta/build` returning image digest /
+  git commit / semver for the dashboard-build field. Overview-card
+  **Report** menu: "Hardware report" → `instrument-report.yml`,
+  "Bug on this device" → `bug.yml`, both built as
+  `https://github.com/<repo>/issues/new?template=…&<field>=…` with
+  URL length limits; excess transcript / error text copied to
+  clipboard with a toast pointing at the right form field. Optional
+  kind-scoped shortcut (via 6.1). No GitHub API — the user submits in
+  the normal GitHub UI.  
+  See [docs/steps/6-3-report-to-github.md](docs/steps/6-3-report-to-github.md).
+
 ### Non-goals for Epic 6
 
 - No visual redesign. Tailwind utility reshuffles and small
   collapse/densify edits only — keep the step's scope tight so it
   doesn't balloon into a ground-up restyle.
-- No new backend endpoints or capabilities. If the IA audit reveals
-  a missing backend primitive, capture it as backlog and move on.
+- **6.1 and 6.2** add no new backend endpoints or capabilities; if
+  the IA audit reveals a missing primitive, capture it as backlog.
+  **6.3** is the exception — it adds only the minimal REST + identity
+  fields listed in that subplan (build metadata + optional `rawOpt`).
 - No i18n. English UI copy stays the baseline for this epic.
+- No server-side GitHub proxy or stored tokens — 6.3 opens the browser
+  to a prefilled `issues/new` URL only.
 
 ---
 
@@ -1075,7 +1105,7 @@ Follow the **optional capability** pattern from 2.5 / 2.6 / 2.7 rather than grow
 ## Suggested repository layout (when you start coding)
 
 - `progress.md`: root checklist mirroring subplans; updated when each step completes (see **Git, commits, and progress tracking**).
-- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-7-…` for Epic 3; `4-1-…` through `4-13-…` for Epic 4; `5-1-…` through `5-3-…` for Epic 5 bench safety; `6-1-…` through `6-2-…` for Epic 6 UX pass; `x-1-…` through `x-5-…` for the deferred Epic X orchestration work) with goals and acceptance criteria.
+- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-7-…` for Epic 3; `4-1-…` through `4-13-…` for Epic 4; `5-1-…` through `5-3-…` for Epic 5 bench safety; `6-1-…` through `6-3-…` for Epic 6 UX pass; `x-1-…` through `x-5-…` for the deferred Epic X orchestration work) with goals and acceptance criteria.
 - `docs/user/`: plain Markdown **user manual** (installation, getting-started, per-kind pages including electronic-load / signal-generator / spectrum-analyzer, raw SCPI fallback, troubleshooting, hardware reports, supported-hardware matrix, roadmap) — canonical source; authored in 3.5 and extended by Epic 4.
 - `docs/site/`: **VitePress** scaffolding for the GitHub Pages landing page — ingests `docs/user/*.md`; authored in 3.5.
 - `docs/assets/`: screenshots and static images referenced from the README, the user manual, and the Pages site.

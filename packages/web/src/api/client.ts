@@ -1,0 +1,191 @@
+import type {
+  MultimeterMode,
+  MultimeterReading,
+  OscilloscopeChannelState,
+  PsuChannelState,
+  PsuMeasurement,
+  SessionSummary,
+  TimebaseState,
+} from "@lxi-web/core/browser";
+
+export interface WaveformDto {
+  readonly channel: number;
+  readonly xIncrement: number;
+  readonly xOrigin: number;
+  readonly capturedAt: number;
+  readonly x: readonly number[];
+  readonly y: readonly number[];
+}
+
+const JSON_HEADERS = { "Content-Type": "application/json" };
+
+async function parse<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    const text = await res.text();
+    let message = text;
+    try {
+      const parsed = JSON.parse(text) as { error?: string };
+      if (parsed.error) message = parsed.error;
+    } catch {
+      // not JSON — use raw body
+    }
+    throw new Error(`${res.status} ${res.statusText}: ${message || "request failed"}`);
+  }
+  return (await res.json()) as T;
+}
+
+export const api = {
+  async listSessions(): Promise<SessionSummary[]> {
+    const res = await fetch("/api/sessions");
+    const body = await parse<{ sessions: SessionSummary[] }>(res);
+    return body.sessions;
+  },
+
+  async openSession(host: string, port?: number): Promise<SessionSummary> {
+    const res = await fetch("/api/sessions", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ host, port }),
+    });
+    const body = await parse<{ session: SessionSummary }>(res);
+    return body.session;
+  },
+
+  async closeSession(id: string): Promise<void> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async sendScpi(
+    id: string,
+    command: string,
+    expectReply?: boolean,
+  ): Promise<string | null> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/scpi`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ command, expectReply }),
+    });
+    const body = await parse<{ reply: string | null }>(res);
+    return body.reply ?? null;
+  },
+
+  async getScopeChannels(id: string): Promise<OscilloscopeChannelState[]> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/scope/channels`);
+    const body = await parse<{ channels: OscilloscopeChannelState[] }>(res);
+    return body.channels;
+  },
+
+  async getScopeTimebase(id: string): Promise<TimebaseState> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/scope/timebase`);
+    const body = await parse<{ timebase: TimebaseState }>(res);
+    return body.timebase;
+  },
+
+  async setScopeTimebase(id: string, settings: Partial<TimebaseState>): Promise<void> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/scope/timebase`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify(settings),
+    });
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async setScopeChannelEnabled(
+    id: string,
+    channel: number,
+    enabled: boolean,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/scope/channels/${channel}/enabled`,
+      {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ enabled }),
+      },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async singleCapture(id: string): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/scope/single-capture`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async readWaveform(id: string, channel: number): Promise<WaveformDto> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/scope/channels/${channel}/waveform`,
+    );
+    const body = await parse<{ waveform: WaveformDto }>(res);
+    return body.waveform;
+  },
+
+  async getPsuChannels(id: string): Promise<PsuChannelState[]> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/psu/channels`);
+    const body = await parse<{ channels: PsuChannelState[] }>(res);
+    return body.channels;
+  },
+
+  async setPsuChannel(
+    id: string,
+    channel: number,
+    values: { voltage?: number; current?: number },
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/psu/channels/${channel}`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(values) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async setPsuChannelOutput(
+    id: string,
+    channel: number,
+    enabled: boolean,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/psu/channels/${channel}/output`,
+      {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ enabled }),
+      },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async measurePsuChannel(id: string, channel: number): Promise<PsuMeasurement> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/psu/channels/${channel}/measure`,
+    );
+    const body = await parse<{ measurement: PsuMeasurement }>(res);
+    return body.measurement;
+  },
+
+  async getDmmReading(id: string): Promise<MultimeterReading> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/dmm/reading`);
+    const body = await parse<{ reading: MultimeterReading }>(res);
+    return body.reading;
+  },
+
+  async getDmmMode(
+    id: string,
+  ): Promise<{ mode: MultimeterMode; supported: readonly MultimeterMode[] }> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/dmm/mode`);
+    return parse<{ mode: MultimeterMode; supported: readonly MultimeterMode[] }>(res);
+  },
+
+  async setDmmMode(id: string, mode: MultimeterMode): Promise<void> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/dmm/mode`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ mode }),
+    });
+    await parse<{ ok: boolean }>(res);
+  },
+};

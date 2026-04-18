@@ -124,6 +124,46 @@ test("POST /api/sessions/:id/scpi forwards raw SCPI and returns reply", async ()
   await app.close();
 });
 
+test("PSU pairing endpoint advertises capability and forwards mode changes", async () => {
+  const app = await setupApp("RIGOL,DP932E,SN,FW");
+  const opened = await app.inject({
+    method: "POST",
+    url: "/api/sessions",
+    payload: { host: "10.0.0.5" },
+  });
+  const id = (opened.json() as { session: SessionSummary }).session.id;
+  await waitForStatus(app, id, "connected");
+
+  const info = await app.inject({
+    method: "GET",
+    url: `/api/sessions/${id}/psu/pairing`,
+  });
+  assert.equal(info.statusCode, 200);
+  const body = info.json() as {
+    supported: boolean;
+    modes: string[];
+    channels: number[];
+  };
+  assert.equal(body.supported, true);
+  assert.deepEqual(body.modes, ["off", "series", "parallel"]);
+  assert.deepEqual(body.channels, [1, 2]);
+
+  const bad = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/psu/pairing`,
+    payload: { mode: "bogus" },
+  });
+  assert.equal(bad.statusCode, 400);
+
+  const ok = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/psu/pairing`,
+    payload: { mode: "series" },
+  });
+  assert.equal(ok.statusCode, 200);
+  await app.close();
+});
+
 test("typed route rejects mismatched device kind", async () => {
   const app = await setupApp("RIGOL,DHO804,SN,FW");
   const opened = await app.inject({

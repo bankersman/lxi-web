@@ -4,9 +4,17 @@ import type {
   OscilloscopeChannelState,
   PsuChannelState,
   PsuMeasurement,
+  PsuPairingMode,
   SessionSummary,
   TimebaseState,
 } from "@lxi-web/core/browser";
+
+export interface PsuPairingInfo {
+  readonly supported: boolean;
+  readonly modes: readonly PsuPairingMode[];
+  readonly channels: readonly number[];
+  readonly mode: PsuPairingMode;
+}
 
 export interface WaveformDto {
   readonly channel: number;
@@ -165,6 +173,20 @@ export const api = {
     );
     const body = await parse<{ measurement: PsuMeasurement }>(res);
     return body.measurement;
+  },
+
+  async getPsuPairing(id: string): Promise<PsuPairingInfo> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/psu/pairing`);
+    return parse<PsuPairingInfo>(res);
+  },
+
+  async setPsuPairing(id: string, mode: PsuPairingMode): Promise<void> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/psu/pairing`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ mode }),
+    });
+    await parse<{ ok: boolean }>(res);
   },
 
   async getDmmReading(id: string): Promise<MultimeterReading> {

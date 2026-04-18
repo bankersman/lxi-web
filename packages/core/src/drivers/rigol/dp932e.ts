@@ -5,6 +5,8 @@ import type {
   PsuChannelLimits,
   PsuChannelState,
   PsuMeasurement,
+  PsuPairingCapability,
+  PsuPairingMode,
 } from "../../facades/power-supply.js";
 
 const CHANNEL_IDS = [1, 2, 3] as const;
@@ -17,9 +19,20 @@ const CHANNEL_LIMITS: Readonly<Record<number, PsuChannelLimits>> = {
   3: { voltageMax: 6, currentMax: 3 },
 };
 
+/**
+ * DP900 pairing engages CH1 and CH2 as a combined virtual channel — `series`
+ * doubles the available voltage, `parallel` doubles the available current, and
+ * CH3 stays independent either way.
+ */
+const PAIRING: PsuPairingCapability = {
+  modes: ["off", "series", "parallel"],
+  channels: [1, 2],
+};
+
 /** Rigol DP900-series PSU driver (DP932E tested). */
 export class RigolDp900 implements IPowerSupply {
   readonly kind = "powerSupply" as const;
+  readonly pairing = PAIRING;
 
   constructor(
     private readonly port: ScpiPort,
@@ -40,6 +53,15 @@ export class RigolDp900 implements IPowerSupply {
 
   async setChannelCurrent(channel: number, amps: number): Promise<void> {
     await this.port.write(`:SOURce${channel}:CURRent ${amps}`);
+  }
+
+  async getPairingMode(): Promise<PsuPairingMode> {
+    const raw = await this.port.query(":PAIR?");
+    return parsePairingMode(raw);
+  }
+
+  async setPairingMode(mode: PsuPairingMode): Promise<void> {
+    await this.port.write(`:PAIR ${encodePairingMode(mode)}`);
   }
 
   async measureChannel(channel: number): Promise<PsuMeasurement> {
@@ -81,4 +103,22 @@ export class RigolDp900 implements IPowerSupply {
 function parseOutputState(raw: string): boolean {
   const v = raw.trim().toUpperCase();
   return v === "1" || v === "ON" || v.endsWith(",ON");
+}
+
+function parsePairingMode(raw: string): PsuPairingMode {
+  const v = raw.trim().toUpperCase();
+  if (v.startsWith("SER")) return "series";
+  if (v.startsWith("PAR")) return "parallel";
+  return "off";
+}
+
+function encodePairingMode(mode: PsuPairingMode): string {
+  switch (mode) {
+    case "series":
+      return "SER";
+    case "parallel":
+      return "PAR";
+    default:
+      return "OFF";
+  }
 }

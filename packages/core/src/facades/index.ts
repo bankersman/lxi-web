@@ -11,6 +11,8 @@ export type {
   PsuChannelLimits,
   PsuChannelState,
   PsuMeasurement,
+  PsuPairingCapability,
+  PsuPairingMode,
 } from "./power-supply.js";
 export type {
   IMultimeter,

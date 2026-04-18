@@ -4,6 +4,7 @@ import type {
   IOscilloscope,
   IPowerSupply,
   MultimeterMode,
+  PsuPairingMode,
 } from "@lxi-web/core";
 import type { SessionManager } from "../sessions/manager.js";
 
@@ -137,6 +138,39 @@ export async function registerDeviceRoutes(
       return { measurement: await p.measureChannel(Number(req.params.channel)) };
     },
   );
+
+  app.get<{ Params: { id: string } }>(
+    "/api/sessions/:id/psu/pairing",
+    async (req, reply) => {
+      const p = psu(req, reply);
+      if (!p) return;
+      if (!p.pairing || !p.getPairingMode) {
+        return { supported: false, modes: [], channels: [], mode: "off" as const };
+      }
+      return {
+        supported: true,
+        modes: p.pairing.modes,
+        channels: p.pairing.channels,
+        mode: await p.getPairingMode(),
+      };
+    },
+  );
+  app.post<{
+    Params: { id: string };
+    Body: { mode?: PsuPairingMode };
+  }>("/api/sessions/:id/psu/pairing", async (req, reply) => {
+    const p = psu(req, reply);
+    if (!p) return;
+    if (!p.pairing || !p.setPairingMode) {
+      return reply.code(409).send({ error: "pairing is not supported by this PSU" });
+    }
+    const mode = req.body?.mode;
+    if (!mode || !p.pairing.modes.includes(mode)) {
+      return reply.code(400).send({ error: "invalid pairing mode" });
+    }
+    await p.setPairingMode(mode);
+    return { ok: true };
+  });
 
   app.get<{ Params: { id: string } }>(
     "/api/sessions/:id/dmm/reading",

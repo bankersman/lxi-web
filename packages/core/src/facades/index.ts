@@ -9,10 +9,17 @@ export type {
 export type {
   IPowerSupply,
   PsuChannelLimits,
+  PsuChannelProtectionRanges,
   PsuChannelState,
   PsuMeasurement,
   PsuPairingCapability,
   PsuPairingMode,
+  PsuPresetCapability,
+  PsuProtectionCapability,
+  PsuProtectionKind,
+  PsuProtectionRange,
+  PsuProtectionState,
+  PsuTrackingCapability,
 } from "./power-supply.js";
 export type {
   IMultimeter,

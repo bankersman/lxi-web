@@ -1,55 +1,117 @@
-# 2.5 — PSU advanced features: channel coupling
+# 2.5 — PSU advanced features
 
 ## Goal
 
-Expose vendor-specific advanced capabilities on the PSU detail page, starting
-with series/parallel channel coupling for multi-channel supplies. Keep the
-addition optional on the facade so non-pairing PSUs (future drivers) aren't
-forced to implement it.
+Expose vendor-specific advanced capabilities on the PSU detail page as
+optional facade capabilities so non-supporting drivers stay unaffected and the
+UI gracefully hides what a device cannot do.
+
+Covered in this step:
+
+1. **Channel coupling** — internal series / parallel wiring of CH1+CH2.
+2. **Over-voltage / over-current protection (OVP / OCP)** — per-channel
+   enable, threshold, live trip status, and clear-trip action.
+3. **Tracking** — CH2 mirrors CH1 set-points via `:OUTPut:TRACk`.
+4. **Preset memory** — `*SAV` / `*RCL` for saving and recalling the full
+   instrument state across 10 slots.
 
 ## Scope
 
-- Advertise channel pairing as an optional capability on `IPowerSupply`.
-- Implement pairing on the Rigol DP900 driver (DP932E-tested) using the
-  `:OUTPut:PAIR` command family.
-- Expose a REST endpoint that also tells the UI whether the feature is
-  supported for this device.
-- Add a coupling UI with a confirm-before-apply safety dialog, and reflect the
-  paired state in the per-channel cards.
+### Capabilities on `IPowerSupply`
+
+All new additions are optional so older drivers keep working unchanged:
+
+- `pairing?: PsuPairingCapability` + `getPairingMode?()` / `setPairingMode?()`
+- `protection?: PsuProtectionCapability` + `getProtection?()`,
+  `setProtectionEnabled?()`, `setProtectionLevel?()`, `clearProtectionTrip?()`
+- `tracking?: PsuTrackingCapability` + `getTracking?()` / `setTracking?()`
+- `presets?: PsuPresetCapability` + `getPresetCatalog?()`, `savePreset?()`,
+  `recallPreset?()`
+
+### Rigol DP900 driver (DP932E tested)
+
+Backed by the DP900 programming guide:
+
+| Feature    | SCPI                                                            |
+| ---------- | --------------------------------------------------------------- |
+| Pairing    | `:OUTPut:PAIR? / :OUTPut:PAIR OFF\|SERies\|PARallel`            |
+| OVP state  | `:OUTPut:OVP? CHn / :OUTPut:OVP CHn,ON\|OFF`                    |
+| OVP level  | `:OUTPut:OVP:VALue? CHn / :OUTPut:OVP:VALue CHn,<v>`            |
+| OVP trip   | `:OUTPut:OVP:QUES? CHn` / `:OUTPut:OVP:CLEar CHn`               |
+| OCP        | `:OUTPut:OCP:*` — same shape as OVP with `A` units              |
+| Tracking   | `:OUTPut:TRACk? / :OUTPut:TRACk ON\|OFF`                        |
+| Presets    | `*SAV n` / `*RCL n` plus `:MEMory:VALid? RIGOLn.RSF` for status |
+
+Ranges from table 4.33 of the programming guide:
+
+- CH1 / CH2: OVP 1 mV–33 V, OCP 1 mA–3.3 A
+- CH3: OVP 1 mV–6.6 V, OCP 1 mA–3.3 A
+
+### REST surface
+
+- `GET  /api/sessions/:id/psu/pairing`
+- `POST /api/sessions/:id/psu/pairing`
+- `GET  /api/sessions/:id/psu/tracking`
+- `POST /api/sessions/:id/psu/tracking`
+- `GET  /api/sessions/:id/psu/channels/:channel/protection` — returns `{ channel, ovp, ocp }`
+- `POST /api/sessions/:id/psu/channels/:channel/protection/:kind` — `kind` = `ovp` | `ocp`, body `{ enabled?, level? }`
+- `POST /api/sessions/:id/psu/channels/:channel/protection/:kind/clear`
+- `GET  /api/sessions/:id/psu/presets` — returns `{ supported, slots, occupied }`
+- `POST /api/sessions/:id/psu/presets/:slot/save`
+- `POST /api/sessions/:id/psu/presets/:slot/recall`
+
+Unsupported devices return `supported: false` on GET and `409` on POST.
+Level / slot validation returns `400` with an `error` string.
+
+### UI
+
+- Top of the PSU detail page stacks three capability cards (each hidden when
+  its `supported === false`):
+  - `PsuPairingControl` — Independent / Series / Parallel radio group with a
+    confirm-before-apply dialog. Unchanged from the previous iteration.
+  - `PsuTrackingControl` — a single toggle switch with a short explanation of
+    what tracking mirrors between CH1 and CH2.
+  - `PsuPresetsControl` — 2×5 grid of preset slots. Each slot shows a
+    Saved/Empty badge and Save / Recall buttons. Overwriting a populated slot
+    prompts for confirmation; Recall is disabled for empty slots.
+- Every channel card contains a collapsible **Protection** `<details>` panel
+  (`PsuProtectionControl`) summarising OVP and OCP status in the closed state
+  (`OVP: Arm @ 8.800 V · OCP: Tripped`, etc). When open it exposes per-kind:
+  - Enable / disable switch.
+  - Numeric level input clamped to the driver-advertised range.
+  - Inline error text for bad inputs or remote errors.
+  - A red "Clear" action that only appears while the protection is tripped,
+    and the card gets a red ring to draw attention.
+- Any external change that may invalidate channel/protection state (pairing
+  toggle, preset recall, tracking change) bumps a `refreshKey` that forces
+  each protection panel to re-fetch without waiting for its 3 s poll tick.
 
 ## Acceptance criteria
 
-- [x] `IPowerSupply` gains `pairing?: PsuPairingCapability` plus optional
-      `getPairingMode()` / `setPairingMode()` methods. Non-pairing drivers are
-      unaffected and the UI hides the control when `supported === false`.
-- [x] `RigolDp900` declares that CH1 + CH2 support `off | series | parallel`,
-      reads state via `:OUTPut:PAIR?`, and writes via
-      `:OUTPut:PAIR OFF|SERies|PARallel`. CH3 always stays independent.
-- [x] `GET /api/sessions/:id/psu/pairing` returns
-      `{ supported, modes, channels, mode }`. `POST` validates the body
-      against the advertised modes (400 on invalid, 409 on unsupported).
-- [x] PSU detail page renders a "Channel coupling" radio group
-      (Independent / Series / Parallel) with per-mode hints and a confirm
-      dialog that warns about wiring before applying.
-- [x] Channel cards reflect pairing:
-  - Both pair members show a "Series" / "Parallel" badge with the `Link2`
-    icon so coupling is visible at a glance.
-  - **Parallel** locks the follower (CH2): dimmed card, disabled output
-    toggle and inputs, "Controlled via CH1" hint, and the master card shows
-    the doubled-current combined limits.
-  - **Series** leaves both channels fully editable — the user still sets
-    each channel's voltage independently (the pair's combined output is
-    CH1 + CH2 at the terminals). Limits remain each channel's native cap.
-- [x] Unit test coverage: DP900 parses `:OUTPut:PAIR?` and emits the right
-      `SERies / PARallel / OFF` arguments.
-- [x] Integration test coverage: the `/psu/pairing` endpoint advertises the
-      modes and rejects bogus payloads.
+- [x] `IPowerSupply` gains optional `pairing`, `protection`, `tracking`, and
+      `presets` capabilities plus matching optional methods. Non-supporting
+      drivers are unaffected.
+- [x] `RigolDp900` advertises all four capabilities with ranges drawn from
+      the DP900 programming guide, and round-trips each SCPI family tested
+      against the manual.
+- [x] REST endpoints return a capability descriptor on GET, validate bodies
+      (400 for bad inputs, 409 for unsupported), and forward to the driver.
+- [x] PSU detail page hides each control cleanly when unsupported; coupling,
+      tracking, and presets live above the channel grid; per-channel OVP/OCP
+      live inside each channel card as a collapsible section.
+- [x] Tripped protections show a red ring and a visible **Clear** action;
+      clear invokes `:OUTPut:O[V|C]P:CLEar CHn` and refreshes state.
+- [x] Preset overwrite and pairing changes require explicit confirmation
+      dialogs before applying.
+- [x] Unit tests cover the driver SCPI for each new capability (OVP/OCP,
+      tracking, presets — including range and slot validation).
+- [x] Integration tests cover the new REST routes — capability advertising,
+      input validation, and SCPI side-effects (`:OUTPut:OVP:VALue`, `*SAV`,
+      `*RCL`, `:OUTPut:TRACk`).
 
-## Follow-ups (deferred to 2.6+)
+## Follow-ups (deferred)
 
-- Over-voltage / over-current protection: per-channel enable, threshold, trip
-  detection, and clear-trip action.
-- Tracking function (`:OUTPut:TRACk`) — slave CH2's set values to CH1 without
-  physically combining them.
-- Preset memory slots (`*SAV` / `*RCL`) for saving and recalling full PSU
-  state.
+- Non-Rigol PSU drivers (Siglent, Rohde & Schwarz) once v2 device kinds land.
+- Auto-discovery of LXI instruments on the local network (backlog item).
+- Arbitrary-waveform scheduling on DP900 with the `DP900-ARB` option.
+- Advanced OVP/OCP delay programming (`:OUTPut:OCP:DELay`).

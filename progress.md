@@ -20,7 +20,7 @@ Living checklist mirroring the subplans. Update when a step finishes (check the 
 - [x] **2.2 REST + WebSocket API** — connect/list/disconnect + WS broadcast of session updates, raw SCPI route, and typed routes per device kind. See [docs/steps/2-2-rest-and-websocket.md](docs/steps/2-2-rest-and-websocket.md).
 - [x] **2.3 Vue shell** — card grid, status, light/dark toggle, Add-device dialog. See [docs/steps/2-3-vue-dashboard-shell.md](docs/steps/2-3-vue-dashboard-shell.md).
 - [x] **2.4 session panels** — card mini-controls + expanded panels; scope uPlot; raw SCPI fallback. See [docs/steps/2-4-per-session-detail-views.md](docs/steps/2-4-per-session-detail-views.md).
-- [x] **2.5 PSU advanced features** — channel coupling (series / parallel) as an optional capability on `IPowerSupply`, wired through the Rigol DP900 driver and the detail page. See [docs/steps/2-5-psu-advanced-features.md](docs/steps/2-5-psu-advanced-features.md).
+- [x] **2.5 PSU advanced features** — channel coupling (series / parallel), OVP/OCP per channel (enable / threshold / trip / clear), CH1↔CH2 tracking, and 10-slot `*SAV`/`*RCL` preset memory — all exposed as optional capabilities on `IPowerSupply`, implemented on the Rigol DP900 driver, and surfaced in the detail page. See [docs/steps/2-5-psu-advanced-features.md](docs/steps/2-5-psu-advanced-features.md).
 
 ## Backlog — v2 and beyond
 
@@ -47,11 +47,15 @@ relevant hardware or use case lands.
 
 ### Advanced PSU features (extends 2.5)
 
-- [ ] **OVP / OCP** — per-channel enable, threshold, trip detect, clear-trip.
-- [ ] **Tracking** — `:OUTPut:TRACk` to slave CH2 set-values to CH1 without
+- [x] **OVP / OCP** — per-channel enable, threshold, trip detect, clear-trip.
+- [x] **Tracking** — `:OUTPut:TRACk` to slave CH2 set-values to CH1 without
       combining outputs.
-- [ ] **Preset memory** — `*SAV` / `*RCL` for saving and recalling full PSU
-      state with named slots.
+- [x] **Preset memory** — `*SAV` / `*RCL` for saving and recalling full PSU
+      state with numbered slots.
+- [ ] **Named preset slots** — wrap `:MEMory:STORe` / `:MEMory:LOAD` so
+      operators can name snapshots instead of remembering which slot is which.
+- [ ] **OVP / OCP delay** — expose `:OUTPut:O[V|C]P:DELay` so fast transients
+      don't nuisance-trip protection.
 
 ### Advanced scope features
 

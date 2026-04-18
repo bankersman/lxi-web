@@ -45,10 +45,59 @@ export interface PsuPairingCapability {
   readonly channels: readonly number[];
 }
 
+/**
+ * Kind of protection event. Over-voltage cuts output when the measured voltage
+ * rises above the configured threshold; over-current does the same for current.
+ */
+export type PsuProtectionKind = "ovp" | "ocp";
+
+export interface PsuProtectionRange {
+  readonly min: number;
+  readonly max: number;
+}
+
+export interface PsuProtectionState {
+  readonly enabled: boolean;
+  readonly level: number;
+  readonly tripped: boolean;
+  readonly range: PsuProtectionRange;
+}
+
+export interface PsuChannelProtectionRanges {
+  readonly ovp: PsuProtectionRange;
+  readonly ocp: PsuProtectionRange;
+}
+
+export interface PsuProtectionCapability {
+  /** Channels that expose OVP/OCP controls. */
+  readonly channels: readonly number[];
+  /** Per-channel allowed range for each protection kind. */
+  readonly ranges: Readonly<Record<number, PsuChannelProtectionRanges>>;
+}
+
+export interface PsuTrackingCapability {
+  /**
+   * Channels that mirror each other when tracking is enabled. DP900 tracks CH1
+   * and CH2 only.
+   */
+  readonly channels: readonly number[];
+}
+
+export interface PsuPresetCapability {
+  /** Number of internal memory slots, typically indexed 0..slots-1. */
+  readonly slots: number;
+}
+
 export interface IPowerSupply extends InstrumentFacade {
   readonly kind: "powerSupply";
   /** Present only when the driver can toggle series/parallel pairing. */
   readonly pairing?: PsuPairingCapability;
+  /** Present when the driver supports CH1/CH2 tracking. */
+  readonly tracking?: PsuTrackingCapability;
+  /** Present when the driver can read/configure OVP/OCP per channel. */
+  readonly protection?: PsuProtectionCapability;
+  /** Present when the driver exposes internal save/recall slots. */
+  readonly presets?: PsuPresetCapability;
   getChannels(): Promise<PsuChannelState[]>;
   setChannelOutput(channel: number, enabled: boolean): Promise<void>;
   setChannelVoltage(channel: number, volts: number): Promise<void>;
@@ -58,4 +107,33 @@ export interface IPowerSupply extends InstrumentFacade {
   getPairingMode?(): Promise<PsuPairingMode>;
   /** Optional — engage or disengage series/parallel pairing. */
   setPairingMode?(mode: PsuPairingMode): Promise<void>;
+  /** Optional — read the tracking state. */
+  getTracking?(): Promise<boolean>;
+  /** Optional — enable or disable tracking. */
+  setTracking?(enabled: boolean): Promise<void>;
+  /** Optional — read the OVP or OCP state of a channel. */
+  getProtection?(channel: number, kind: PsuProtectionKind): Promise<PsuProtectionState>;
+  /** Optional — enable or disable a protection on a channel. */
+  setProtectionEnabled?(
+    channel: number,
+    kind: PsuProtectionKind,
+    enabled: boolean,
+  ): Promise<void>;
+  /** Optional — set the trip level of a protection on a channel. */
+  setProtectionLevel?(
+    channel: number,
+    kind: PsuProtectionKind,
+    level: number,
+  ): Promise<void>;
+  /** Optional — clear a latched protection event on a channel. */
+  clearProtectionTrip?(channel: number, kind: PsuProtectionKind): Promise<void>;
+  /**
+   * Optional — return, in slot order, whether each preset memory slot is
+   * populated.
+   */
+  getPresetCatalog?(): Promise<readonly boolean[]>;
+  /** Optional — save the current instrument state to `slot`. */
+  savePreset?(slot: number): Promise<void>;
+  /** Optional — recall a previously saved state from `slot`. */
+  recallPreset?(slot: number): Promise<void>;
 }

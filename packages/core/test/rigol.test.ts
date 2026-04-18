@@ -134,6 +134,75 @@ test("DP900 setPairingMode emits :OUTPut:PAIR with the expected argument", async
   assert.deepEqual(port.writes, [":OUTPut:PAIR PARallel", ":OUTPut:PAIR OFF"]);
 });
 
+test("DP900 advertises protection, tracking, and preset capabilities", () => {
+  const psu = new RigolDp900(new FakeScpiPort(), parseIdn("RIGOL,DP932E,SN,FW"));
+  assert.deepEqual(psu.protection?.channels, [1, 2, 3]);
+  assert.equal(psu.protection?.ranges[1]?.ovp.max, 33);
+  assert.equal(psu.protection?.ranges[3]?.ovp.max, 6.6);
+  assert.deepEqual(psu.tracking?.channels, [1, 2]);
+  assert.equal(psu.presets?.slots, 10);
+});
+
+test("DP900 getProtection merges state, level, and trip queries", async () => {
+  const port = new FakeScpiPort()
+    .onQuery(/^:OUTPut:OVP\? CH1$/, "1")
+    .onQuery(/^:OUTPut:OVP:VALue\? CH1$/, "12.500")
+    .onQuery(/^:OUTPut:OVP:QUES\? CH1$/, "YES");
+  const psu = new RigolDp900(port, parseIdn("RIGOL,DP932E,SN,FW"));
+  const state = await psu.getProtection!(1, "ovp");
+  assert.equal(state.enabled, true);
+  assert.equal(state.level, 12.5);
+  assert.equal(state.tripped, true);
+  assert.equal(state.range.max, 33);
+});
+
+test("DP900 protection writes emit the documented SCPI", async () => {
+  const port = new FakeScpiPort();
+  const psu = new RigolDp900(port, parseIdn("RIGOL,DP932E,SN,FW"));
+  await psu.setProtectionEnabled!(2, "ovp", true);
+  await psu.setProtectionLevel!(2, "ovp", 8.8);
+  await psu.setProtectionEnabled!(1, "ocp", false);
+  await psu.clearProtectionTrip!(1, "ocp");
+  assert.deepEqual(port.writes, [
+    ":OUTPut:OVP CH2,ON",
+    ":OUTPut:OVP:VALue CH2,8.8",
+    ":OUTPut:OCP CH1,OFF",
+    ":OUTPut:OCP:CLEar CH1",
+  ]);
+});
+
+test("DP900 tracking toggles via :OUTPut:TRACk and parses ON/OFF", async () => {
+  const port = new FakeScpiPort().onQuery(/^:OUTPut:TRACk\?$/, "1");
+  const psu = new RigolDp900(port, parseIdn("RIGOL,DP932E,SN,FW"));
+  assert.equal(await psu.getTracking!(), true);
+  await psu.setTracking!(false);
+  await psu.setTracking!(true);
+  assert.deepEqual(port.writes, [":OUTPut:TRACk OFF", ":OUTPut:TRACk ON"]);
+});
+
+test("DP900 presets save/recall and catalog query", async () => {
+  // Only slot 2 and slot 7 are occupied in this fake catalog.
+  const occupiedSlots = new Set([2, 7]);
+  const port = new FakeScpiPort().onQuery(
+    /^:MEMory:VALid\? RIGOL(\d)\.RSF$/,
+    (cmd) => {
+      const match = /RIGOL(\d)\.RSF/.exec(cmd);
+      const slot = Number(match?.[1] ?? "-1");
+      return occupiedSlots.has(slot) ? "1" : "0";
+    },
+  );
+  const psu = new RigolDp900(port, parseIdn("RIGOL,DP932E,SN,FW"));
+  const catalog = await psu.getPresetCatalog!();
+  assert.equal(catalog.length, 10);
+  assert.equal(catalog[2], true);
+  assert.equal(catalog[7], true);
+  assert.equal(catalog[0], false);
+  await psu.savePreset!(5);
+  await psu.recallPreset!(2);
+  assert.deepEqual(port.writes, ["*SAV 5", "*RCL 2"]);
+  await assert.rejects(() => psu.savePreset!(10), /preset slot/);
+});
+
 test("DM858 setMode sends the matching CONFigure command", async () => {
   const port = new FakeScpiPort();
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));

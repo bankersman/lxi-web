@@ -6,6 +6,9 @@ import { usePolling } from "@/composables/usePolling";
 import { formatSi } from "@/lib/format";
 import type { PsuChannelState, PsuPairingMode } from "@lxi-web/core/browser";
 import PsuPairingControl from "./PsuPairingControl.vue";
+import PsuTrackingControl from "./PsuTrackingControl.vue";
+import PsuPresetsControl from "./PsuPresetsControl.vue";
+import PsuProtectionControl from "./PsuProtectionControl.vue";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
 
@@ -106,6 +109,20 @@ async function toggleOutput(channel: PsuChannelState): Promise<void> {
   await api.setPsuChannelOutput(props.sessionId, channel.id, !channel.output);
   await refresh();
 }
+
+// Bumped whenever something external (pairing change, preset recall, tracking
+// toggle) may have altered channel/OVP/OCP values so child panels know to
+// refetch without waiting for the next poll tick.
+const refreshKey = ref(0);
+function invalidateAll(): void {
+  refreshKey.value += 1;
+  void refresh();
+}
+
+function onPairingChange(mode: PsuPairingMode): void {
+  onPairingChanged(mode);
+  invalidateAll();
+}
 </script>
 
 <template>
@@ -113,7 +130,17 @@ async function toggleOutput(channel: PsuChannelState): Promise<void> {
     <PsuPairingControl
       :session-id="sessionId"
       :enabled="enabled"
-      @change="onPairingChanged"
+      @change="onPairingChange"
+    />
+    <PsuTrackingControl
+      :session-id="sessionId"
+      :enabled="enabled"
+      @change="invalidateAll"
+    />
+    <PsuPresetsControl
+      :session-id="sessionId"
+      :enabled="enabled"
+      @recalled="invalidateAll"
     />
 
     <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-live="polite">
@@ -224,6 +251,14 @@ async function toggleOutput(channel: PsuChannelState): Promise<void> {
             Apply
           </button>
         </form>
+
+        <PsuProtectionControl
+          :session-id="sessionId"
+          :channel="ch.id"
+          :enabled="enabled"
+          :refresh-key="refreshKey"
+          @change="refresh"
+        />
       </section>
 
       <p v-if="error" class="text-xs text-state-error" role="alert">{{ error }}</p>

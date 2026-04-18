@@ -5,6 +5,8 @@ import type {
   PsuChannelState,
   PsuMeasurement,
   PsuPairingMode,
+  PsuProtectionKind,
+  PsuProtectionState,
   SessionSummary,
   TimebaseState,
 } from "@lxi-web/core/browser";
@@ -14,6 +16,24 @@ export interface PsuPairingInfo {
   readonly modes: readonly PsuPairingMode[];
   readonly channels: readonly number[];
   readonly mode: PsuPairingMode;
+}
+
+export interface PsuTrackingInfo {
+  readonly supported: boolean;
+  readonly channels: readonly number[];
+  readonly enabled: boolean;
+}
+
+export interface PsuChannelProtectionInfo {
+  readonly channel: number;
+  readonly ovp: PsuProtectionState;
+  readonly ocp: PsuProtectionState;
+}
+
+export interface PsuPresetsInfo {
+  readonly supported: boolean;
+  readonly slots: number;
+  readonly occupied: readonly boolean[];
 }
 
 export interface WaveformDto {
@@ -186,6 +206,76 @@ export const api = {
       headers: JSON_HEADERS,
       body: JSON.stringify({ mode }),
     });
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getPsuTracking(id: string): Promise<PsuTrackingInfo> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/psu/tracking`);
+    return parse<PsuTrackingInfo>(res);
+  },
+
+  async setPsuTracking(id: string, enabled: boolean): Promise<void> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/psu/tracking`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ enabled }),
+    });
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getPsuProtection(
+    id: string,
+    channel: number,
+  ): Promise<PsuChannelProtectionInfo> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/psu/channels/${channel}/protection`,
+    );
+    return parse<PsuChannelProtectionInfo>(res);
+  },
+
+  async setPsuProtection(
+    id: string,
+    channel: number,
+    kind: PsuProtectionKind,
+    patch: { enabled?: boolean; level?: number },
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/psu/channels/${channel}/protection/${kind}`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(patch) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async clearPsuProtectionTrip(
+    id: string,
+    channel: number,
+    kind: PsuProtectionKind,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/psu/channels/${channel}/protection/${kind}/clear`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getPsuPresets(id: string): Promise<PsuPresetsInfo> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/psu/presets`);
+    return parse<PsuPresetsInfo>(res);
+  },
+
+  async savePsuPreset(id: string, slot: number): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/psu/presets/${slot}/save`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async recallPsuPreset(id: string, slot: number): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/psu/presets/${slot}/recall`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
     await parse<{ ok: boolean }>(res);
   },
 

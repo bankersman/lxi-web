@@ -21,6 +21,8 @@ Living checklist mirroring the subplans. Update when a step finishes (check the 
 - [x] **2.3 Vue shell** — card grid, status, light/dark toggle, Add-device dialog. See [docs/steps/2-3-vue-dashboard-shell.md](docs/steps/2-3-vue-dashboard-shell.md).
 - [x] **2.4 session panels** — card mini-controls + expanded panels; scope uPlot; raw SCPI fallback. See [docs/steps/2-4-per-session-detail-views.md](docs/steps/2-4-per-session-detail-views.md).
 - [x] **2.5 PSU advanced features** — channel coupling (series / parallel), OVP/OCP per channel (enable / threshold / trip / clear), CH1↔CH2 tracking, and 10-slot `*SAV`/`*RCL` preset memory — all exposed as optional capabilities on `IPowerSupply`, implemented on the Rigol DP900 driver, and surfaced in the detail page. See [docs/steps/2-5-psu-advanced-features.md](docs/steps/2-5-psu-advanced-features.md).
+- [ ] **2.6 DMM advanced features** — optional capabilities on `IMultimeter` modelled on **IVI-4.8 IviDmm** (`ranging`, `math`, `logging`, `triggering`, `temperature`, `dualDisplay`, `presets`) plus 4-wire resistance: manual range + NPLC + AutoZero, math (null / dB / dBm / stats / pass-fail), buffered trend logging streamed as NDJSON, trigger source / slope / delay / sample count, temperature unit + transducer, dual display, and shared preset memory. Implemented on the Rigol DM858 driver and surfaced as capability-gated cards on the DMM detail page. See [docs/steps/2-6-dmm-advanced-features.md](docs/steps/2-6-dmm-advanced-features.md).
+- [ ] **2.7 Scope advanced features** — optional capabilities on `IOscilloscope` modelled on **IVI-4.1 IviScope** (`trigger`, `acquisition`, `measurements`, `math`, `references`, `cursors`, `decoders`, `history`, `display`, `presets`): full trigger matrix (Edge / Pulse / Slope / Runt / Window / Timeout / Setup-Hold / Nth-Edge / Delay + serial I²C/SPI/UART/CAN/LIN), Auto/Normal/Single + Force, acquisition modes with memory depth, 41-item automatic measurements with statistics, math incl. FFT, 10 reference waveforms, cursors, protocol decoders with NDJSON packet stream, history/segmented frames, display screenshot (PNG/BMP/JPG), and setup presets. Implemented on the Rigol DHO800 driver (DHO804 tested) and surfaced as tabs on the side column so the hero uPlot keeps its real estate. See [docs/steps/2-7-scope-advanced-features.md](docs/steps/2-7-scope-advanced-features.md).
 
 ## Backlog — v2 and beyond
 
@@ -57,13 +59,33 @@ relevant hardware or use case lands.
 - [ ] **OVP / OCP delay** — expose `:OUTPut:O[V|C]P:DELay` so fast transients
       don't nuisance-trip protection.
 
-### Advanced scope features
+### Advanced DMM features (extends 2.6)
 
-- [ ] **Multi-channel overlay** — plot multiple enabled channels on one uPlot
-      canvas with legend and per-channel color.
-- [ ] **Math channels / FFT** — driver-dependent, starts with Rigol DHO.
-- [ ] **Cursors and measurements** — on-chart time/voltage cursors plus a
-      readout of common measurements (Vpp, frequency, rise time).
+- [ ] **Frequency-measurement aperture** — `:SENSe:FREQuency:APERture` so
+      users can trade gate time for measurement precision.
+- [ ] **Digitize mode** — explicit sample-and-stream digitizing at the
+      instrument's fastest supported rate, distinct from the buffered trend
+      logger.
+- [ ] **Per-range ACV / ACI bandwidth** — `:SENSe:VOLTage:AC:BANDwidth` to
+      pick low / medium / high filter on AC ranges.
+
+### Advanced scope features (extends 2.7)
+
+- [ ] **Pass / fail mask testing** — mask editor overlay on the hero uPlot
+      plus the underlying `:MASK:*` SCPI wiring.
+- [ ] **Zone trigger** — on-plot region editor with `:TRIGger:ZONE:*`
+      plumbing for Rigol DHO800.
+- [ ] **Digital / logic channels** — expose the MSO option on DHO804 as
+      digital channels in `getChannels`.
+- [ ] **Protocol-decoder waterfall** — richer bus-aware visualization on
+      top of the plain packet list from 2.7.
+
+### Shared capability follow-ups
+
+- [ ] **Unified `InstrumentPresetCapability`** — promote the preset shape
+      from 2.5, 2.6, and 2.7 into a shared type in `@lxi-web/core` so PSU /
+      DMM / scope all re-export it by capability name rather than each
+      redeclaring `slots: number`.
 
 ### Platform
 

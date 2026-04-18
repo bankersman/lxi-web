@@ -60,41 +60,48 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Check Docker Hub availability
-        id: dh
-        env:
-          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
-        run: |
-          if [ -n "$DH_USER" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-            echo "repo=$DH_USER/lxi-web" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Log in to Docker Hub
-        if: steps.dh.outputs.enabled == 'true'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Compute image tags (GHCR + Docker Hub)
-        if: steps.dh.outputs.enabled == 'true'
-        id: meta-both
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ghcr.io/${{ github.repository }}
-            docker.io/${{ steps.dh.outputs.repo }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+      # ---------------------------------------------------------------
+      # Docker Hub publishing is disabled: it requires DOCKERHUB_USERNAME
+      # / DOCKERHUB_TOKEN secrets that aren't configured on this repo.
+      # Re-enable by uncommenting the steps below (and switching the
+      # `tags:`/`labels:` inputs on the build step back to the
+      # `meta-both.outputs.* || meta-ghcr.outputs.*` fallback).
+      #
+      # - name: Check Docker Hub availability
+      #   id: dh
+      #   env:
+      #     DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+      #   run: |
+      #     if [ -n "$DH_USER" ]; then
+      #       echo "enabled=true" >> "$GITHUB_OUTPUT"
+      #       echo "repo=$DH_USER/lxi-web" >> "$GITHUB_OUTPUT"
+      #     else
+      #       echo "enabled=false" >> "$GITHUB_OUTPUT"
+      #     fi
+      #
+      # - name: Log in to Docker Hub
+      #   if: steps.dh.outputs.enabled == 'true'
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+      #
+      # - name: Compute image tags (GHCR + Docker Hub)
+      #   if: steps.dh.outputs.enabled == 'true'
+      #   id: meta-both
+      #   uses: docker/metadata-action@v5
+      #   with:
+      #     images: |
+      #       ghcr.io/${{ github.repository }}
+      #       docker.io/${{ steps.dh.outputs.repo }}
+      #     tags: |
+      #       type=semver,pattern={{version}}
+      #       type=semver,pattern={{major}}.{{minor}}
+      #       type=semver,pattern={{major}}
+      #       type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+      # ---------------------------------------------------------------
 
       - name: Compute image tags (GHCR only)
-        if: steps.dh.outputs.enabled != 'true'
         id: meta-ghcr
         uses: docker/metadata-action@v5
         with:
@@ -113,8 +120,8 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta-both.outputs.tags || steps.meta-ghcr.outputs.tags }}
-          labels: ${{ steps.meta-both.outputs.labels || steps.meta-ghcr.outputs.labels }}
+          tags: ${{ steps.meta-ghcr.outputs.tags }}
+          labels: ${{ steps.meta-ghcr.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: true
@@ -127,72 +134,79 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
-  npm:
-    name: Publish @lxi-web/core to npm
-    needs: sanity
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Verify core package version matches tag
-        run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          PKG=$(node -p "require('./packages/core/package.json').version")
-          if [ "$TAG" != "$PKG" ]; then
-            echo "::error::git tag v$TAG does not match packages/core/package.json version $PKG"
-            exit 1
-          fi
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.30.3
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-          registry-url: https://registry.npmjs.org
-
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @lxi-web/core build
-      - run: pnpm --filter @lxi-web/core test:exports
-
-      - name: Pick dist-tag
-        id: disttag
-        run: |
-          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
-            echo "tag=next" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=latest" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Check NPM token
-        id: npmcheck
-        env:
-          TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          if [ -n "$TOKEN" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::NPM_TOKEN secret is not set; skipping npm publish."
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Publish
-        if: steps.npmcheck.outputs.enabled == 'true'
-        working-directory: packages/core
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: "true"
-        run: |
-          pnpm publish --access public --no-git-checks --provenance --tag ${{ steps.disttag.outputs.tag }}
+  # -----------------------------------------------------------------
+  # npm publishing is disabled: it requires an NPM_TOKEN secret that
+  # isn't configured on this repo (we're not publishing @lxi-web/core
+  # to npm yet). Re-enable by uncommenting the job below and re-adding
+  # `npm` to the `github-release.needs` list.
+  #
+  # npm:
+  #   name: Publish @lxi-web/core to npm
+  #   needs: sanity
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     id-token: write
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Verify core package version matches tag
+  #       run: |
+  #         TAG="${GITHUB_REF_NAME#v}"
+  #         PKG=$(node -p "require('./packages/core/package.json').version")
+  #         if [ "$TAG" != "$PKG" ]; then
+  #           echo "::error::git tag v$TAG does not match packages/core/package.json version $PKG"
+  #           exit 1
+  #         fi
+  #
+  #     - uses: pnpm/action-setup@v4
+  #       with:
+  #         version: 10.30.3
+  #
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 24
+  #         cache: pnpm
+  #         registry-url: https://registry.npmjs.org
+  #
+  #     - run: pnpm install --frozen-lockfile
+  #     - run: pnpm --filter @lxi-web/core build
+  #     - run: pnpm --filter @lxi-web/core test:exports
+  #
+  #     - name: Pick dist-tag
+  #       id: disttag
+  #       run: |
+  #         if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+  #           echo "tag=next" >> "$GITHUB_OUTPUT"
+  #         else
+  #           echo "tag=latest" >> "$GITHUB_OUTPUT"
+  #         fi
+  #
+  #     - name: Check NPM token
+  #       id: npmcheck
+  #       env:
+  #         TOKEN: ${{ secrets.NPM_TOKEN }}
+  #       run: |
+  #         if [ -n "$TOKEN" ]; then
+  #           echo "enabled=true" >> "$GITHUB_OUTPUT"
+  #         else
+  #           echo "::warning::NPM_TOKEN secret is not set; skipping npm publish."
+  #           echo "enabled=false" >> "$GITHUB_OUTPUT"
+  #         fi
+  #
+  #     - name: Publish
+  #       if: steps.npmcheck.outputs.enabled == 'true'
+  #       working-directory: packages/core
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  #         NPM_CONFIG_PROVENANCE: "true"
+  #       run: |
+  #         pnpm publish --access public --no-git-checks --provenance --tag ${{ steps.disttag.outputs.tag }}
+  # -----------------------------------------------------------------
 
   github-release:
     name: Create GitHub Release
-    needs: [docker, npm]
+    needs: [docker]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

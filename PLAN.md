@@ -64,7 +64,7 @@ todos:
     status: completed
   - id: epic-3-3-session-persistence
     content: Epic 3.3 — Session persistence (saved connections, reopen last session on launch); no auth; progress + docs/steps/3-3-*.md; commit
-    status: pending
+    status: completed
   - id: epic-3-4-device-detail-ux
     content: Epic 3.4 — Device detail UX (per-kind section order, overview cards, quick actions within reason); progress + docs/steps/3-4-*.md; commit
     status: pending

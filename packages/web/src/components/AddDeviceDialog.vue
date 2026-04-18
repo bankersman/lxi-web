@@ -5,6 +5,7 @@ import type { DiscoveryCandidate } from "@lxi-web/core/browser";
 import { DEFAULT_SCPI_PORT } from "@lxi-web/core/browser";
 import { api } from "@/api/client";
 import { useSessionsStore } from "@/stores/sessions";
+import SavedConnectionsList from "./SavedConnectionsList.vue";
 
 const props = defineProps<{ open: boolean }>();
 const emit = defineEmits<{ (e: "close"): void }>();
@@ -138,6 +139,8 @@ async function submit(event: Event): Promise<void> {
             <X class="h-4 w-4" aria-hidden="true" />
           </button>
         </header>
+
+        <SavedConnectionsList @connected="emit('close')" />
 
         <section class="flex flex-col gap-2 border-b border-border px-4 py-3">
           <div class="flex items-center justify-between">

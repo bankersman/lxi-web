@@ -7,6 +7,7 @@ import type {
   SessionSummary,
 } from "@lxi-web/core/browser";
 import { api } from "@/api/client";
+import { useSavedConnectionsStore } from "./savedConnections";
 
 type TopicKey = `${string}::${ReadingTopic}`;
 
@@ -52,11 +53,17 @@ export const useSessionsStore = defineStore("sessions", () => {
     return `${sessionId}::${topic}` as TopicKey;
   }
 
+  let autoReopenDone = false;
+
   function apply(message: ServerMessage): void {
     if (message.type === "sessions:init") {
       const next = new Map<string, SessionSummary>();
       for (const s of message.sessions) next.set(s.id, s);
       byId.value = next;
+      if (!autoReopenDone) {
+        autoReopenDone = true;
+        void reopenAutoConnects();
+      }
     } else if (message.type === "sessions:update") {
       const next = new Map(byId.value);
       next.set(message.session.id, message.session);
@@ -182,7 +189,45 @@ export const useSessionsStore = defineStore("sessions", () => {
     const next = new Map(byId.value);
     next.set(summary.id, summary);
     byId.value = next;
+    // Auto-record the address in the browser's saved list so the operator
+    // doesn't have to retype it next time. Explicit "Forget" lives in the UI.
+    try {
+      const saved = useSavedConnectionsStore();
+      saved.markConnected(summary.host, summary.port);
+    } catch {
+      // Pinia may not be installed in some test harnesses; fall through.
+    }
     return summary;
+  }
+
+  /**
+   * Open a session for every saved entry flagged auto-connect that isn't
+   * already live. Fires once per page load right after the first
+   * `sessions:init` frame so stale entries from a previous server lifetime
+   * are honored, but later WebSocket reconnects don't override explicit
+   * Disconnect actions.
+   */
+  async function reopenAutoConnects(): Promise<void> {
+    let saved: ReturnType<typeof useSavedConnectionsStore>;
+    try {
+      saved = useSavedConnectionsStore();
+    } catch {
+      return;
+    }
+    const live = new Set<string>();
+    for (const s of byId.value.values()) {
+      live.add(`${s.host.toLowerCase()}:${s.port}`);
+    }
+    for (const entry of saved.list) {
+      if (!entry.autoConnect) continue;
+      const key = `${entry.host.toLowerCase()}:${entry.port}`;
+      if (live.has(key)) continue;
+      try {
+        await open(entry.host, entry.port);
+      } catch (err) {
+        console.warn(`auto-reopen failed for ${entry.label}:`, err);
+      }
+    }
   }
 
   async function remove(id: string): Promise<void> {
@@ -214,6 +259,7 @@ export const useSessionsStore = defineStore("sessions", () => {
     open,
     remove,
     reconnect,
+    reopenAutoConnects,
     subscribeTopic,
     wsConnected,
     wsError,

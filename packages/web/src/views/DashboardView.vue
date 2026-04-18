@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import { Plus } from "lucide-vue-next";
+import { Bookmark, Plus, RefreshCcw } from "lucide-vue-next";
 import { useSessionsStore } from "@/stores/sessions";
+import { useSavedConnectionsStore } from "@/stores/savedConnections";
 import AppHeader from "@/components/AppHeader.vue";
 import DeviceCard from "@/components/DeviceCard.vue";
 import AddDeviceDialog from "@/components/AddDeviceDialog.vue";
@@ -10,12 +11,37 @@ import PsuMiniPanel from "@/components/panels/PsuMiniPanel.vue";
 import DmmMiniPanel from "@/components/panels/DmmMiniPanel.vue";
 
 const sessions = useSessionsStore();
+const saved = useSavedConnectionsStore();
 const dialogOpen = ref(false);
+const reopening = ref(false);
+const reopenError = ref<string | null>(null);
 
 onMounted(() => {
   void sessions.refresh();
   sessions.connect();
 });
+
+async function reopenAllSaved(): Promise<void> {
+  if (reopening.value) return;
+  reopening.value = true;
+  reopenError.value = null;
+  const errors: string[] = [];
+  try {
+    for (const entry of saved.list) {
+      if (sessions.list.some((s) => s.host === entry.host && s.port === entry.port)) {
+        continue;
+      }
+      try {
+        await sessions.open(entry.host, entry.port);
+      } catch (err) {
+        errors.push(`${entry.label}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    if (errors.length > 0) reopenError.value = errors.join(" · ");
+  } finally {
+    reopening.value = false;
+  }
+}
 </script>
 
 <template>
@@ -29,29 +55,72 @@ onMounted(() => {
             {{ sessions.count }} connected — click a card to open full controls.
           </p>
         </div>
-        <button
-          type="button"
-          class="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          @click="dialogOpen = true"
-        >
-          <Plus class="h-4 w-4" aria-hidden="true" />
-          Add device
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            v-if="saved.count > 0"
+            type="button"
+            class="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="reopening"
+            @click="reopenAllSaved"
+          >
+            <RefreshCcw
+              class="h-4 w-4"
+              :class="reopening ? 'animate-spin' : ''"
+              aria-hidden="true"
+            />
+            {{ reopening ? "Reopening…" : "Reopen saved" }}
+          </button>
+          <button
+            type="button"
+            class="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            @click="dialogOpen = true"
+          >
+            <Plus class="h-4 w-4" aria-hidden="true" />
+            Add device
+          </button>
+        </div>
       </div>
+
+      <p
+        v-if="reopenError"
+        class="mb-4 rounded-md border border-state-error/30 bg-state-error/10 px-3 py-2 text-xs text-state-error"
+        role="alert"
+      >
+        Some saved connections could not be reopened — {{ reopenError }}
+      </p>
 
       <section v-if="sessions.list.length === 0" class="rounded-[var(--radius-card)] border border-dashed border-border bg-surface-2 p-10 text-center">
         <h3 class="text-sm font-semibold">No devices connected</h3>
         <p class="mt-1 text-sm text-fg-muted">
-          Add your first oscilloscope, power supply, or multimeter to get started.
+          <template v-if="saved.count > 0">
+            {{ saved.count }}
+            {{ saved.count === 1 ? "saved connection" : "saved connections" }} in this browser — reopen them above,
+            or add a new device.
+          </template>
+          <template v-else>
+            Add your first oscilloscope, power supply, or multimeter to get started.
+          </template>
         </p>
-        <button
-          type="button"
-          class="mt-4 inline-flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          @click="dialogOpen = true"
-        >
-          <Plus class="h-4 w-4" aria-hidden="true" />
-          Add device
-        </button>
+        <div class="mt-4 flex items-center justify-center gap-2">
+          <button
+            v-if="saved.count > 0"
+            type="button"
+            class="inline-flex h-9 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="reopening"
+            @click="reopenAllSaved"
+          >
+            <Bookmark class="h-4 w-4" aria-hidden="true" />
+            Reopen saved
+          </button>
+          <button
+            type="button"
+            class="inline-flex h-9 items-center gap-2 rounded-md bg-accent px-3 text-sm font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            @click="dialogOpen = true"
+          >
+            <Plus class="h-4 w-4" aria-hidden="true" />
+            Add device
+          </button>
+        </div>
       </section>
 
       <section

@@ -55,6 +55,8 @@ with your `*IDN?` response, `*OPT?` output, and firmware version.
 | Owon      | XDS3000          | XDS3102A        | Preview | 4 ch / 100 MHz. **Listens on TCP port 3000**. Partial LXI conformance — mDNS often absent; add manually. No decoders / references / history. |
 | Owon      | XDS3000          | XDS3104AE       | Preview | 4 ch / 100 MHz. Same caveats as XDS3102A. IDN sometimes advertises "Lilliput Electronics" (Owon's parent). |
 
+Scope not listed? [File a hardware report](https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml&kind=oscilloscope) — the **Device kind** dropdown is pre-selected for you.
+
 ## Power supplies
 
 | Vendor    | Family  | Variant   | Status  | Notes |
@@ -76,6 +78,8 @@ with your `*IDN?` response, `*OPT?` output, and firmware version.
 | Owon      | SPE     | SPE6053   | Preview | 1 ch, 60 V / 5 A. |
 | Owon      | SPE     | SPE6103   | Preview | 1 ch, 60 V / 10 A. |
 
+PSU not listed? [File a hardware report](https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml&kind=power-supply).
+
 ## Multimeters
 
 | Vendor    | Family      | Variant  | Status  | Notes |
@@ -96,6 +100,8 @@ with your `*IDN?` response, `*OPT?` output, and firmware version.
 | Owon      | XDM         | XDM1241  | Preview | 4½-digit. Same surface as XDM1041; extra sample memory. |
 | Owon      | XDM         | XDM2041  | Preview | 5½-digit. Adds 4-wire resistance and 5 preset slots. |
 
+DMM not listed? [File a hardware report](https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml&kind=multimeter).
+
 ## Electronic loads
 
 | Vendor    | Family | Variant     | Status  | Notes |
@@ -108,6 +114,8 @@ with your `*IDN?` response, `*OPT?` output, and firmware version.
 | Siglent   | SDL    | SDL1030X    | Preview | 300 W + list mode. |
 | Keysight  | EL3    | EL34143A    | Preview | 1 ch, 150 V / 40 A / 350 W. CC/CV/CR/CP + OVP/OCP/OPP. |
 | Keysight  | EL3    | EL34243A    | Preview | 2 ch, 150 V / 40 A / 300 W per channel. |
+
+Load not listed? [File a hardware report](https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml&kind=electronic-load).
 
 ## Signal / arbitrary waveform generators
 
@@ -123,12 +131,16 @@ with your `*IDN?` response, `*OPT?` output, and firmware version.
 | Keysight  | Trueform 33500B | 33509B / 33510B / 33511B / 33512B / 33521B / 33522B | Preview | 20 – 30 MHz, 64k – 1M arb memory. |
 | Keysight  | Trueform 33600A | 33611A / 33612A / 33621A / 33622A | Preview | 80 / 120 MHz, 1 GSa/s, 4 Msa arb. |
 
+Generator not listed? [File a hardware report](https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml&kind=signal-generator).
+
 ## Spectrum analyzers
 
 | Vendor    | Family     | Variant                               | Status  | Notes |
 | --------- | ---------- | ------------------------------------- | ------- | --- |
 | Siglent   | SSA3000X   | SSA3015X / SSA3021X / SSA3032X / SSA3050X | Preview | 1.5 / 2.1 / 3.2 / 5.0 GHz. |
 | Siglent   | SSA3000X-R | SSA3015X-R / SSA3021X-R / SSA3032X-R / SSA3050X-R | Preview | Tracking-generator variants. The TG facade itself is backlog — the SA sweep works today. |
+
+Analyzer not listed? [File a hardware report](https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml&kind=spectrum-analyzer).
 
 ## Port + discovery quick reference
 

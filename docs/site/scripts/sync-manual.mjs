@@ -37,14 +37,20 @@ async function main() {
   );
 }
 
-// "../../<path>" from docs/user/*.md reaches into the repo root. VitePress
-// treats those as dead links because the site only knows about files under
-// docs/site/. Rewrite them to absolute GitHub URLs so the rendered site
-// still links to the right file. On GitHub the original relative link
-// already works, so this only affects the site copy.
+// Single source of truth for the repo slug. Overridable by
+// `DOCS_REPO_SLUG` so a fork can rebuild the VitePress site against
+// their own github.com/<owner>/<repo> without touching markdown.
+// README.md + docs/user/*.md still hardcode the canonical slug because
+// GitHub renders them directly with no build step — but any such
+// hardcode inside the synced manual gets normalized through
+// `rewriteRepoSlug` below so fork builds come out right.
 const repoSlug = process.env.DOCS_REPO_SLUG ?? "bankersman/lxi-web";
 const repoBranch = process.env.DOCS_REPO_BRANCH ?? "main";
-const repoUrl = `https://github.com/${repoSlug}/blob/${repoBranch}`;
+const repoHome = `https://github.com/${repoSlug}`;
+const repoBlobUrl = `${repoHome}/blob/${repoBranch}`;
+const canonicalSlug = "bankersman/lxi-web";
+
+export { repoSlug, repoHome, repoBlobUrl };
 
 function rewriteLinks(md) {
   // `../../<path>` from docs/<section>/*.md reaches into the repo root.
@@ -52,7 +58,7 @@ function rewriteLinks(md) {
   // to absolute GitHub URLs. On GitHub the original relative link already
   // works; this only affects the synced site copy.
   let out = md.replace(/\]\(\.\.\/\.\.\/([^)\s]+)\)/g, (_match, path) => {
-    return `](${repoUrl}/${path})`;
+    return `](${repoBlobUrl}/${path})`;
   });
   // `../user/foo.md` from docs/contributing/*.md is copied into
   // docs/site/manual/foo.md on the site; rewrite to the site path so the
@@ -72,8 +78,18 @@ function rewriteLinks(md) {
   // docs/steps/. That directory is not synced into the site (it's
   // maintainer-facing), so point those links at GitHub.
   out = out.replace(/\]\(\.\.\/steps\/([^)\s]+)\)/g, (_match, path) => {
-    return `](${repoUrl}/docs/steps/${path})`;
+    return `](${repoBlobUrl}/docs/steps/${path})`;
   });
+  // Normalize the canonical `bankersman/lxi-web` slug to the configured
+  // `repoSlug`. No-op in the default build; for forks that set
+  // `DOCS_REPO_SLUG`, every hardcoded github.com/bankersman/lxi-web in
+  // the manual source redirects to their fork in the built site.
+  if (repoSlug !== canonicalSlug) {
+    out = out.replaceAll(
+      `https://github.com/${canonicalSlug}/`,
+      `${repoHome}/`,
+    );
+  }
   return out;
 }
 

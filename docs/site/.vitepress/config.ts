@@ -2,6 +2,13 @@ import { defineConfig } from "vitepress";
 
 const base = process.env.DOCS_BASE ?? "/lxi-web/";
 
+// Single source of truth for the github.com/<owner>/<repo> slug used
+// by the site chrome (GitHub nav link, socialLinks). Mirrors the
+// `repoSlug` convention in scripts/sync-manual.mjs so a fork can point
+// both at its own repo with one env var (`DOCS_REPO_SLUG`).
+const repoSlug = process.env.DOCS_REPO_SLUG ?? "bankersman/lxi-web";
+const repoUrl = `https://github.com/${repoSlug}`;
+
 export default defineConfig({
   title: "lxi-web",
   description: "Browser dashboard for LXI / SCPI-over-TCP instruments",
@@ -17,7 +24,7 @@ export default defineConfig({
       { text: "Roadmap", link: "/manual/roadmap" },
       {
         text: "GitHub",
-        link: "https://github.com/bankersman/lxi-web",
+        link: repoUrl,
       },
     ],
     sidebar: {
@@ -89,9 +96,7 @@ export default defineConfig({
     search: {
       provider: "local",
     },
-    socialLinks: [
-      { icon: "github", link: "https://github.com/bankersman/lxi-web" },
-    ],
+    socialLinks: [{ icon: "github", link: repoUrl }],
     footer: {
       message: "Released under the MIT License.",
       copyright: "Copyright © lxi-web contributors",

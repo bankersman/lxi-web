@@ -1,0 +1,19 @@
+{
+  "name": "@lxi-web/docs",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "VitePress landing page + manual for lxi-web",
+  "type": "module",
+  "scripts": {
+    "sync": "node scripts/sync-manual.mjs",
+    "predev": "npm run sync",
+    "prebuild": "npm run sync",
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.5.0"
+  }
+}

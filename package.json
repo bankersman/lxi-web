@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "description": "Browser dashboard for LXI / SCPI-over-TCP instruments",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=24"

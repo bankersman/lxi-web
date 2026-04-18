@@ -1,0 +1,32 @@
+name: Feature request
+description: Propose a new capability or UX improvement.
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: What problem does this solve? Who benefits?
+    validations:
+      required: true
+
+  - type: textarea
+    id: ux
+    attributes:
+      label: Proposed UX
+      description: Sketch the flow — dashboard? device panel? CLI? — and where it would live.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact on existing capability layout
+      description: Does this rearrange a panel? Add a new section? Reuse an existing one?
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you think about and reject?

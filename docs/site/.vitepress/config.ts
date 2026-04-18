@@ -1,0 +1,61 @@
+import { defineConfig } from "vitepress";
+
+const base = process.env.DOCS_BASE ?? "/lxi-web/";
+
+export default defineConfig({
+  title: "lxi-web",
+  description: "Browser dashboard for LXI / SCPI-over-TCP instruments",
+  base,
+  lang: "en-US",
+  cleanUrls: true,
+  lastUpdated: true,
+  themeConfig: {
+    nav: [
+      { text: "Manual", link: "/manual/" },
+      { text: "Roadmap", link: "/manual/roadmap" },
+      {
+        text: "GitHub",
+        link: "https://github.com/lxi-web/lxi-web",
+      },
+    ],
+    sidebar: {
+      "/manual/": [
+        {
+          text: "Manual",
+          items: [
+            { text: "Overview", link: "/manual/" },
+            { text: "Installation", link: "/manual/installation" },
+            { text: "Getting started", link: "/manual/getting-started" },
+          ],
+        },
+        {
+          text: "Device kinds",
+          items: [
+            { text: "Oscilloscope", link: "/manual/oscilloscope" },
+            { text: "Power supply", link: "/manual/power-supply" },
+            { text: "Multimeter", link: "/manual/multimeter" },
+            { text: "Raw SCPI", link: "/manual/raw-scpi" },
+          ],
+        },
+        {
+          text: "Reference",
+          items: [
+            { text: "Troubleshooting", link: "/manual/troubleshooting" },
+            { text: "Hardware reports", link: "/manual/hardware-reports" },
+            { text: "Roadmap", link: "/manual/roadmap" },
+          ],
+        },
+      ],
+    },
+    search: {
+      provider: "local",
+    },
+    socialLinks: [
+      { icon: "github", link: "https://github.com/lxi-web/lxi-web" },
+    ],
+    footer: {
+      message: "Released under the MIT License.",
+      copyright: "Copyright © lxi-web contributors",
+    },
+  },
+});

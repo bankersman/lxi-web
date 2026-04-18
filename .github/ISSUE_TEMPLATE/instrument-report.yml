@@ -1,0 +1,87 @@
+name: Hardware report
+description: Share a new LXI instrument — what works, what does not, and what its `*IDN?` says.
+title: "[hw] <vendor> <model>"
+labels: ["hardware-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping grow the supported-hardware matrix!
+        Please include as much detail as you can — the `*IDN?` string is
+        mandatory; everything else makes a future driver easier to write.
+
+  - type: textarea
+    id: idn
+    attributes:
+      label: "`*IDN?` response"
+      description: Copy it verbatim from the overview card on the device page or from the raw SCPI console.
+      placeholder: RIGOL TECHNOLOGIES,DHO804,DHO8A123456789,00.01.02
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: vendor
+    attributes:
+      label: Vendor
+      placeholder: Rigol
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      placeholder: DHO804
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Device kind
+      options:
+        - oscilloscope
+        - power-supply
+        - multimeter
+        - other
+    validations:
+      required: true
+
+  - type: input
+    id: firmware
+    attributes:
+      label: Firmware version
+      placeholder: 00.01.02
+
+  - type: textarea
+    id: worked
+    attributes:
+      label: What worked
+      description: Which panels, which controls, anything that was pleasantly boring.
+    validations:
+      required: false
+
+  - type: textarea
+    id: failed
+    attributes:
+      label: What failed
+      description: Commands that errored, readings that looked wrong, controls that did nothing.
+    validations:
+      required: false
+
+  - type: textarea
+    id: scpi
+    attributes:
+      label: SCPI snippets that surprised you
+      description: Quirks, undocumented commands, stale responses, off-by-one indices. Raw transcript is fine.
+      render: text
+
+  - type: input
+    id: build
+    attributes:
+      label: Dashboard build
+      description: Docker image digest, or `git rev-parse HEAD` for a source build.
+      placeholder: ghcr.io/<owner>/lxi-web@sha256:... or abc1234
+    validations:
+      required: true

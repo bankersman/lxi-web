@@ -70,7 +70,7 @@ todos:
     status: completed
   - id: epic-3-5-user-docs-and-landing
     content: Epic 3.5 — User documentation + landing page. README rewrite (two-path quick-start, supported-hardware table, screenshots, CTA), user manual under docs/user/ (installation, getting started, per-kind pages, raw SCPI, troubleshooting, hardware reports, roadmap), VitePress site under docs/site/ reusing docs/user/*.md, GH Pages workflow, .github/ISSUE_TEMPLATE/ (instrument-report.yml, bug.yml, feature.yml, config.yml), LICENSE (MIT). Progress + docs/steps/3-5-*.md; commit
-    status: pending
+    status: completed
   - id: epic-3-6-docker-image-and-release
     content: Epic 3.6 — Docker image + release workflow. Fastify serves built web dist in production (+ /healthz), multi-stage Dockerfile (distroless Node 24, nonroot, multi-arch amd64/arm64), docker-compose.yml, .github/workflows/release.yml on v*.*.* tags with shared sanity gate, GHCR + Docker Hub mirror via docker/metadata-action semver tags, build provenance attestation, auto-generated GitHub Release. Secrets (Docker Hub only) — DOCKERHUB_USERNAME + DOCKERHUB_TOKEN. Progress + docs/steps/3-6-*.md; commit
     status: pending

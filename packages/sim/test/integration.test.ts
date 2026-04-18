@@ -54,6 +54,14 @@ import { fluke8845aPersonality } from "../personalities/fluke/8845a.js";
 import { fluke8846aPersonality } from "../personalities/fluke/8846a.js";
 import { fluke8588aPersonality } from "../personalities/fluke/8588a.js";
 import { fluke5522aPersonality } from "../personalities/fluke/5522a.js";
+import { gwInstekGds1054bPersonality } from "../personalities/gw-instek/gds1054b.js";
+import { gwInstekGds2102ePersonality } from "../personalities/gw-instek/gds2102e.js";
+import { gwInstekGpp4323Personality } from "../personalities/gw-instek/gpp4323.js";
+import { gwInstekGpd4303sPersonality } from "../personalities/gw-instek/gpd4303s.js";
+import { gwInstekPsw3036Personality } from "../personalities/gw-instek/psw30-36.js";
+import { gwInstekGdm9061Personality } from "../personalities/gw-instek/gdm9061.js";
+import { gwInstekAfg2125Personality } from "../personalities/gw-instek/afg2125.js";
+import { gwInstekGsp9330Personality } from "../personalities/gw-instek/gsp9330.js";
 import type {
   KeysightE36,
   KeysightTrueVolt,
@@ -75,6 +83,11 @@ import type {
   RndsFpc,
   FlukeBenchDmm,
   FlukeCalibrator,
+  GwInstekGds,
+  GwInstekGpp,
+  GwInstekGdm,
+  GwInstekAfg,
+  GwInstekGsp,
 } from "@lxi-web/core";
 
 async function withSimulator<T>(
@@ -883,5 +896,139 @@ test("pnpm test:sim — Fluke 5522A personality + calibrator driver sources volt
     assert.equal(channels.length, 1);
     assert.equal(channels[0]?.setVoltage, 10);
     assert.equal(channels[0]?.output, true);
+  });
+});
+
+test("pnpm test:sim — GW Instek GDS-1054B personality + scope driver reads waveform", async () => {
+  await withSimulator(gwInstekGds1054bPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "GDS-1054B");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "gwinstek-gds-1054b");
+    const scope = entry!.create(session, parsed) as GwInstekGds;
+    assert.equal(scope.kind, "oscilloscope");
+    const tb = await scope.getTimebase();
+    assert.ok(Number.isFinite(tb.scale));
+    const wf = await scope.readWaveform(1);
+    assert.ok(wf.y.length > 0, "GDS waveform must contain decoded samples");
+    assert.ok(wf.xIncrement > 0);
+  });
+});
+
+test("pnpm test:sim — GW Instek GDS-2102E personality routes to mid-tier profile", async () => {
+  await withSimulator(gwInstekGds2102ePersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "GDS-2102E");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "gwinstek-gds-2102e");
+    const scope = entry!.create(session, parsed) as GwInstekGds;
+    assert.equal(scope.profile.decoders.length, 3);
+  });
+});
+
+test("pnpm test:sim — GW Instek GPP-4323 personality + PSU driver round-trips voltage", async () => {
+  await withSimulator(gwInstekGpp4323Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "GPP-4323");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "gwinstek-gpp-4323");
+    const psu = entry!.create(session, parsed) as GwInstekGpp;
+    assert.ok(psu.protection, "GPP-4323 must expose protection");
+    assert.ok(psu.presets, "GPP-4323 must expose preset memory");
+    await psu.setChannelVoltage(1, 12.5);
+    await psu.setChannelOutput(1, true);
+    const channels = await psu.getChannels();
+    assert.equal(channels[0]?.setVoltage, 12.5);
+    assert.equal(channels[0]?.output, true);
+  });
+});
+
+test("pnpm test:sim — GW Instek GPD-4303S personality + reduced PSU driver rejects protection", async () => {
+  await withSimulator(gwInstekGpd4303sPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "GPD-4303S");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "gwinstek-gpd-4303s");
+    const psu = entry!.create(session, parsed) as GwInstekGpp;
+    assert.equal(psu.protection, undefined);
+    assert.equal(psu.presets, undefined);
+    await assert.rejects(() => psu.getProtection(1, "ovp"));
+    await assert.rejects(() => psu.savePreset(0));
+  });
+});
+
+test("pnpm test:sim — GW Instek PSW30-36 personality uses single-channel SOURce tree", async () => {
+  await withSimulator(gwInstekPsw3036Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "PSW30-36");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "gwinstek-psw30-36");
+    assert.equal(entry?.kind, "powerSupply");
+    const psu = entry!.create(session, parsed) as GwInstekGpp;
+    assert.equal(psu.profile.family, "psw");
+    await psu.setChannelVoltage(1, 24);
+    await psu.setChannelOutput(1, true);
+    const state = (await psu.getChannels())[0];
+    assert.equal(state?.setVoltage, 24);
+    assert.equal(state?.output, true);
+  });
+});
+
+test("pnpm test:sim — GW Instek GDM-9061 personality + DMM driver reads voltage", async () => {
+  await withSimulator(gwInstekGdm9061Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "GDM-9061");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "gwinstek-gdm-9061");
+    const dmm = entry!.create(session, parsed) as GwInstekGdm;
+    await dmm.setMode("dcVoltage");
+    const reading = await dmm.read();
+    assert.equal(reading.mode, "dcVoltage");
+    assert.ok(Number.isFinite(reading.value));
+    assert.equal(dmm.profile.digits, 6.5);
+  });
+});
+
+test("pnpm test:sim — GW Instek AFG-2125 personality + signal generator driver sets waveform", async () => {
+  await withSimulator(gwInstekAfg2125Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "AFG-2125");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "gwinstek-afg-2125");
+    const afg = entry!.create(session, parsed) as GwInstekAfg;
+    await afg.setWaveform(1, {
+      type: "sine",
+      frequencyHz: 5000,
+      amplitudeVpp: 1.0,
+      offsetV: 0,
+    });
+    await afg.setChannelEnabled(1, true);
+    const state = await afg.getChannelState(1);
+    assert.equal(state.waveform.type, "sine");
+    assert.equal(state.enabled, true);
+    assert.equal(Math.round(state.actual.frequencyHz), 5000);
+  });
+});
+
+test("pnpm test:sim — GW Instek GSP-9330 personality + SA driver reads trace + refines TG", async () => {
+  await withSimulator(gwInstekGsp9330Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "GSP-9330");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "gwinstek-gsp-9330");
+    const sa = entry!.create(session, parsed) as GwInstekGsp;
+    await sa.setFrequency({ kind: "centerSpan", centerHz: 1.5e9, spanHz: 5e8 });
+    const freq = await sa.getFrequency();
+    assert.ok(Math.abs(freq.centerHz - 1.5e9) < 1);
+    const trace = await sa.readTrace(1);
+    assert.ok(trace.amplitude.length > 0);
   });
 });

@@ -41,6 +41,14 @@ import { fluke8845aPersonality } from "./fluke/8845a.js";
 import { fluke8846aPersonality } from "./fluke/8846a.js";
 import { fluke8588aPersonality } from "./fluke/8588a.js";
 import { fluke5522aPersonality } from "./fluke/5522a.js";
+import { gwInstekGds1054bPersonality } from "./gw-instek/gds1054b.js";
+import { gwInstekGds2102ePersonality } from "./gw-instek/gds2102e.js";
+import { gwInstekGpp4323Personality } from "./gw-instek/gpp4323.js";
+import { gwInstekGpd4303sPersonality } from "./gw-instek/gpd4303s.js";
+import { gwInstekPsw3036Personality } from "./gw-instek/psw30-36.js";
+import { gwInstekGdm9061Personality } from "./gw-instek/gdm9061.js";
+import { gwInstekAfg2125Personality } from "./gw-instek/afg2125.js";
+import { gwInstekGsp9330Personality } from "./gw-instek/gsp9330.js";
 
 export { genericUnknownPersonality } from "./generic-unknown.js";
 export { rigolDho804Personality } from "./rigol/dho804.js";
@@ -84,6 +92,14 @@ export { fluke8845aPersonality } from "./fluke/8845a.js";
 export { fluke8846aPersonality } from "./fluke/8846a.js";
 export { fluke8588aPersonality } from "./fluke/8588a.js";
 export { fluke5522aPersonality } from "./fluke/5522a.js";
+export { gwInstekGds1054bPersonality } from "./gw-instek/gds1054b.js";
+export { gwInstekGds2102ePersonality } from "./gw-instek/gds2102e.js";
+export { gwInstekGpp4323Personality } from "./gw-instek/gpp4323.js";
+export { gwInstekGpd4303sPersonality } from "./gw-instek/gpd4303s.js";
+export { gwInstekPsw3036Personality } from "./gw-instek/psw30-36.js";
+export { gwInstekGdm9061Personality } from "./gw-instek/gdm9061.js";
+export { gwInstekAfg2125Personality } from "./gw-instek/afg2125.js";
+export { gwInstekGsp9330Personality } from "./gw-instek/gsp9330.js";
 
 /**
  * Registry with every personality this package ships with. Consumers can
@@ -134,5 +150,13 @@ export function createDefaultPersonalityRegistry(): PersonalityRegistry {
   registry.register(fluke8846aPersonality);
   registry.register(fluke8588aPersonality);
   registry.register(fluke5522aPersonality);
+  registry.register(gwInstekGds1054bPersonality);
+  registry.register(gwInstekGds2102ePersonality);
+  registry.register(gwInstekGpp4323Personality);
+  registry.register(gwInstekGpd4303sPersonality);
+  registry.register(gwInstekPsw3036Personality);
+  registry.register(gwInstekGdm9061Personality);
+  registry.register(gwInstekAfg2125Personality);
+  registry.register(gwInstekGsp9330Personality);
   return registry;
 }

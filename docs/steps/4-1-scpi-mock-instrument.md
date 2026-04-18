@@ -20,18 +20,18 @@ new-kind facades (4.3 / 4.4 / 4.5), and vendor packs (4.6 / 4.7 / 4.8).
 
 ## Acceptance criteria
 
-- [ ] A **simulator package** (`packages/sim` or `tools/sim`, pick one and commit) that exposes a `Simulator` class + CLI entry point. `pnpm sim --personality rigol-dho804 --port 5025` starts a TCP listener that speaks SCPI to the existing `ScpiSession`.
-- [ ] **Personality descriptor** is a TS module implementing a `SimulatorPersonality` interface: `id`, `kind`, `idn` (template with `{serial}` placeholder), optional `opt` (`*OPT?` string), `fixtures` (path(s) to JSON), `handlers` (map from SCPI command prefix to a handler that receives a parsed command + personality state).
-- [ ] **JSON fixture** carries canned responses keyed by SCPI command (and optional per-channel variants), so read-only queries (`:CHANnel1:SCALe?`, `:MEASure:VOLTage:DC?`, `:SENSe:FREQuency:APERture?`, …) resolve without code. Fixtures may include numeric ranges / noise parameters for live-looking readings.
-- [ ] **At least three working personalities** ship with this step: `rigol-dho804` (oscilloscope), `rigol-dp932e` (PSU), `rigol-dm858` (DMM). Each is IDN-compatible with the existing driver regexes so the current UI connects unchanged.
-- [ ] An **unknown** personality (`generic-unknown`) returns a non-matching IDN so the raw-SCPI path can be exercised end-to-end.
-- [ ] **Hot-swap IDN / `*OPT?`** via config file so one listener can pretend to be different models for registry / profile testing — used by 4.2 profile tests to iterate DHO802/804/812/814 without four processes.
-- [ ] CLI supports **multi-instance mode**: `pnpm sim --config sim/bench.json` starts N listeners on N ports from one config file, for multi-session UI tests.
-- [ ] **Newline framing** matches real gear (`\n` write, `\n` read). IEEE definite-length block responses use the same `#Nxxx…` header format the existing binary queries (`:DISPlay:DATA?`, `:WAVeform:DATA?`) expect.
-- [ ] **Error queue** (`SYST:ERR?`) returns `0,"No error"` by default; handlers may push synthetic errors for negative-path tests.
-- [ ] **pnpm script** `pnpm sim:rigol` (or equivalent) spins up the three Rigol personalities on fixed ports (document the port map in the step) so a developer can `pnpm dev` and click through the whole dashboard immediately. CI script `pnpm test:sim` runs an integration test that connects each personality, exercises the primary typed route, and disconnects.
-- [ ] **README / user-docs snippet**: how to point the UI at the simulator (host, port, personality name), and how to add a new personality — both a data-only variant (edit JSON fixture) and a code-plus-data variant (new handler module).
-- [ ] Port / host / log-verbosity all configurable via CLI flags **and** environment variables; defaults are safe (localhost, non-privileged ports).
+- [x] A **simulator package** — landed as **`packages/sim`** (private `@lxi-web/sim` pnpm workspace). `Simulator` class + CLI (`pnpm sim --personality rigol-dho804 --port 5025`) — verified by `integration.test.ts` connecting `ScpiSession.openTcp` against it end-to-end.
+- [x] **Personality descriptor** — `SimulatorPersonality` interface in `packages/sim/src/personality.ts` with `id`, optional `kind`, `idn` template (`{serial}` replaced per instance), `opt` (`*OPT?`), optional `fixture`, `exactHandlers` (keyed by normalised header), `prefixHandlers` (regex → handler), and `initialState` (per-socket mutable state factory).
+- [x] **JSON fixture** — `fixture.responses` keyed by normalised SCPI header resolves read-only queries without code; extra keys are handler-visible via `ctx.fixture` for live-looking readings.
+- [x] **Three working personalities** ship: `rigol-dho804` (DHO800 regex), `rigol-dp932e` (DP900 regex), `rigol-dm858` (DM800 regex) — asserted by `test/integration.test.ts` against the production driver registry.
+- [x] **`generic-unknown`** personality with `ACME INSTRUMENTS,GENERIC-1000,...` IDN so the raw-SCPI path can be exercised end-to-end.
+- [x] **Hot-swap IDN / `*OPT?`** — `Simulator` accepts `idnOverride` / `optOverride` at construct time and the CLI / bench config expose `--idn` / `--opt` / per-entry `idnOverride`. 4.2 profile-variant tests reuse this path.
+- [x] **Multi-instance mode** — `--config bench.rigol.json` boots N listeners in one process; schema is `{ host?, instances: [{ personality, port, ... }] }`.
+- [x] **Newline framing** — simulator reads LF-terminated lines, appends `\n` after every ASCII / binary reply. IEEE 488.2 definite-length block encoder in `src/handlers/ieee488-block.ts` emits `#<n><len><bytes>`.
+- [x] **Error queue** — `SYST:ERR?` / `SYSTEM:ERROR?` return `0,"No error"` by default; unknown headers push `-113`; handlers call `ctx.pushError(code, message)`.
+- [x] **`pnpm sim:rigol`** spins up DHO804 @ 5025, DP932E @ 5026, DM858 @ 5027 (documented in `packages/sim/README.md`). **`pnpm test:sim`** runs the integration test that connects each personality through `ScpiSession` and the production driver registry.
+- [x] **README** — `packages/sim/README.md` covers CLI usage, architecture, handler-resolution order, the shipped-personality table, and the data-only vs. with-handlers personality add path.
+- [x] **Config via CLI flags and env vars** — `--host` / `--port` / `--verbose` plus `LXI_SIM_HOST` / `LXI_SIM_PORT` / `LXI_SIM_VERBOSE`; defaults localhost + 5025.
 
 ## Architecture
 

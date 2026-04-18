@@ -1,0 +1,23 @@
+{
+  "responses": {
+    "TIMEBASE:MAIN:SCALE?": "1.000000E-03",
+    "TIMEBASE:MAIN:OFFSET?": "0.000000E+00",
+    "ACQUIRE:TYPE?": "NORM",
+    "ACQUIRE:AVERAGES?": "2",
+    "ACQUIRE:MDEPTH?": "AUTO",
+    "TRIGGER:SWEEP?": "AUTO",
+    "TRIGGER:MODE?": "EDGE",
+    "TRIGGER:EDGE:SOURCE?": "CHAN1",
+    "TRIGGER:EDGE:SLOPE?": "POS",
+    "TRIGGER:EDGE:LEVEL?": "0.000000E+00",
+    "WAVEFORM:PREAMBLE?": "0,0,1200,1,1.0E-6,0,0,3.9E-3,0,128",
+    "DISPLAY:GRADING:TIME?": "MIN",
+    "MATH:DISPLAY?": "0",
+    "MATH:OPERATOR?": "ADD",
+    "MATH:SOURCE1?": "CHAN1",
+    "MATH:SOURCE2?": "CHAN2",
+    "CURSOR:MODE?": "OFF"
+  },
+  "waveformAmplitude": 80,
+  "waveformPoints": 1200
+}

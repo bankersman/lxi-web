@@ -1,0 +1,8 @@
+{
+  "responses": {
+    "OUTPUT:PAIR?": "OFF",
+    "OUTPUT:TRACK?": "OFF",
+    "MEMORY:VALID?": "1,0,0,0,0,0,0,0,0,0"
+  },
+  "channelCount": 3
+}

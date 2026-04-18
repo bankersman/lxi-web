@@ -1,0 +1,20 @@
+{
+  "host": "127.0.0.1",
+  "instances": [
+    {
+      "personality": "rigol-dho804",
+      "port": 5025,
+      "serial": "DHO8SIM000001"
+    },
+    {
+      "personality": "rigol-dp932e",
+      "port": 5026,
+      "serial": "DP9SIM000001"
+    },
+    {
+      "personality": "rigol-dm858",
+      "port": 5027,
+      "serial": "DM8SIM000001"
+    }
+  ]
+}

@@ -12,20 +12,20 @@
   },
   "dependencies": {
     "@lxi-web/core": "workspace:*",
-    "lucide-vue-next": "^0.454.0",
-    "pinia": "^2.2.6",
+    "lucide-vue-next": "^1.0.0",
+    "pinia": "^3.0.4",
     "uplot": "^1.6.31",
     "vue": "^3.5.12",
-    "vue-router": "^4.4.5"
+    "vue-router": "^5.0.4"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0-beta.4",
     "@types/node": "^22.9.0",
     "@vitejs/plugin-vue": "^5.1.4",
-    "@vue/tsconfig": "^0.5.1",
+    "@vue/tsconfig": "^0.9.1",
     "tailwindcss": "^4.0.0-beta.4",
-    "typescript": "^5.6.3",
+    "typescript": "^6.0.3",
     "vite": "^5.4.10",
-    "vue-tsc": "^2.1.10"
+    "vue-tsc": "^3.2.6"
   }
 }

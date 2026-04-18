@@ -137,6 +137,9 @@ todos:
   - id: epic-6-3-report-to-github
     content: Epic 6.3 — One-click GitHub report (post–Epic 5). Overview-card Report menu opens github.com issues/new with instrument-report.yml or bug.yml prefilled from session identity (*IDN?, *OPT? on DeviceIdentity), host/port, kind, discovery path, GET /api/meta/build (commit + image digest), recent device.errors ring + transcript tail from 5.1 REST; URL length cap with overflow to clipboard + toast. Optional device-scope shortcut. No GitHub API token — browser opens prefilled form only. Depends on 5.1. Progress + docs/steps/6-3-*.md; commit
     status: pending
+  - id: epic-6-4-i18n-locale-formatting
+    content: Epic 6.4 — i18n + locale-aware formatting. vue-i18n (or equivalent) in packages/web; UI languages en/de/es/nl; resolve UI language from navigator.languages via prefix match to supported catalogs; Intl number/date/time uses full browser locale tag (e.g. de-AT formats + de strings). User-facing format prefs — presets (decimal/grouping style), 12h/24h, short date order — persisted in localStorage; when user has explicitly set format overrides, changing UI language updates strings only. Every user-visible static string in the web app goes through i18n; docs/user + VitePress site remain English-only. Progress + docs/steps/6-4-*.md; commit
+    status: pending
   - id: epic-x-1-event-bus
     content: Epic X.1 — Cross-device event bus + action catalog on @lxi-web/core; façade event sources for scope/PSU/DMM; REST for schema/catalog/invoke; WebSocket events channel with filters and ring-buffer backfill. Deferred from Epic 5; lower priority than bench-safety (Epic 5) and UX pass (Epic 6). Progress + docs/steps/x-1-*.md; commit
     status: deferred
@@ -161,7 +164,9 @@ isProject: false
 
 - **Purpose:** A **browser dashboard** for **LXI-style LAN instruments** (SCPI over TCP): **connect several devices**, see **live state**, run **typed controls** per device class, and fall back to **raw SCPI** when there is no driver — without treating each vendor’s full PC app as the only way to work at the bench.
 - **Audience:** **Solo engineers**, **makers**, and **small-lab** use: you understand **host, port, and `*IDN?`**, you run on a **trusted LAN**, and you want **clarity and control** more than enterprise IT features (no SSO, no audit multi-tenancy in v1).
-- **Product voice / look-and-feel defaults:** **Utility-first bench software** — calm **neutral** chrome (light/dark per factsheet), **numbers and labels easy to scan**, **color used mainly for state** (connected / error / output on), not decoration. **One icon set** for the whole app (default at implementation: **Lucide**). **Locale:** **English** UI copy in v1 unless you add i18n later.
+- **Product voice / look-and-feel defaults:** **Utility-first bench software** — calm **neutral** chrome (light/dark per factsheet), **numbers and labels easy to scan**, **color used mainly for state** (connected / error / output on), not decoration. **One icon set** for the whole app (default at implementation: **Lucide**). **Locale:** **English** is the authoring baseline; **Epic 6.4** adds
+**translated UI** in the Vue app (`packages/web`) with locale-aware
+formats — see Epic 6. **User manual + VitePress** stay English-only.
 
 ---
 
@@ -265,7 +270,7 @@ Optional later: **Tauri/Electron** still reuses `packages/core`; not in v1 scope
 
 - **`git init` immediately** as the first implementation step (with a sensible root `.gitignore`). **Commit after every subplan/step** below completes — one focused commit per milestone (conventional prefixes welcome: `feat`, `fix`, `chore`, `docs`).
 - **`progress.md`** at the **repository root**: a living **checklist** that mirrors the subplan order (same items as the YAML todos in this plan). **Update it when starting a step** (optional “Started” date) and **when finishing** (check the box, add “Done” date and one-line summary if useful). This file is the human-facing source of truth for “where we are”; keep it in sync with reality before each commit that closes a step.
-- **One markdown file per subplan** under **`docs/steps/`** (filenames aligned with subplans, e.g. `1-1-transport-and-scpi-core.md`, `1-2-identity-and-routing.md`, … through `2-7-scope-advanced-features.md` for v1 + per-kind deep-dives, `5-1-…` through `5-3-…` for Epic 5 bench safety, `6-1-…` through `6-3-…` for Epic 6 UX pass, `x-1-…` through `x-5-…` for the deferred Epic X orchestration work). Each file holds: **goal**, **acceptance criteria** (checkboxes), **links** to the relevant plan section, and **notes** (decisions, model numbers tested). **Bootstrap** (second todo) may add **stub** files with headings and empty criteria to be filled when work begins, or create each file at the **start** of that subplan — either approach is fine; pick one and stay consistent.
+- **One markdown file per subplan** under **`docs/steps/`** (filenames aligned with subplans, e.g. `1-1-transport-and-scpi-core.md`, `1-2-identity-and-routing.md`, … through `2-7-scope-advanced-features.md` for v1 + per-kind deep-dives, `5-1-…` through `5-3-…` for Epic 5 bench safety, `6-1-…` through `6-4-…` for Epic 6 UX pass, `x-1-…` through `x-5-…` for the deferred Epic X orchestration work). Each file holds: **goal**, **acceptance criteria** (checkboxes), **links** to the relevant plan section, and **notes** (decisions, model numbers tested). **Bootstrap** (second todo) may add **stub** files with headings and empty criteria to be filled when work begins, or create each file at the **start** of that subplan — either approach is fine; pick one and stay consistent.
 - **Do not** bundle unrelated subplans into one commit; if a step is large, internal WIP commits on a branch are fine, but merge to `main` (or default branch) with a clear **final** commit message per subplan when possible.
 
 ---
@@ -824,7 +829,8 @@ exists. Make the app keyboard-first where it counts, audit every
 detail page's information architecture so the hero and most-used
 blocks surface first on every kind, and turn connected sessions into
 one-click hardware / bug reports with GitHub issue forms prefilled
-from live identity + SCPI observability data (after Epic 5.1).
+from live identity + SCPI observability data (after Epic 5.1), and
+ship **i18n + locale-aware formatting** for the dashboard SPA.
 
 ### Intent
 
@@ -847,6 +853,15 @@ from live identity + SCPI observability data (after Epic 5.1).
   action opens `issues/new?template=…` with query parameters matching
   the YAML form field `id:` values; long transcript tails spill to the
   clipboard instead of breaking the URL.
+- **Translations + formats.** v1 UI languages **en / de / es / nl**;
+  resolve **which message catalog** from `navigator.languages` by
+  **prefix match** to a supported language code (e.g. `de-AT` → `de`
+  strings). Keep **`Intl` format locale** aligned with the **full**
+  browser tag (`de-AT` number grouping) so notation matches what the
+  user already asked their OS/browser for. Offer direct **format
+  preferences** (number presets, 12h vs 24h, short date style) with
+  **localStorage** persistence; when the user has **explicitly** set
+  format overrides, **language changes do not** rewrite those prefs.
 
 ### Subplans (Epic 6)
 
@@ -891,6 +906,19 @@ from live identity + SCPI observability data (after Epic 5.1).
   the normal GitHub UI.  
   See [docs/steps/6-3-report-to-github.md](docs/steps/6-3-report-to-github.md).
 
+- **6.4 — i18n + locale-aware formatting (web app only)**  
+  `vue-i18n` (or equivalent) in `packages/web`; message catalogs for
+  **en / de / es / nl**. **UI language:** first match in
+  `navigator.languages` against supported prefixes (`de-*` → `de`). **Number
+  / date / time:** default `Intl` locale from the **full** browser tag
+  (e.g. `de-AT`); user may pick **explicit** format presets (decimal +
+  grouping style, 12h vs 24h, date order) stored in **localStorage**
+  — when set, **do not** change formats when UI language changes.
+  Header language control uses **language names or codes**, not flags.
+  **`docs/user/` + VitePress** remain **English-only**; no translated
+  manual in 6.4. **6.4** is **client-only** (no new server routes).  
+  See [docs/steps/6-4-i18n-and-locale-formatting.md](docs/steps/6-4-i18n-and-locale-formatting.md).
+
 ### Non-goals for Epic 6
 
 - No visual redesign. Tailwind utility reshuffles and small
@@ -900,7 +928,10 @@ from live identity + SCPI observability data (after Epic 5.1).
   the IA audit reveals a missing primitive, capture it as backlog.
   **6.3** is the exception — it adds only the minimal REST + identity
   fields listed in that subplan (build metadata + optional `rawOpt`).
-- No i18n. English UI copy stays the baseline for this epic.
+  **6.4** adds **no** backend — formatting and catalogs live entirely
+  in the browser bundle.
+- No translated **user manual** or **VitePress** site in 6.4 — only the
+  Vue SPA is internationalized.
 - No server-side GitHub proxy or stored tokens — 6.3 opens the browser
   to a prefilled `issues/new` URL only.
 
@@ -1105,7 +1136,7 @@ Follow the **optional capability** pattern from 2.5 / 2.6 / 2.7 rather than grow
 ## Suggested repository layout (when you start coding)
 
 - `progress.md`: root checklist mirroring subplans; updated when each step completes (see **Git, commits, and progress tracking**).
-- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-7-…` for Epic 3; `4-1-…` through `4-13-…` for Epic 4; `5-1-…` through `5-3-…` for Epic 5 bench safety; `6-1-…` through `6-3-…` for Epic 6 UX pass; `x-1-…` through `x-5-…` for the deferred Epic X orchestration work) with goals and acceptance criteria.
+- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-7-…` for Epic 3; `4-1-…` through `4-13-…` for Epic 4; `5-1-…` through `5-3-…` for Epic 5 bench safety; `6-1-…` through `6-4-…` for Epic 6 UX pass; `x-1-…` through `x-5-…` for the deferred Epic X orchestration work) with goals and acceptance criteria.
 - `docs/user/`: plain Markdown **user manual** (installation, getting-started, per-kind pages including electronic-load / signal-generator / spectrum-analyzer, raw SCPI fallback, troubleshooting, hardware reports, supported-hardware matrix, roadmap) — canonical source; authored in 3.5 and extended by Epic 4.
 - `docs/site/`: **VitePress** scaffolding for the GitHub Pages landing page — ingests `docs/user/*.md`; authored in 3.5.
 - `docs/assets/`: screenshots and static images referenced from the README, the user manual, and the Pages site.

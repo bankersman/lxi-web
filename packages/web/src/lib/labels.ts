@@ -19,10 +19,13 @@ const MODE_LABELS: Readonly<Record<MultimeterMode, string>> = {
   dcCurrent: "DC Current",
   acCurrent: "AC Current",
   resistance: "Resistance",
+  fourWireResistance: "4-wire Ω",
   frequency: "Frequency",
+  period: "Period",
   capacitance: "Capacitance",
   continuity: "Continuity",
   diode: "Diode",
+  temperature: "Temperature",
 };
 
 export function multimeterModeLabel(mode: MultimeterMode): string {

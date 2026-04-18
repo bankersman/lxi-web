@@ -50,6 +50,10 @@ import { rndsHmc8012Personality } from "../personalities/rnds/hmc8012.js";
 import { rndsSmbv100aPersonality } from "../personalities/rnds/smbv100a.js";
 import { rndsHmf2525Personality } from "../personalities/rnds/hmf2525.js";
 import { rndsFpc1500Personality } from "../personalities/rnds/fpc1500.js";
+import { fluke8845aPersonality } from "../personalities/fluke/8845a.js";
+import { fluke8846aPersonality } from "../personalities/fluke/8846a.js";
+import { fluke8588aPersonality } from "../personalities/fluke/8588a.js";
+import { fluke5522aPersonality } from "../personalities/fluke/5522a.js";
 import type {
   KeysightE36,
   KeysightTrueVolt,
@@ -69,6 +73,8 @@ import type {
   RndsSma,
   RndsHmf,
   RndsFpc,
+  FlukeBenchDmm,
+  FlukeCalibrator,
 } from "@lxi-web/core";
 
 async function withSimulator<T>(
@@ -793,5 +799,89 @@ test("pnpm test:sim — R&S FPC1500 personality + FPC spectrum-analyzer driver r
     const trace = await sa.readTrace(1);
     assert.ok(trace.points > 0);
     assert.equal(trace.unit, "dBm");
+  });
+});
+
+test("pnpm test:sim — Fluke 8845A personality + bench DMM driver round-trips CONFigure/READ", async () => {
+  await withSimulator(fluke8845aPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "8845A");
+    assert.match(parsed.manufacturer, /fluke/i);
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "fluke-8845a");
+    assert.equal(entry?.kind, "multimeter");
+    const dmm = entry!.create(session, parsed) as FlukeBenchDmm;
+    await dmm.setMode("dcVoltage");
+    const reading = await dmm.read();
+    assert.equal(reading.mode, "dcVoltage");
+    assert.ok(Number.isFinite(reading.value));
+    assert.equal(await dmm.getMode(), "dcVoltage");
+    // dual-display is advertised on the 8845A; toggling should round-trip.
+    await dmm.setDualDisplay!("acVoltage");
+    assert.equal(await dmm.getDualDisplay!(), "acVoltage");
+  });
+});
+
+test("pnpm test:sim — Fluke 8846A personality + bench DMM driver exercises capacitance", async () => {
+  await withSimulator(fluke8846aPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "8846A");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "fluke-8846a");
+    const dmm = entry!.create(session, parsed) as FlukeBenchDmm;
+    await dmm.setMode("capacitance");
+    assert.equal(await dmm.getMode(), "capacitance");
+    assert.ok(dmm.supportedModes.includes("capacitance"));
+  });
+});
+
+test("pnpm test:sim — Fluke 8588A personality + bench DMM driver over CR+LF termination", async () => {
+  const sim = new Simulator({ personality: fluke8588aPersonality });
+  try {
+    await sim.listen({ host: "127.0.0.1", port: 0 });
+    // Metrology firmware expects CR+LF — verify the session can drive it.
+    const session = await ScpiSession.openTcp({
+      host: "127.0.0.1",
+      port: sim.port,
+      defaultTimeoutMs: 2000,
+      terminator: "\r\n",
+    });
+    try {
+      const parsed = parseIdn(await session.query("*IDN?"));
+      assert.equal(parsed.model, "8588A");
+      const registry = createDefaultRegistry();
+      const entry = registry.resolve(parsed);
+      assert.equal(entry?.id, "fluke-8588a");
+      const dmm = entry!.create(session, parsed) as FlukeBenchDmm;
+      await dmm.setMode("dcVoltage");
+      const reading = await dmm.read();
+      assert.equal(reading.mode, "dcVoltage");
+      assert.ok(Number.isFinite(reading.value));
+      assert.equal(dmm.profile.digits, 8.5);
+    } finally {
+      await session.close();
+    }
+  } finally {
+    await sim.close();
+  }
+});
+
+test("pnpm test:sim — Fluke 5522A personality + calibrator driver sources voltage + operate", async () => {
+  await withSimulator(fluke5522aPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "5522A");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "fluke-5522a");
+    assert.equal(entry?.kind, "powerSupply");
+    const cal = entry!.create(session, parsed) as FlukeCalibrator;
+    await cal.setChannelVoltage(1, 10);
+    await cal.setChannelOutput(1, true);
+    const channels = await cal.getChannels();
+    assert.equal(channels.length, 1);
+    assert.equal(channels[0]?.setVoltage, 10);
+    assert.equal(channels[0]?.output, true);
   });
 });

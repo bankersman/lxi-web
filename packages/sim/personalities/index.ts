@@ -37,6 +37,10 @@ import { rndsHmc8012Personality } from "./rnds/hmc8012.js";
 import { rndsSmbv100aPersonality } from "./rnds/smbv100a.js";
 import { rndsHmf2525Personality } from "./rnds/hmf2525.js";
 import { rndsFpc1500Personality } from "./rnds/fpc1500.js";
+import { fluke8845aPersonality } from "./fluke/8845a.js";
+import { fluke8846aPersonality } from "./fluke/8846a.js";
+import { fluke8588aPersonality } from "./fluke/8588a.js";
+import { fluke5522aPersonality } from "./fluke/5522a.js";
 
 export { genericUnknownPersonality } from "./generic-unknown.js";
 export { rigolDho804Personality } from "./rigol/dho804.js";
@@ -76,6 +80,10 @@ export { rndsHmc8012Personality } from "./rnds/hmc8012.js";
 export { rndsSmbv100aPersonality } from "./rnds/smbv100a.js";
 export { rndsHmf2525Personality } from "./rnds/hmf2525.js";
 export { rndsFpc1500Personality } from "./rnds/fpc1500.js";
+export { fluke8845aPersonality } from "./fluke/8845a.js";
+export { fluke8846aPersonality } from "./fluke/8846a.js";
+export { fluke8588aPersonality } from "./fluke/8588a.js";
+export { fluke5522aPersonality } from "./fluke/5522a.js";
 
 /**
  * Registry with every personality this package ships with. Consumers can
@@ -122,5 +130,9 @@ export function createDefaultPersonalityRegistry(): PersonalityRegistry {
   registry.register(rndsSmbv100aPersonality);
   registry.register(rndsHmf2525Personality);
   registry.register(rndsFpc1500Personality);
+  registry.register(fluke8845aPersonality);
+  registry.register(fluke8846aPersonality);
+  registry.register(fluke8588aPersonality);
+  registry.register(fluke5522aPersonality);
   return registry;
 }

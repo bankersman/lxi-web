@@ -180,3 +180,18 @@ export type {
   HmfProfile,
   FpcProfile,
 } from "./drivers/rnds/index.js";
+export {
+  FlukeBenchDmm,
+  FlukeCalibrator,
+  registerFlukeDrivers,
+  BENCH_DMM_VARIANTS,
+  BENCH_DMM_DEFAULT,
+  refineBenchDmmProfile,
+  CALIBRATOR_VARIANTS,
+  CALIBRATOR_DEFAULT,
+  refineCalibratorProfile,
+} from "./drivers/fluke/index.js";
+export type {
+  BenchDmmProfile,
+  FlukeCalibratorProfile,
+} from "./drivers/fluke/index.js";

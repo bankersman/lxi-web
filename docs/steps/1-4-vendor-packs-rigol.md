@@ -10,10 +10,10 @@ Implement the three façades for the actual gear in the lab:
 
 ## Acceptance criteria
 
-- [ ] Registry patterns match these models even when firmware suffixes are appended to `*IDN?`.
-- [ ] DHO804 façade: channels 1–4, timebase read/write, `:SING` single trigger, `:WAV:DATA?` waveform pipeline.
-- [ ] DP932E façade: channels CH1–CH3, set/measure V+I, output toggle per channel.
-- [ ] DM858 façade: mode switching (DCV/ACV/DCI/ACI/RES/FREQ/CAP) and primary measurement.
+- [x] Registry patterns match these models even when firmware suffixes are appended to `*IDN?`.
+- [x] DHO804 façade: channels 1–4, timebase read/write, `:SING` single trigger, `:WAV:DATA?` waveform pipeline.
+- [x] DP932E façade: channels CH1–CH3, set/measure V+I, output toggle per channel.
+- [x] DM858 façade: mode switching (DCV/ACV/DCI/ACI/RES/FREQ/CAP/continuity/diode) and primary measurement with overload flag.
 
 ## Observed `*IDN?` strings (fill in when tested)
 

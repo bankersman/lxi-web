@@ -1,6 +1,6 @@
 ---
 name: LXI client and UI
-overview: "Bench utility for solo/small-lab: Node 24+ pnpm monorepo, Fastify :8787, SCPI core + Rigol DHO804/DP932E/DM858, Vue grid dashboard (Router, Tailwind, Pinia, Lucide, uPlot, light/dark). Epics 3–4: LAN discovery + resilient sessions + detail UX; SCPI mock + first extra device kind. Git + progress.md per step."
+overview: "Bench utility for solo/small-lab: Node 24+ pnpm monorepo, Fastify :8787, SCPI core + Rigol DHO800/DP900/DM800 families, Vue grid dashboard (Router, Tailwind, Pinia, Lucide, uPlot, light/dark). Epics 3–4: LAN discovery + resilient sessions + detail UX; simulator framework, profile-driven driver families, new device kinds (e-load / signal gen / spectrum analyzer), and vendor packs for Siglent / Keysight / Owon. Git + progress.md per step."
 todos:
   - id: git-init
     content: Initialize git repo, root .gitignore (Node, Vite, Vue, OS/IDE); first commit
@@ -77,11 +77,32 @@ todos:
   - id: epic-3-7-npm-publish-core
     content: Epic 3.7 — @lxi-web/core npm publishing on v*.*.* tags (parallel to 3.6). Package audit (exports map for ., ./scpi, ./drivers/rigol; files allowlist; publishConfig.access public + provenance; sideEffects false; engines node >= 24), server and web pinned private, test:exports guard, packages/core/README.md, npm job on release workflow with version/tag match guard + provenance via OIDC, pre-releases under next dist-tag, docs/user/embed-core.md + Pages card. Secrets — NPM_TOKEN (automation token on @lxi-web scope). Progress + docs/steps/3-7-*.md; commit
     status: completed
-  - id: epic-4-1-scpi-mock
-    content: Epic 4.1 — SCPI TCP mock instrument(s) for dev/CI; configurable *IDN?, minimal typed SCPI per kind + unknown; progress + docs/steps/4-1-*.md; commit
+  - id: epic-4-1-simulator-framework
+    content: Epic 4.1 — Simulator framework (hybrid TS + JSON personality fixtures). `packages/sim` with `SimulatorPersonality` type + registry + CLI; personalities for DHO804 / DP932E / DM858 + a generic-unknown; handler resolution order (exact → prefix → fixture → built-ins); `*IDN?` + `*OPT?` + SYST:ERR? built-ins; IEEE 488.2 definite-length block encoder; multi-instance config; pnpm scripts + CI target; README + contributor note. Every later Epic 4 step consumes the simulator. Progress + docs/steps/4-1-*.md; commit
     status: pending
-  - id: epic-4-2-new-instrument-kind
-    content: Epic 4.2 — First additional instrument kind (new I… facade + registry + dashboard/detail); one vendor driver or doc-driven stub; progress + docs/steps/4-2-*.md; commit
+  - id: epic-4-2-driver-family-profiles
+    content: Epic 4.2 — Driver family profiles + *OPT? refinement on Rigol. Rename dho804.ts→dho800.ts, dp932e.ts→dp900.ts, dm858.ts→dm800.ts (deprecation alias for RigolDm858); lift variant-specific constants into Dho800Profile / Dp900Profile / Dm800Profile; variant tables per family (DHO802/804/812/814, DP932E/U/DP912, DM858/858E); catch-all entries; refine(profile, port) hook using *OPT? and a channel probe; shared helpers in drivers/rigol/_shared/; tests iterate every variant against 4.1 simulator. No behaviour change on real DHO804/DP932E/DM858. Progress + docs/steps/4-2-*.md; commit
+    status: pending
+  - id: epic-4-3-electronic-load
+    content: Epic 4.3 — Instrument kind — electronic load. IElectronicLoad facade (CC/CV/CR/CP modes, setpoints, measure) + optional dynamic/list/protection/battery/logging/presets capabilities; DeviceKind grows `electronicLoad`; Rigol DL3000 profile-driven driver (DL3021/DL3031); simulator personality rigol-dl3021 + stub siglent-sdl1020x-e; REST /api/sessions/:id/eload/* + WS `eload.measurement`/`eload.state` topics; dashboard card + detail page with protection/dynamic/battery/logger/presets tabs; docs/user/electronic-load.md. Progress + docs/steps/4-3-*.md; commit
+    status: pending
+  - id: epic-4-4-signal-generator
+    content: Epic 4.4 — Instrument kind — signal / function / arbitrary waveform generator. ISignalGenerator facade with discriminated waveform-type union + optional channels/modulation/sweep/burst/arbitrary/sync/presets capabilities; DeviceKind grows `signalGenerator`; Rigol DG800/DG900 profile-driven driver; simulator personalities rigol-dg812/rigol-dg932 + stubs siglent-sdg2042x/keysight-33511b; REST /api/sessions/:id/sg/* incl. arbitrary upload + WS `sg.channels`; dashboard card + detail page with Modulation/Sweep/Burst/Arbitrary/Sync/Presets tabs; docs/user/signal-generator.md. Progress + docs/steps/4-4-*.md; commit
+    status: pending
+  - id: epic-4-5-spectrum-analyzer
+    content: Epic 4.5 — Instrument kind — spectrum analyzer. ISpectrumAnalyzer facade (frequency center/span or start/stop discriminated input, reference level, RBW/VBW, sweep, trace read via IEEE block) + trace/input/marker capabilities + optional channelPower/trigger/limitLines/averaging/presets; DeviceKind grows `spectrumAnalyzer`; Siglent SSA3000X profile-driven driver (drivers/siglent/ bootstrapped); simulator personality siglent-ssa3032x with tone injector + stubs rigol-rsa3030/keysight-n9320; REST /api/sessions/:id/sa/* + rate-limited WS `sa.sweep`; dashboard card + detail page with uPlot trace + markers + tabs; docs/user/spectrum-analyzer.md. Tracking generator and SSA5000A dialect deferred. Progress + docs/steps/4-5-*.md; commit
+    status: pending
+  - id: epic-4-6-vendor-pack-siglent
+    content: Epic 4.6 — Vendor pack — Siglent. Profile-driven drivers under drivers/siglent/ covering SDS scope family (SDS1000X-E, SDS800X-HD, SDS2000X-Plus/HD, SDS3000X-HD, SDS6000A), SPD PSU family (SPD1168X, SPD1305X, SPD3303X-E/C), SDM DMM family (SDM3045X, SDM3055, SDM3065X), plus Siglent variants in the new-kind drivers from 4.3/4.4/4.5 (SDL / SDG / SSA). Simulator personalities per family; *OPT? refinement; manufacturer regex tolerant of "SIGLENT" / "Siglent Technologies" / "Siglent Technologies Co., Ltd." quirks; supported-hardware entries all Preview until community reports convert. Progress + docs/steps/4-6-*.md; commit
+    status: pending
+  - id: epic-4-7-vendor-pack-keysight
+    content: Epic 4.7 — Vendor pack — Keysight (+ legacy Agilent). Profile-driven drivers under drivers/keysight/ covering InfiniiVision scope family (1000X/2000X/3000T/4000X/6000X DSOX+MSOX), E36xxx/EDU36xxx PSU family (EDU36311A, E36100-series, E36300-series, legacy E364xA), Truevolt DMM family (34450A, 34461A, 34465A, 34470A), plus Keysight variants in new-kind drivers (EL34143A/EL34243A for 4.3, 33500B/33600A for 4.4); N9xxx SA reserved. Manufacturer regex accepts both "Keysight" and "Agilent Technologies". Simulator personalities per family; *OPT? refinement. Supported-hardware entries all Preview. Progress + docs/steps/4-7-*.md; commit
+    status: pending
+  - id: epic-4-8-vendor-pack-owon
+    content: Epic 4.8 — Vendor pack — Owon (smallest-scoped due to partial LXI conformance). Profile-driven drivers under drivers/owon/ covering XDM DMM family (XDM1041/1241/2041), SPE PSU family (SPE3103/3051/6053/6103), XDS3000 scope family (XDS3102A/3104AE). Narrower capability surface (no advanced math/logging/decoders). Per-driver defaultPort hint (Owon often uses 3000 instead of 5025); manufacturer regex catches empty-manufacturer + "Owon" / "Lilliput"; documented mDNS + LXI caveats. Simulator personalities per family. SG / e-load / SA explicitly out of scope until community reports justify. Progress + docs/steps/4-8-*.md; commit
+    status: pending
+  - id: epic-4-9-supported-hardware-matrix
+    content: Epic 4.9 — Supported-hardware matrix + contributor guide. New docs/user/supported-hardware.md grouped by device kind with Vendor/Family/Variant/Status/Notes columns and Verified/Preview/Community/Reported status lifecycle; wired into user-manual index + VitePress sidebar + README flagship excerpt. Expanded docs/user/hardware-reports.md explaining the promotion workflow. New docs/contributing/adding-a-driver.md covering variant-add / family-add / kind-add paths. Refined issue templates. Backlog hygiene in progress.md so items promoted into 4.2–4.8 leave the v2 backlog. Roadmap refresh. Progress + docs/steps/4-9-*.md; commit
     status: pending
   - id: epic-5-1-event-bus
     content: Epic 5.1 — Cross-device event bus + action catalog on @lxi-web/core; façade event sources for scope/PSU/DMM; REST for schema/catalog/invoke; WebSocket events channel with filters and ring-buffer backfill; progress + step doc; commit
@@ -177,6 +198,17 @@ Implement and manually verify against **your** gear (registry should match **`*I
 - **Multimeter:** **Rigol DM858** (bench DMM).
 
 If a real `*IDN?` string differs from expectations, adjust patterns in `@lxi-web/core` and record the string in `docs/steps/1-4-*.md`.
+
+### Hardware coverage beyond v1 (Epic 4)
+
+Epic 4 widens the matrix from "Rigol trio" to "profile-driven families
+across Rigol / Siglent / Keysight / Owon, plus three new device kinds
+(electronic load, signal generator, spectrum analyzer)". Non-Rigol drivers
+are verified against the 4.1 simulator and ship as **Preview** in the 4.9
+supported-hardware matrix until a community hardware report promotes them
+to **Community** or **Verified**. The maintainer does not need to own every
+supported SKU — the simulator + hardware-report loop is the compatibility
+contract.
 
 ### Unknown / unsupported models (v1)
 
@@ -452,32 +484,144 @@ optional `@lxi-web/core` npm publish for people who only want the drivers.
 
 ---
 
-## Epic 4 — SCPI mock and additional device kinds
+## Epic 4 — Simulator, driver families, new device kinds, vendor coverage
 
-**Goal:** Enable development and CI **without** a full Rigol rack, and prove the
-**registry + façade + dashboard** pipeline for **one** new instrument category
-beyond the v1 trio.
+**Goal:** Widen the hardware matrix without requiring maintainers to own every
+supported SKU. Four outcomes sit side-by-side:
 
-**Order:** implement the **mock** first so new kinds and regression tests do not
-depend on physical hardware.
+1. A **simulator framework** rich enough that any new driver or facade can be
+   exercised end-to-end without lab hardware.
+2. A **driver family** pattern (one class per SCPI dialect, variant-specific
+   values in a profile table, `*OPT?`-based refinement at connect time) that
+   replaces the per-SKU-file layout from Epic 1.4.
+3. Three **new instrument kinds** (electronic load, signal generator,
+   spectrum analyzer) each with facade + first driver + simulator personality
+   + UI.
+4. Three **vendor packs** (Siglent, Keysight + legacy Agilent, Owon) built
+   on the profile pattern and verified primarily against simulator
+   personalities, with a clear **Preview → Community → Verified** promotion
+   path driven by user hardware reports.
+
+**Order matters.** Simulator first (4.1), then driver refactor (4.2), then
+new kinds (4.3 / 4.4 / 4.5), then vendor packs (4.6 / 4.7 / 4.8), then the
+supported-hardware matrix + contributor guide (4.9). Each step is a focused
+commit; later steps reuse the simulator / profiles / facades introduced
+earlier.
 
 ### Subplans (Epic 4)
 
-- **4.1 — SCPI / LXI-style mock instrument**  
-  In-repo TCP server(s) speaking enough SCPI for tests: `*IDN?`, `SYST:ERR?`,
-  newline framing, and a **minimal** command set per emulated kind (scope / PSU
-  / DMM) plus an **unknown** string for raw-SCPI paths. Configurable host/port;
-  scriptable from **pnpm** or CI. Used to validate WebSocket routing,
-  `sessionId` isolation, and typed routes without LAN hardware.  
+- **4.1 — Simulator framework (TCP, personality-driven)**  
+  In-repo TCP simulator shaped as a framework, not a one-off mock.
+  `SimulatorPersonality` TS module + JSON fixture per instrument model;
+  `SimulatorRegistry` loads personalities; CLI `pnpm sim --personality X
+  --port 5025`; three working Rigol personalities (DHO804, DP932E, DM858)
+  plus a generic-unknown; built-in `*IDN?` / `*OPT?` / `SYST:ERR?` handlers
+  plus IEEE 488.2 definite-length block encoder; multi-instance config for
+  multi-session UI tests; CI script. Every later Epic 4 step consumes the
+  simulator as its primary validation path.  
   See [docs/steps/4-1-scpi-mock-instrument.md](docs/steps/4-1-scpi-mock-instrument.md).
 
-- **4.2 — First new instrument kind**  
-  Add one new **`I…`** façade interface, device-kind enum value, registry entry,
-  and **dashboard + detail** UI surface for **one** concrete driver (vendor
-  module) **or** a documented stub backed by the mock until hardware exists.
-  Examples from the backlog: signal/function generator, electronic load — pick
-  one and ship end-to-end. Further categories stay in the Version 2 backlog.  
-  See [docs/steps/4-2-first-new-instrument-kind.md](docs/steps/4-2-first-new-instrument-kind.md).
+- **4.2 — Driver family profiles + `*OPT?` refinement (Rigol)**  
+  Refactor the existing Rigol drivers into the pattern every later step uses.
+  Rename files to family names (`dho800.ts`, `dp900.ts`, `dm800.ts`); keep a
+  deprecation re-export for `RigolDm858`. Lift per-variant constants (channel
+  count, bandwidth, memory depths, protection ranges, range tables, decoder
+  protocols) into `{Family}Profile` types with a variant table per family.
+  Registry registers one entry per variant plus a conservative catch-all.
+  Optional async `refine(profile, port)` hook runs `*OPT?` and a minimal
+  probe set at connect time to trim or extend the advertised capabilities
+  per unit. Shared helpers move to `drivers/rigol/_shared/`. Verified end-
+  to-end against 4.1 simulator hot-swapped across variant IDN strings —
+  real-hardware behaviour on DHO804 / DP932E / DM858 is byte-identical.  
+  See [docs/steps/4-2-driver-family-profiles.md](docs/steps/4-2-driver-family-profiles.md).
+
+- **4.3 — Instrument kind: electronic load**  
+  `IElectronicLoad` facade (CC / CV / CR / CP modes, setpoints, measure)
+  with optional `dynamic` / `list` / `protection` / `battery` / `logging`
+  / `presets` capabilities. `DeviceKind` grows `electronicLoad`. First
+  driver: Rigol DL3021 / DL3031 (profile-driven per 4.2). Simulator
+  personality ships with canned voltage-drop behaviour + protection
+  trip simulation. REST `/eload/*` routes, WS `eload.measurement` /
+  `eload.state` topics, dashboard card, detail page with capability-gated
+  tabs, user manual page.  
+  See [docs/steps/4-3-electronic-load.md](docs/steps/4-3-electronic-load.md).
+
+- **4.4 — Instrument kind: signal / function / arbitrary waveform generator**  
+  `ISignalGenerator` facade with a **discriminated waveform-type union**
+  (sine / square / ramp / pulse / noise / dc / arbitrary) plus optional
+  `modulation` / `sweep` / `burst` / `arbitrary` / `sync` / `presets`
+  capabilities. `DeviceKind` grows `signalGenerator`. First driver: Rigol
+  DG800 / DG900 (profile-driven per 4.2 with 1 / 2-channel and frequency-
+  tier variants). Simulator personalities cover arbitrary upload round-
+  trip. REST `/sg/*` incl. arbitrary upload (IEEE block), WS `sg.channels`,
+  dashboard card, detail page with subform per waveform type, user manual
+  page.  
+  See [docs/steps/4-4-signal-generator.md](docs/steps/4-4-signal-generator.md).
+
+- **4.5 — Instrument kind: spectrum analyzer**  
+  `ISpectrumAnalyzer` facade with a discriminated frequency input
+  (center/span or start/stop), trace read via IEEE block, trace / input
+  / marker capabilities, and optional `channelPower` / `trigger` /
+  `limitLines` / `averaging` / `presets`. `DeviceKind` grows
+  `spectrumAnalyzer`. First driver anchor: **Siglent** SSA3000X Plus /
+  SSA3000X-R (bootstraps `drivers/siglent/`). Simulator personality with
+  tone injector + noise floor. REST `/sa/*`, rate-limited WS `sa.sweep`,
+  dashboard card with last-sweep sparkline, detail page with uPlot trace
+  + markers + capability-gated tabs, user manual page. Tracking generator
+  and SSA5000A dialect deferred.  
+  See [docs/steps/4-5-spectrum-analyzer.md](docs/steps/4-5-spectrum-analyzer.md).
+
+- **4.6 — Vendor pack: Siglent**  
+  Profile-driven drivers under `drivers/siglent/` covering SDS scopes
+  (SDS1000X-E, SDS800X-HD, SDS2000X-Plus/HD, SDS3000X-HD, SDS6000A),
+  SPD PSUs (SPD1168X, SPD1305X, SPD3303X-E / SPD3303C), SDM DMMs
+  (SDM3045X, SDM3055, SDM3065X), and Siglent variants in the new-kind
+  drivers from 4.3 / 4.4 / 4.5 (SDL / SDG / SSA). Tolerant IDN matching
+  for "SIGLENT" / "Siglent Technologies" / "Siglent Technologies Co.,
+  Ltd." variants. Simulator personalities per family. All entries land
+  as `Preview` in the 4.9 matrix until community hardware reports
+  convert them.  
+  See [docs/steps/4-6-vendor-pack-siglent.md](docs/steps/4-6-vendor-pack-siglent.md).
+
+- **4.7 — Vendor pack: Keysight (+ legacy Agilent)**  
+  Profile-driven drivers under `drivers/keysight/` covering
+  InfiniiVision scopes (1000X / 2000X / 3000T / 4000X / 6000X DSOX
+  and MSOX variants), E36xxx + EDU36xxx PSUs (EDU36311A, E36100-series,
+  E36300-series, legacy E364xA), Truevolt DMMs (34450A / 34461A /
+  34465A / 34470A), plus Keysight variants for 4.3 (EL34143A /
+  EL34243A) and 4.4 (33500B / 33600A). Manufacturer regex accepts both
+  `Keysight` and `Agilent Technologies`. N9xxx SA reserved as backlog.
+  Simulator personalities per family. All entries `Preview` in the 4.9
+  matrix.  
+  See [docs/steps/4-7-vendor-pack-keysight.md](docs/steps/4-7-vendor-pack-keysight.md).
+
+- **4.8 — Vendor pack: Owon**  
+  Smallest-scoped vendor pack because Owon's LXI conformance is
+  inconsistent. Drivers under `drivers/owon/` for XDM DMMs (XDM1041 /
+  XDM1241 / XDM2041), SPE PSUs (SPE3103 / SPE3051 / SPE6053 / SPE6103),
+  and XDS3000 scopes (XDS3102A / XDS3104AE). Narrower capability surface
+  (no buffered logging, no advanced math, no decoders by default).
+  Per-driver `defaultPort` hint (Owon commonly listens on 3000 instead
+  of 5025). IDN regex copes with empty-manufacturer quirks. SG / e-load
+  / SA categories explicitly out of scope until hardware reports justify.
+  Simulator personalities per family.  
+  See [docs/steps/4-8-vendor-pack-owon.md](docs/steps/4-8-vendor-pack-owon.md).
+
+- **4.9 — Supported-hardware matrix + contributor guide**  
+  New `docs/user/supported-hardware.md` canonical matrix grouped by
+  device kind with Vendor / Family / Variant / Status / Notes columns,
+  following a **Verified / Preview / Community / Reported** status
+  lifecycle. Preview-driver posture is docs-only (no UI pill) — each
+  Preview row carries an inline CTA to file an instrument report. New
+  `docs/contributing/adding-a-driver.md` covering variant-add,
+  family-add, and kind-add paths. Refined `.github/ISSUE_TEMPLATE/
+  instrument-report.yml` with the promotion dropdown. README
+  supported-hardware section shrinks to a flagship excerpt + link.
+  Backlog hygiene in `progress.md` — items promoted into 4.2 – 4.8
+  leave the v2 backlog, newly-deferred items (tracking generator on
+  SSA, MSO logic-channel UI, Keysight N9xxx SA driver) enter it.
+  Roadmap refresh.  
+  See [docs/steps/4-9-supported-hardware-matrix.md](docs/steps/4-9-supported-hardware-matrix.md).
 
 ---
 
@@ -609,27 +753,31 @@ driver (including future ones from Epic 4) automatically compatible.
 
 ## Version 2 (backlog)
 
-**Goal:** extend coverage without redesigning v1—**Epic 4.2** delivers the first
-additional **device kind** beyond the Rigol trio; further kinds follow the same
-pattern. **Epic 3** covers **LAN discovery** and **platform** ergonomics
-previously listed here. **Deeper per-kind features** on existing façades remain
-the optional-capability pattern from **2.5 / 2.6 / 2.7**.
+**Goal:** extend coverage without redesigning v1. **Epic 4** now delivers three
+**new device kinds** (electronic load 4.3, signal generator 4.4, spectrum
+analyzer 4.5) and three **vendor packs** (Siglent 4.6, Keysight 4.7, Owon
+4.8) on top of the profile-driven driver-family pattern from 4.2 and the
+simulator framework from 4.1. **Epic 3** covers **LAN discovery** and
+**platform** ergonomics previously listed here. **Deeper per-kind features**
+on existing façades remain the optional-capability pattern from **2.5 / 2.6
+/ 2.7**.
 
 The authoritative, living list lives in `progress.md` under **Backlog — v2 and beyond**; this section records the shape of the work, not the ticking checklist.
 
-### More device types (examples)
+### More device types (still in v2 backlog, after Epic 4)
 
-After **Epic 4.2**, add typed façades and UI panels as you acquire hardware or demand; illustrative categories:
+Epic 4 lands electronic load, signal generator, and spectrum analyzer. The
+following categories remain backlog and follow the same façade + registry
++ simulator + hardware-report pattern:
 
-- **Signal / function generators** and **Arbitrary waveform generators (AWG)**
-- **Electronic loads** (constant I / V / R / P modes, measurement streaming)
-- **Spectrum / network analyzers** (trace capture, marker queries)
-- **Source measure unit (SMU)** (often straddles PSU + DMM semantics)
-- **Frequency counter / timer**
-- **Switch / matrix** (route selection)
-- **Temperature / data loggers** (multi-channel rolling history with export)
+- **Network analyzers** (scalar or vector — trace capture, S-parameters).
+- **Source measure unit (SMU)** — often straddles PSU + DMM semantics.
+- **Frequency counter / timer**.
+- **Switch / matrix** (route selection).
+- **Temperature / data loggers** (multi-channel rolling history with export).
+- **LCR meters**.
 
-Each gets an `I…` interface, `*IDN?` routing, vendor modules, and a dashboard surface—same pattern as the v1 trio.
+Each gets an `I…` interface, `*IDN?` routing, vendor modules, and a dashboard surface—same pattern as the kinds shipped in Epic 4.
 
 ### Deeper per-kind capabilities
 
@@ -661,17 +809,19 @@ Follow the **optional capability** pattern from 2.5 / 2.6 / 2.7 rather than grow
 ## Suggested repository layout (when you start coding)
 
 - `progress.md`: root checklist mirroring subplans; updated when each step completes (see **Git, commits, and progress tracking**).
-- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-7-…` for Epic 3; `4-1-…` through `4-2-…` for Epic 4; `5-1-…` through `5-5-…` for Epic 5) with goals and acceptance criteria.
-- `docs/user/`: plain Markdown **user manual** (installation, getting-started, per-kind pages, raw SCPI fallback, troubleshooting, hardware reports, roadmap) — canonical source; authored in 3.5.
+- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-7-…` for Epic 3; `4-1-…` through `4-9-…` for Epic 4; `5-1-…` through `5-5-…` for Epic 5) with goals and acceptance criteria.
+- `docs/user/`: plain Markdown **user manual** (installation, getting-started, per-kind pages including electronic-load / signal-generator / spectrum-analyzer, raw SCPI fallback, troubleshooting, hardware reports, supported-hardware matrix, roadmap) — canonical source; authored in 3.5 and extended by Epic 4.
 - `docs/site/`: **VitePress** scaffolding for the GitHub Pages landing page — ingests `docs/user/*.md`; authored in 3.5.
 - `docs/assets/`: screenshots and static images referenced from the README, the user manual, and the Pages site.
+- `docs/contributing/`: contributor-facing guides; `adding-a-driver.md` authored in 4.9.
 - `.github/workflows/`: CI/CD. `pages.yml` deploys the Pages site (3.5); `release.yml` fires on `v*.*.*` tags and publishes the Docker image to GHCR + Docker Hub (3.6) and `@lxi-web/core` to npm with provenance (3.7).
-- `.github/ISSUE_TEMPLATE/`: structured `instrument-report`, `bug`, `feature` templates for hardware feedback (3.5).
+- `.github/ISSUE_TEMPLATE/`: structured `instrument-report`, `bug`, `feature` templates for hardware feedback (3.5); `instrument-report` picks up the Verified / Preview / Community / Reported status lifecycle in 4.9.
 - `Dockerfile` + `docker-compose.yml`: at the repo root, authored in 3.6.
 - `LICENSE`: MIT, at the repo root (3.5).
-- `packages/core` (**`@lxi-web/core`**): `ScpiSession`, transports, `*IDN?` router, facades, Rigol drivers for **DHO804 / DP932E / DM858** (pure TS, no Vue)
-- `packages/server` (**`@lxi-web/server`**): Fastify + `@fastify/websocket`, **session manager**, depends on `@lxi-web/core`
-- `packages/web` (**`@lxi-web/web`**): **Vue 3 + Vite + Vue Router + Tailwind + Pinia + Lucide + uPlot** SPA; depends on `@lxi-web/core` for shared DTOs/types only (no server imports in bundle)
+- `packages/core` (**`@lxi-web/core`**): `ScpiSession`, transports, `*IDN?` router, facades (scope / PSU / DMM / electronic-load / signal-generator / spectrum-analyzer), profile-driven drivers under `drivers/rigol/`, `drivers/siglent/`, `drivers/keysight/`, `drivers/owon/` — pure TS, no Vue.
+- `packages/sim`: simulator framework from 4.1; `SimulatorPersonality` + JSON fixtures per vendor, CLI entry point, fixtures grouped under `personalities/{vendor}/{model}.*`.
+- `packages/server` (**`@lxi-web/server`**): Fastify + `@fastify/websocket`, **session manager**, depends on `@lxi-web/core`.
+- `packages/web` (**`@lxi-web/web`**): **Vue 3 + Vite + Vue Router + Tailwind + Pinia + Lucide + uPlot** SPA; depends on `@lxi-web/core` for shared DTOs/types only (no server imports in bundle).
 
 ---
 

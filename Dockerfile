@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 # --- deps: install workspace dependencies once -------------------------------
-FROM node:24-alpine AS deps
+FROM node:25-alpine AS deps
 WORKDIR /repo
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -12,7 +12,7 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 
 # --- build: compile every workspace package ----------------------------------
-FROM node:24-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /repo
 RUN corepack enable
 COPY --from=deps /repo/node_modules ./node_modules

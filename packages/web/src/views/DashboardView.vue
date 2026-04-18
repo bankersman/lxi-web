@@ -11,6 +11,7 @@ import PsuMiniPanel from "@/components/panels/PsuMiniPanel.vue";
 import DmmMiniPanel from "@/components/panels/DmmMiniPanel.vue";
 import EloadMiniPanel from "@/components/panels/EloadMiniPanel.vue";
 import SgMiniPanel from "@/components/panels/SgMiniPanel.vue";
+import SaMiniPanel from "@/components/panels/SaMiniPanel.vue";
 
 const sessions = useSessionsStore();
 const saved = useSavedConnectionsStore();
@@ -158,6 +159,11 @@ async function reopenAllSaved(): Promise<void> {
             />
             <SgMiniPanel
               v-else-if="session.kind === 'signalGenerator'"
+              :session-id="session.id"
+              :enabled="session.status === 'connected'"
+            />
+            <SaMiniPanel
+              v-else-if="session.kind === 'spectrumAnalyzer'"
               :session-id="session.id"
               :enabled="session.status === 'connected'"
             />

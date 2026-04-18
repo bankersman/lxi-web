@@ -35,3 +35,11 @@ export { refineDp900Profile } from "./drivers/rigol/dp900-profile.js";
 export { refineDm800Profile } from "./drivers/rigol/dm800-profile.js";
 export { refineDl3000Profile } from "./drivers/rigol/dl3000-profile.js";
 export { refineDg900Profile } from "./drivers/rigol/dg900-profile.js";
+export {
+  SiglentSsa3000x,
+  registerSiglentDrivers,
+  SSA3000X_VARIANTS,
+  SSA3000X_DEFAULT,
+  refineSsa3000xProfile,
+} from "./drivers/siglent/index.js";
+export type { Ssa3000xProfile } from "./drivers/siglent/index.js";

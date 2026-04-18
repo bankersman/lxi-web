@@ -76,6 +76,30 @@ import type {
   SignalGeneratorSyncCapability,
   SignalGeneratorSyncState,
   SignalGeneratorWaveform,
+  SpectrumAnalyzerAveragingCapability,
+  SpectrumAnalyzerAveragingConfig,
+  SpectrumAnalyzerBandwidthInput,
+  SpectrumAnalyzerBandwidthState,
+  SpectrumAnalyzerChannelPowerCapability,
+  SpectrumAnalyzerChannelPowerConfig,
+  SpectrumAnalyzerChannelPowerReading,
+  SpectrumAnalyzerFrequencyInput,
+  SpectrumAnalyzerFrequencyState,
+  SpectrumAnalyzerInputCapability,
+  SpectrumAnalyzerInputInput,
+  SpectrumAnalyzerInputState,
+  SpectrumAnalyzerLimitCapability,
+  SpectrumAnalyzerLimitLine,
+  SpectrumAnalyzerMarkerCapability,
+  SpectrumAnalyzerMarkerConfig,
+  SpectrumAnalyzerMarkerReading,
+  SpectrumAnalyzerReferenceLevel,
+  SpectrumAnalyzerSweepInput,
+  SpectrumAnalyzerSweepState,
+  SpectrumAnalyzerTraceCapability,
+  SpectrumAnalyzerTraceConfig,
+  SpectrumAnalyzerTriggerCapability,
+  SpectrumAnalyzerTriggerConfig,
   TimebaseState,
 } from "@lxi-web/core/browser";
 
@@ -1101,6 +1125,227 @@ export const api = {
     );
     await parse<{ ok: boolean }>(res);
   },
+
+  // ---- 4.5 spectrum analyzer ----
+
+  async getSaState(id: string): Promise<SaStateInfo> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/sa/state`);
+    return parse<SaStateInfo>(res);
+  },
+
+  async setSaFrequency(
+    id: string,
+    input: SpectrumAnalyzerFrequencyInput,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/frequency`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(input) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async setSaReferenceLevel(id: string, dbm: number): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/reference-level`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ dbm }) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async setSaBandwidth(
+    id: string,
+    input: SpectrumAnalyzerBandwidthInput,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/bandwidth`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(input) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async setSaSweep(
+    id: string,
+    input: SpectrumAnalyzerSweepInput,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/sweep`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(input) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async singleSaSweep(id: string): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/single-sweep`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async setSaInput(
+    id: string,
+    input: SpectrumAnalyzerInputInput,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/input`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(input) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getSaTraceData(id: string, traceId: number): Promise<SaTraceData> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/traces/${traceId}/data`,
+    );
+    return parse<SaTraceData>(res);
+  },
+
+  async setSaTraceConfig(
+    id: string,
+    traceId: number,
+    config: Partial<Omit<SpectrumAnalyzerTraceConfig, "id">>,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/traces/${traceId}`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(config) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getSaMarkers(id: string): Promise<{
+    readonly markers: readonly SpectrumAnalyzerMarkerReading[];
+  }> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/markers`,
+    );
+    return parse<{ markers: readonly SpectrumAnalyzerMarkerReading[] }>(res);
+  },
+
+  async setSaMarker(
+    id: string,
+    markerId: number,
+    config: SpectrumAnalyzerMarkerConfig,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/markers/${markerId}`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(config) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async saPeakSearch(id: string, markerId: number): Promise<{
+    readonly reading: SpectrumAnalyzerMarkerReading;
+  }> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/markers/${markerId}/peak-search`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    return parse<{ reading: SpectrumAnalyzerMarkerReading }>(res);
+  },
+
+  async getSaChannelPower(id: string): Promise<SaChannelPowerInfo> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/channel-power`,
+    );
+    return parse<SaChannelPowerInfo>(res);
+  },
+
+  async setSaChannelPower(
+    id: string,
+    config: SpectrumAnalyzerChannelPowerConfig,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/channel-power`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(config) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async readSaChannelPower(id: string): Promise<{
+    readonly reading: SpectrumAnalyzerChannelPowerReading;
+  }> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/channel-power/reading`,
+    );
+    return parse<{ reading: SpectrumAnalyzerChannelPowerReading }>(res);
+  },
+
+  async getSaTrigger(id: string): Promise<SaTriggerInfo> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/trigger`,
+    );
+    return parse<SaTriggerInfo>(res);
+  },
+
+  async setSaTrigger(
+    id: string,
+    config: SpectrumAnalyzerTriggerConfig,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/trigger`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(config) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getSaAveraging(id: string): Promise<SaAveragingInfo> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/averaging`,
+    );
+    return parse<SaAveragingInfo>(res);
+  },
+
+  async setSaAveraging(
+    id: string,
+    config: SpectrumAnalyzerAveragingConfig,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/averaging`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(config) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getSaPresets(id: string): Promise<PresetsInfo> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/presets`,
+    );
+    return parse<PresetsInfo>(res);
+  },
+
+  async saveSaPreset(id: string, slot: number): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/presets/${slot}/save`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async recallSaPreset(id: string, slot: number): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/presets/${slot}/recall`,
+      { method: "POST", headers: JSON_HEADERS, body: "{}" },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
+
+  async getSaLimitLines(id: string): Promise<SaLimitLinesInfo> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/limit-lines`,
+    );
+    return parse<SaLimitLinesInfo>(res);
+  },
+
+  async setSaLimitLine(
+    id: string,
+    line: SpectrumAnalyzerLimitLine,
+  ): Promise<void> {
+    const res = await fetch(
+      `/api/sessions/${encodeURIComponent(id)}/sa/limit-lines`,
+      { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(line) },
+    );
+    await parse<{ ok: boolean }>(res);
+  },
 };
 
 // ---- DTO helper types for responses ----
@@ -1278,4 +1523,60 @@ export interface SgSyncInfo {
   readonly supported: boolean;
   readonly capability?: SignalGeneratorSyncCapability;
   readonly state?: SignalGeneratorSyncState;
+}
+
+export interface SaStateInfo {
+  readonly frequency: SpectrumAnalyzerFrequencyState;
+  readonly referenceLevel: SpectrumAnalyzerReferenceLevel;
+  readonly bandwidth: SpectrumAnalyzerBandwidthState;
+  readonly sweep: SpectrumAnalyzerSweepState;
+  readonly input: SpectrumAnalyzerInputState;
+  readonly capabilities: {
+    readonly traces: SpectrumAnalyzerTraceCapability;
+    readonly markers: SpectrumAnalyzerMarkerCapability;
+    readonly input: SpectrumAnalyzerInputCapability;
+    readonly channelPower: SpectrumAnalyzerChannelPowerCapability | null;
+    readonly trigger: SpectrumAnalyzerTriggerCapability | null;
+    readonly limitLines: SpectrumAnalyzerLimitCapability | null;
+    readonly averaging: SpectrumAnalyzerAveragingCapability | null;
+    readonly presets: { readonly slots: number } | null;
+    readonly frequencyRangeHz: { readonly min: number; readonly max: number };
+    readonly referenceLevelRangeDbm: {
+      readonly min: number;
+      readonly max: number;
+    };
+  };
+}
+
+export interface SaTraceData {
+  readonly id: number;
+  readonly points: number;
+  readonly unit: string;
+  readonly timestamp: number;
+  readonly frequencyHz: readonly number[];
+  readonly amplitude: readonly number[];
+}
+
+export interface SaChannelPowerInfo {
+  readonly supported: boolean;
+  readonly capability?: SpectrumAnalyzerChannelPowerCapability;
+  readonly config?: SpectrumAnalyzerChannelPowerConfig;
+}
+
+export interface SaTriggerInfo {
+  readonly supported: boolean;
+  readonly capability?: SpectrumAnalyzerTriggerCapability;
+  readonly config?: SpectrumAnalyzerTriggerConfig;
+}
+
+export interface SaAveragingInfo {
+  readonly supported: boolean;
+  readonly capability?: SpectrumAnalyzerAveragingCapability;
+  readonly config?: SpectrumAnalyzerAveragingConfig;
+}
+
+export interface SaLimitLinesInfo {
+  readonly supported: boolean;
+  readonly capability?: SpectrumAnalyzerLimitCapability;
+  readonly lines?: readonly SpectrumAnalyzerLimitLine[];
 }

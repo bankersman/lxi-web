@@ -10,6 +10,7 @@ import PsuPanel from "@/components/panels/PsuPanel.vue";
 import DmmPanel from "@/components/panels/DmmPanel.vue";
 import EloadPanel from "@/components/panels/EloadPanel.vue";
 import SgPanel from "@/components/panels/SgPanel.vue";
+import SaPanel from "@/components/panels/SaPanel.vue";
 import RawConsole from "@/components/panels/RawConsole.vue";
 
 const props = defineProps<{ sessionId: string }>();
@@ -65,6 +66,11 @@ const isConnected = computed(() => session.value?.status === "connected");
         />
         <SgPanel
           v-else-if="session.kind === 'signalGenerator'"
+          :session-id="session.id"
+          :enabled="isConnected"
+        />
+        <SaPanel
+          v-else-if="session.kind === 'spectrumAnalyzer'"
           :session-id="session.id"
           :enabled="isConnected"
         />

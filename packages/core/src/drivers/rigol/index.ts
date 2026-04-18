@@ -1,4 +1,5 @@
 import { DriverRegistry } from "../../identity/registry.js";
+import { registerSiglentDrivers } from "../siglent/index.js";
 import { RigolDho800 } from "./dho800.js";
 import { RigolDp900 } from "./dp900.js";
 import { RigolDm800 } from "./dm800.js";
@@ -215,5 +216,6 @@ export function registerRigolDrivers(registry: DriverRegistry): void {
 export function createDefaultRegistry(): DriverRegistry {
   const registry = new DriverRegistry();
   registerRigolDrivers(registry);
+  registerSiglentDrivers(registry);
   return registry;
 }

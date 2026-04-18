@@ -6,9 +6,12 @@ import { rigolDm858Personality } from "./rigol/dm858.js";
 import { rigolDl3021Personality } from "./rigol/dl3021.js";
 import { rigolDg812Personality } from "./rigol/dg812.js";
 import { rigolDg932Personality } from "./rigol/dg932.js";
+import { rigolRsa3030Personality } from "./rigol/rsa3030.js";
 import { siglentSdl1020xEPersonality } from "./siglent/sdl1020x-e.js";
 import { siglentSdg2042xPersonality } from "./siglent/sdg2042x.js";
+import { siglentSsa3032xPersonality } from "./siglent/ssa3032x.js";
 import { keysight33511bPersonality } from "./keysight/33511b.js";
+import { keysightN9320bPersonality } from "./keysight/n9320b.js";
 
 export { genericUnknownPersonality } from "./generic-unknown.js";
 export { rigolDho804Personality } from "./rigol/dho804.js";
@@ -17,9 +20,12 @@ export { rigolDm858Personality } from "./rigol/dm858.js";
 export { rigolDl3021Personality } from "./rigol/dl3021.js";
 export { rigolDg812Personality } from "./rigol/dg812.js";
 export { rigolDg932Personality } from "./rigol/dg932.js";
+export { rigolRsa3030Personality } from "./rigol/rsa3030.js";
 export { siglentSdl1020xEPersonality } from "./siglent/sdl1020x-e.js";
 export { siglentSdg2042xPersonality } from "./siglent/sdg2042x.js";
+export { siglentSsa3032xPersonality } from "./siglent/ssa3032x.js";
 export { keysight33511bPersonality } from "./keysight/33511b.js";
+export { keysightN9320bPersonality } from "./keysight/n9320b.js";
 
 /**
  * Registry with every personality this package ships with. Consumers can
@@ -35,8 +41,11 @@ export function createDefaultPersonalityRegistry(): PersonalityRegistry {
   registry.register(rigolDl3021Personality);
   registry.register(rigolDg812Personality);
   registry.register(rigolDg932Personality);
+  registry.register(rigolRsa3030Personality);
   registry.register(siglentSdl1020xEPersonality);
   registry.register(siglentSdg2042xPersonality);
+  registry.register(siglentSsa3032xPersonality);
   registry.register(keysight33511bPersonality);
+  registry.register(keysightN9320bPersonality);
   return registry;
 }

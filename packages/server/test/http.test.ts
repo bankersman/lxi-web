@@ -1428,3 +1428,132 @@ test("sg endpoints reject non-signal-generator sessions", async () => {
   assert.equal(res.statusCode, 409);
   await app.close();
 });
+
+// ---- 4.5 spectrum analyzer ----
+
+async function openSa(): Promise<{
+  app: Awaited<ReturnType<typeof buildServer>>;
+  id: string;
+  session: () => FakeScpiSession | null;
+}> {
+  const state = new Map<string, string>([
+    [":SENSe:FREQuency:CENTer?", "1.6e9"],
+    [":SENSe:FREQuency:SPAN?", "3.2e9"],
+    [":SENSe:FREQuency:STARt?", "0"],
+    [":SENSe:FREQuency:STOP?", "3.2e9"],
+    [":DISPlay:WINDow:TRACe:Y:SCALe:RLEVel?", "0"],
+    [":SENSe:BANDwidth:RESolution?", "1e6"],
+    [":SENSe:BANDwidth:VIDeo?", "1e6"],
+    [":SENSe:BANDwidth:RESolution:AUTO?", "1"],
+    [":SENSe:BANDwidth:VIDeo:AUTO?", "1"],
+    [":SENSe:SWEep:POINts?", "751"],
+    [":SENSe:SWEep:TIME?", "0.03"],
+    [":INITiate:CONTinuous?", "1"],
+    [":SENSe:POWer:RF:ATTenuation?", "10"],
+    [":SENSe:POWer:RF:ATTenuation:AUTO?", "1"],
+    [":SENSe:POWer:RF:GAIN:STATe?", "0"],
+    [":TRACe:DATA? 1", "-20,-25,-30,-25,-20"],
+  ]);
+  const handler = (cmd: string): string | undefined => state.get(cmd) ?? "0";
+  const { app, session } = await setupAppCapturing(
+    "Siglent Technologies,SSA3032X-R,SN,FW",
+    handler,
+  );
+  const opened = await app.inject({
+    method: "POST",
+    url: "/api/sessions",
+    payload: { host: "10.0.0.20" },
+  });
+  const id = (opened.json() as { session: SessionSummary }).session.id;
+  await waitForStatus(app, id, "connected");
+  return { app, id, session };
+}
+
+test("sa state endpoint returns snapshot and capabilities", async () => {
+  const { app, id } = await openSa();
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/sessions/${id}/sa/state`,
+  });
+  assert.equal(res.statusCode, 200);
+  const body = res.json() as {
+    frequency: { centerHz: number };
+    referenceLevel: { dbm: number };
+    capabilities: {
+      traces: { traceCount: number };
+      markers: { count: number };
+      frequencyRangeHz: { max: number };
+    };
+  };
+  assert.equal(body.frequency.centerHz, 1.6e9);
+  assert.equal(body.referenceLevel.dbm, 0);
+  assert.ok(body.capabilities.traces.traceCount >= 1);
+  assert.ok(body.capabilities.markers.count >= 1);
+  assert.equal(body.capabilities.frequencyRangeHz.max, 3.2e9);
+  await app.close();
+});
+
+test("sa frequency endpoint validates kind and forwards SCPI", async () => {
+  const { app, id, session } = await openSa();
+  const bad = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/sa/frequency`,
+    payload: { kind: "wat" },
+  });
+  assert.equal(bad.statusCode, 400);
+
+  const over = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/sa/frequency`,
+    payload: { kind: "centerSpan", centerHz: 9e9, spanHz: 0 },
+  });
+  assert.equal(over.statusCode, 400);
+
+  const ok = await app.inject({
+    method: "POST",
+    url: `/api/sessions/${id}/sa/frequency`,
+    payload: { kind: "centerSpan", centerHz: 1e9, spanHz: 1e7 },
+  });
+  assert.equal(ok.statusCode, 200);
+  const writes = session()?.writes ?? [];
+  assert.ok(writes.some((w) => w === ":SENSe:FREQuency:CENTer 1000000000"));
+  assert.ok(writes.some((w) => w === ":SENSe:FREQuency:SPAN 10000000"));
+  await app.close();
+});
+
+test("sa trace data endpoint returns points array", async () => {
+  const { app, id } = await openSa();
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/sessions/${id}/sa/traces/1/data`,
+  });
+  assert.equal(res.statusCode, 200);
+  const body = res.json() as {
+    id: number;
+    points: number;
+    frequencyHz: number[];
+    amplitude: number[];
+  };
+  assert.equal(body.id, 1);
+  assert.equal(body.points, 5);
+  assert.equal(body.frequencyHz.length, 5);
+  assert.equal(body.amplitude[0], -20);
+  await app.close();
+});
+
+test("sa endpoints reject non-spectrum-analyzer sessions", async () => {
+  const app = await setupApp("RIGOL,DP932E,SN,FW");
+  const opened = await app.inject({
+    method: "POST",
+    url: "/api/sessions",
+    payload: { host: "10.0.0.21" },
+  });
+  const id = (opened.json() as { session: SessionSummary }).session.id;
+  await waitForStatus(app, id, "connected");
+  const res = await app.inject({
+    method: "GET",
+    url: `/api/sessions/${id}/sa/state`,
+  });
+  assert.equal(res.statusCode, 409);
+  await app.close();
+});

@@ -10,6 +10,7 @@ import {
   RigolDm858,
   RigolDl3000,
   RigolDg900,
+  SiglentSsa3000x,
 } from "@lxi-web/core";
 import { rigolDho804Personality } from "../personalities/rigol/dho804.js";
 import { rigolDp932ePersonality } from "../personalities/rigol/dp932e.js";
@@ -19,6 +20,7 @@ import { rigolDg812Personality } from "../personalities/rigol/dg812.js";
 import { rigolDg932Personality } from "../personalities/rigol/dg932.js";
 import { siglentSdl1020xEPersonality } from "../personalities/siglent/sdl1020x-e.js";
 import { siglentSdg2042xPersonality } from "../personalities/siglent/sdg2042x.js";
+import { siglentSsa3032xPersonality } from "../personalities/siglent/ssa3032x.js";
 import { keysight33511bPersonality } from "../personalities/keysight/33511b.js";
 
 async function withSimulator<T>(
@@ -174,6 +176,49 @@ test("pnpm test:sim — Siglent SDG2042X personality reserves IDN for 4.6", asyn
     assert.equal(parsed.model, "SDG2042X");
     const registry = createDefaultRegistry();
     assert.equal(registry.resolve(parsed), null);
+  });
+});
+
+test("pnpm test:sim — ScpiSession connects to SSA3032X personality + SA driver", async () => {
+  await withSimulator(siglentSsa3032xPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "SSA3032X-R");
+    assert.match(parsed.manufacturer, /siglent/i);
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "siglent-ssa3032x-r");
+    assert.equal(entry?.kind, "spectrumAnalyzer");
+    const sa = entry!.create(session, parsed) as SiglentSsa3000x;
+    // Round-trip: set center + span, read back, fetch one trace.
+    await sa.setFrequency({ kind: "centerSpan", centerHz: 1e9, spanHz: 2e7 });
+    await sa.setReferenceLevel(-10);
+    const freq = await sa.getFrequency();
+    assert.equal(freq.centerHz, 1e9);
+    assert.equal(freq.spanHz, 2e7);
+    const ref = await sa.getReferenceLevel();
+    assert.equal(ref.dbm, -10);
+    await sa.setSweep({ pointsN: 201 });
+    const sweep = await sa.getSweep();
+    assert.equal(sweep.pointsN, 201);
+    const trace = await sa.readTrace(1);
+    assert.equal(trace.id, 1);
+    assert.equal(trace.unit, "dBm");
+    assert.ok(trace.points >= 1);
+    assert.equal(trace.frequencyHz.length, trace.amplitude.length);
+  });
+});
+
+test("pnpm test:sim — SSA3032X driver refuses frequency above profile ceiling", async () => {
+  await withSimulator(siglentSsa3032xPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    const sa = entry!.create(session, parsed) as SiglentSsa3000x;
+    await assert.rejects(
+      async () =>
+        sa.setFrequency({ kind: "centerSpan", centerHz: 10e9, spanHz: 1e6 }),
+      /frequency/i,
+    );
   });
 });
 

@@ -4,6 +4,7 @@ import type {
   IOscilloscope,
   IPowerSupply,
   ISignalGenerator,
+  ISpectrumAnalyzer,
   ReadingTopic,
   ServerMessage,
 } from "@lxi-web/core";
@@ -27,6 +28,8 @@ const TOPIC_INTERVAL_MS: Readonly<Record<ReadingTopic, number>> = {
   "eload.measurement": 750,
   "eload.state": 2000,
   "sg.channels": 2000,
+  "sa.markers": 1500,
+  "sa.trace": 2000,
 };
 
 interface Subscriber {
@@ -283,6 +286,28 @@ export class ReadingScheduler {
           throw new Error("session is not a signal generator");
         }
         return await (facade as ISignalGenerator).getChannels();
+      }
+      case "sa.markers": {
+        if (facade.kind !== "spectrumAnalyzer") {
+          throw new Error("session is not a spectrum analyzer");
+        }
+        return await (facade as ISpectrumAnalyzer).listMarkers();
+      }
+      case "sa.trace": {
+        if (facade.kind !== "spectrumAnalyzer") {
+          throw new Error("session is not a spectrum analyzer");
+        }
+        // Trace 1 by default; richer topic (e.g. "sa.trace.2") can be
+        // layered on top by swapping to a dot-suffix scheme when needed.
+        const trace = await (facade as ISpectrumAnalyzer).readTrace(1);
+        return {
+          id: trace.id,
+          points: trace.points,
+          unit: trace.unit,
+          timestamp: trace.timestamp,
+          frequencyHz: Array.from(trace.frequencyHz),
+          amplitude: Array.from(trace.amplitude),
+        };
       }
     }
   }

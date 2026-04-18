@@ -17,6 +17,8 @@ export function kindLabel(kind: DeviceKind): string {
       return "Electronic load";
     case "signalGenerator":
       return "Signal generator";
+    case "spectrumAnalyzer":
+      return "Spectrum analyzer";
     default:
       return "Unidentified";
   }

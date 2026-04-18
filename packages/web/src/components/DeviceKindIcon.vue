@@ -7,6 +7,7 @@ import {
   Gauge,
   HelpCircle,
   PlugZap,
+  Radio,
 } from "lucide-vue-next";
 import type { DeviceKind } from "@lxi-web/core/browser";
 
@@ -24,6 +25,8 @@ const icon = computed(() => {
       return PlugZap;
     case "signalGenerator":
       return AudioWaveform;
+    case "spectrumAnalyzer":
+      return Radio;
     default:
       return HelpCircle;
   }

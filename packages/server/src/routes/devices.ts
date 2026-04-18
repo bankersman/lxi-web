@@ -5,6 +5,7 @@ import { registerEloadRoutes } from "./eload.js";
 import { registerPsuRoutes } from "./psu.js";
 import { registerScopeRoutes } from "./scope.js";
 import { registerSgRoutes } from "./sg.js";
+import { registerSaRoutes } from "./sa.js";
 
 export async function registerDeviceRoutes(
   app: FastifyInstance,
@@ -15,4 +16,5 @@ export async function registerDeviceRoutes(
   await registerDmmRoutes(app, manager);
   await registerEloadRoutes(app, manager);
   await registerSgRoutes(app, manager);
+  await registerSaRoutes(app, manager);
 }

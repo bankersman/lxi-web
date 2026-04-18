@@ -36,6 +36,7 @@ export default defineConfig({
             { text: "Multimeter", link: "/manual/multimeter" },
             { text: "Electronic load", link: "/manual/electronic-load" },
             { text: "Signal generator", link: "/manual/signal-generator" },
+            { text: "Spectrum analyzer", link: "/manual/spectrum-analyzer" },
             { text: "Raw SCPI", link: "/manual/raw-scpi" },
           ],
         },

@@ -2,6 +2,7 @@ export * from "./scpi/index.js";
 export * from "./identity/index.js";
 export * from "./facades/index.js";
 export * from "./dto/index.js";
+export { createDefaultRegistry } from "./drivers/index.js";
 export {
   RigolDho800,
   RigolDp900,
@@ -10,7 +11,6 @@ export {
   RigolDl3000,
   RigolDg900,
   registerRigolDrivers,
-  createDefaultRegistry,
   DHO800_VARIANTS,
   DHO800_DEFAULT,
   DP900_VARIANTS,

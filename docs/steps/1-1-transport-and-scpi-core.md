@@ -9,12 +9,12 @@ Provide a vendor-agnostic SCPI session in `@lxi-web/core`:
 
 ## Acceptance criteria
 
-- [ ] `TcpTransport.connect()` resolves only after the socket is open.
-- [ ] `ScpiSession.write(cmd)` appends newline and flushes.
-- [ ] `ScpiSession.query(cmd)` returns the trimmed response string.
-- [ ] `ScpiSession.queryBinary(cmd)` parses `#<digits><length><bytes>` IEEE block.
-- [ ] Connect/read timeouts surface as typed errors with a clear message.
-- [ ] Disposal closes the socket and rejects in-flight operations.
+- [x] `TcpTransport.connect()` resolves only after the socket is open.
+- [x] `ScpiSession.write(cmd)` appends newline and flushes.
+- [x] `ScpiSession.query(cmd)` returns the trimmed response string.
+- [x] `ScpiSession.queryBinary(cmd)` parses `#<digits><length><bytes>` IEEE block.
+- [x] Connect/read timeouts surface as typed errors with a clear message.
+- [x] Disposal closes the socket and rejects in-flight operations.
 
 ## Notes
 

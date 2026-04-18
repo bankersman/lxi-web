@@ -6,10 +6,10 @@ Parse `*IDN?` and route identified instruments to the right façade factory.
 
 ## Acceptance criteria
 
-- [ ] `parseIdn` splits `manufacturer, model, serial, firmware` from common `*IDN?` formats.
-- [ ] `DeviceKind` enum covers `oscilloscope | powerSupply | multimeter | unknown`.
-- [ ] `DriverRegistry` maps `(vendor, modelPattern)` → façade factory.
-- [ ] Unknown models still produce a live session with `kind: "unknown"` and raw SCPI access (no hard reject).
+- [x] `parseIdn` splits `manufacturer, model, serial, firmware` from common `*IDN?` formats.
+- [x] `DeviceKind` enum covers `oscilloscope | powerSupply | multimeter | unknown`.
+- [x] `DriverRegistry` maps `(vendor, modelPattern)` → façade factory.
+- [x] Unknown models still produce a live session with `kind: "unknown"` and raw SCPI access (no hard reject). _Registry returns `null`; callers keep the `ScpiPort` for raw SCPI._
 
 ## Notes
 

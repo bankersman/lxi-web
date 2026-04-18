@@ -7,6 +7,10 @@ import { useSessionsStore } from "@/stores/sessions";
 import AppHeader from "@/components/AppHeader.vue";
 import StatusIndicator from "@/components/StatusIndicator.vue";
 import DeviceKindIcon from "@/components/DeviceKindIcon.vue";
+import ScopePanel from "@/components/panels/ScopePanel.vue";
+import PsuPanel from "@/components/panels/PsuPanel.vue";
+import DmmPanel from "@/components/panels/DmmPanel.vue";
+import RawConsole from "@/components/panels/RawConsole.vue";
 import { kindLabel } from "@/lib/labels";
 
 const props = defineProps<{ sessionId: string }>();
@@ -20,6 +24,8 @@ const title = computed(() => {
   if (!s) return "Device";
   return s.identity ? shortIdentity(s.identity) : "Connecting…";
 });
+
+const isConnected = computed(() => session.value?.status === "connected");
 </script>
 
 <template>
@@ -58,11 +64,47 @@ const title = computed(() => {
           </div>
           <StatusIndicator :status="session.status" />
         </header>
-        <p class="mt-4 text-sm text-fg-muted">
-          Full controls are being wired up in Epic 2.4. This view is live and will
-          grow per-kind panels next.
+        <p
+          v-if="session.error"
+          class="mt-3 rounded-md border border-state-error/30 bg-state-error/10 px-3 py-2 text-xs text-state-error"
+          role="alert"
+        >
+          {{ session.error.message }}
         </p>
       </section>
+
+      <template v-if="session">
+        <ScopePanel
+          v-if="session.kind === 'oscilloscope'"
+          :session-id="session.id"
+          :enabled="isConnected"
+        />
+        <PsuPanel
+          v-else-if="session.kind === 'powerSupply'"
+          :session-id="session.id"
+          :enabled="isConnected"
+        />
+        <DmmPanel
+          v-else-if="session.kind === 'multimeter'"
+          :session-id="session.id"
+          :enabled="isConnected"
+        />
+        <RawConsole
+          v-else
+          :session-id="session.id"
+          :disabled="!isConnected"
+        />
+
+        <details
+          v-if="session.kind !== 'unknown'"
+          class="mt-6 rounded-[var(--radius-card)] border border-border bg-surface-2 p-4"
+        >
+          <summary class="cursor-pointer text-sm font-semibold">Raw SCPI</summary>
+          <div class="mt-3">
+            <RawConsole :session-id="session.id" :disabled="!isConnected" />
+          </div>
+        </details>
+      </template>
 
       <section
         v-else

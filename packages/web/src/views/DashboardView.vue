@@ -5,6 +5,9 @@ import { useSessionsStore } from "@/stores/sessions";
 import AppHeader from "@/components/AppHeader.vue";
 import DeviceCard from "@/components/DeviceCard.vue";
 import AddDeviceDialog from "@/components/AddDeviceDialog.vue";
+import ScopeMiniPanel from "@/components/panels/ScopeMiniPanel.vue";
+import PsuMiniPanel from "@/components/panels/PsuMiniPanel.vue";
+import DmmMiniPanel from "@/components/panels/DmmMiniPanel.vue";
 
 const sessions = useSessionsStore();
 const dialogOpen = ref(false);
@@ -60,7 +63,25 @@ onMounted(() => {
           v-for="session in sessions.list"
           :key="session.id"
           :session="session"
-        />
+        >
+          <template #body>
+            <ScopeMiniPanel
+              v-if="session.kind === 'oscilloscope'"
+              :session-id="session.id"
+              :disabled="session.status !== 'connected'"
+            />
+            <PsuMiniPanel
+              v-else-if="session.kind === 'powerSupply'"
+              :session-id="session.id"
+              :enabled="session.status === 'connected'"
+            />
+            <DmmMiniPanel
+              v-else-if="session.kind === 'multimeter'"
+              :session-id="session.id"
+              :enabled="session.status === 'connected'"
+            />
+          </template>
+        </DeviceCard>
       </section>
     </main>
 

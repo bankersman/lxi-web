@@ -166,6 +166,9 @@ test("default personality registry ships the full built-in roster", () => {
   assert.ok(ids.has("rigol-dl3021"));
   assert.ok(ids.has("rigol-dg812"));
   assert.ok(ids.has("rigol-dg932"));
+  assert.ok(ids.has("siglent-spd3303x-e"));
+  assert.ok(ids.has("siglent-sdm3065x"));
+  assert.ok(ids.has("siglent-sds824x-hd"));
   assert.ok(ids.has("siglent-sdl1020x-e"));
   assert.ok(ids.has("siglent-sdg2042x"));
   assert.ok(ids.has("siglent-ssa3032x"));

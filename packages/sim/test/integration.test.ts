@@ -11,6 +11,11 @@ import {
   RigolDl3000,
   RigolDg900,
   SiglentSsa3000x,
+  SiglentSpd,
+  SiglentSdm,
+  SiglentSdsHd,
+  SiglentSdl,
+  SiglentSdg,
 } from "@lxi-web/core";
 import { rigolDho804Personality } from "../personalities/rigol/dho804.js";
 import { rigolDp932ePersonality } from "../personalities/rigol/dp932e.js";
@@ -18,6 +23,9 @@ import { rigolDm858Personality } from "../personalities/rigol/dm858.js";
 import { rigolDl3021Personality } from "../personalities/rigol/dl3021.js";
 import { rigolDg812Personality } from "../personalities/rigol/dg812.js";
 import { rigolDg932Personality } from "../personalities/rigol/dg932.js";
+import { siglentSpd3303xEPersonality } from "../personalities/siglent/spd3303x-e.js";
+import { siglentSdm3065xPersonality } from "../personalities/siglent/sdm3065x.js";
+import { siglentSds824xHdPersonality } from "../personalities/siglent/sds824x-hd.js";
 import { siglentSdl1020xEPersonality } from "../personalities/siglent/sdl1020x-e.js";
 import { siglentSdg2042xPersonality } from "../personalities/siglent/sdg2042x.js";
 import { siglentSsa3032xPersonality } from "../personalities/siglent/ssa3032x.js";
@@ -103,15 +111,21 @@ test("pnpm test:sim — ScpiSession connects to DL3021 personality + eload drive
   });
 });
 
-test("pnpm test:sim — Siglent SDL1020X-E personality reserves IDN + answers *IDN?", async () => {
+test("pnpm test:sim — ScpiSession connects to SDL1020X-E personality + eload driver", async () => {
   await withSimulator(siglentSdl1020xEPersonality, async (session) => {
-    const idn = await session.query("*IDN?");
-    const parsed = parseIdn(idn);
-    assert.match(parsed.manufacturer, /siglent/i);
+    const parsed = parseIdn(await session.query("*IDN?"));
     assert.equal(parsed.model, "SDL1020X-E");
-    // No driver is registered yet (lands in 4.6); registry returns no entry.
     const registry = createDefaultRegistry();
-    assert.equal(registry.resolve(parsed), null);
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "siglent-sdl1020x-e");
+    assert.equal(entry?.kind, "electronicLoad");
+    const eload = entry!.create(session, parsed) as SiglentSdl;
+    const state = await eload.getState();
+    assert.equal(state.mode, "cc");
+    await eload.setInputEnabled(true);
+    await eload.setSetpoint("cc", 1.5);
+    const m = await eload.measure();
+    assert.ok(m.current >= 0);
   });
 });
 
@@ -169,13 +183,78 @@ test("pnpm test:sim — DG932 clamps requested frequency to the profile ceiling"
   });
 });
 
-test("pnpm test:sim — Siglent SDG2042X personality reserves IDN for 4.6", async () => {
+test("pnpm test:sim — ScpiSession connects to SDG2042X personality + SG driver", async () => {
   await withSimulator(siglentSdg2042xPersonality, async (session) => {
     const parsed = parseIdn(await session.query("*IDN?"));
-    assert.match(parsed.manufacturer, /siglent/i);
     assert.equal(parsed.model, "SDG2042X");
     const registry = createDefaultRegistry();
-    assert.equal(registry.resolve(parsed), null);
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "siglent-sdg2042x");
+    assert.equal(entry?.kind, "signalGenerator");
+    const sg = entry!.create(session, parsed) as SiglentSdg;
+    await sg.setWaveform(1, {
+      type: "sine",
+      frequencyHz: 5_000,
+      amplitudeVpp: 2,
+      offsetV: 0.25,
+    });
+    const state = await sg.getChannelState(1);
+    assert.equal(state.waveform.type, "sine");
+    assert.equal(Math.round(state.actual.frequencyHz), 5_000);
+  });
+});
+
+test("pnpm test:sim — ScpiSession connects to SPD3303X-E personality + PSU driver", async () => {
+  await withSimulator(siglentSpd3303xEPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "SPD3303X-E");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "siglent-spd3303x-e");
+    assert.equal(entry?.kind, "powerSupply");
+    const psu = entry!.create(session, parsed) as SiglentSpd;
+    await psu.setChannelVoltage(1, 3.3);
+    await psu.setChannelCurrent(1, 0.5);
+    await psu.setChannelOutput(1, true);
+    const channels = await psu.getChannels();
+    assert.equal(channels.length, 3);
+    const ch1 = channels[0]!;
+    assert.equal(ch1.setVoltage, 3.3);
+    assert.equal(ch1.output, true);
+  });
+});
+
+test("pnpm test:sim — ScpiSession connects to SDM3065X personality + DMM driver", async () => {
+  await withSimulator(siglentSdm3065xPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "SDM3065X");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "siglent-sdm3065x");
+    assert.equal(entry?.kind, "multimeter");
+    const dmm = entry!.create(session, parsed) as SiglentSdm;
+    const mode = await dmm.getMode();
+    assert.ok(typeof mode === "string");
+    const reading = await dmm.read();
+    assert.ok(Number.isFinite(reading.value));
+  });
+});
+
+test("pnpm test:sim — ScpiSession connects to SDS824X-HD personality + scope driver", async () => {
+  await withSimulator(siglentSds824xHdPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "SDS824X HD");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.kind, "oscilloscope");
+    const scope = entry!.create(session, parsed) as SiglentSdsHd;
+    const timebase = await scope.getTimebase();
+    assert.ok(Number.isFinite(timebase.scale));
+    await scope.setChannelEnabled(1, true);
+    const channels = await scope.getChannels();
+    assert.ok(channels.length >= 2);
+    const waveform = await scope.readWaveform(1);
+    assert.ok(waveform.y.length > 0);
   });
 });
 

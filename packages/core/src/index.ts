@@ -37,9 +37,36 @@ export { refineDl3000Profile } from "./drivers/rigol/dl3000-profile.js";
 export { refineDg900Profile } from "./drivers/rigol/dg900-profile.js";
 export {
   SiglentSsa3000x,
+  SiglentSpd,
+  SiglentSdm,
+  SiglentSdsHd,
+  SiglentSdl,
+  SiglentSdg,
   registerSiglentDrivers,
   SSA3000X_VARIANTS,
   SSA3000X_DEFAULT,
+  SPD_VARIANTS,
+  SPD_DEFAULT,
+  SDM_VARIANTS,
+  SDM_DEFAULT,
+  SDS_VARIANTS,
+  SDS_DEFAULT,
+  SDL_VARIANTS,
+  SDL_DEFAULT,
+  SDG_VARIANTS,
+  SDG_DEFAULT,
   refineSsa3000xProfile,
+  refineSpdProfile,
+  refineSdmProfile,
+  refineSdsProfile,
+  refineSdlProfile,
+  refineSdgProfile,
 } from "./drivers/siglent/index.js";
-export type { Ssa3000xProfile } from "./drivers/siglent/index.js";
+export type {
+  Ssa3000xProfile,
+  SpdProfile,
+  SdmProfile,
+  SdsProfile,
+  SdlProfile,
+  SdgProfile,
+} from "./drivers/siglent/index.js";

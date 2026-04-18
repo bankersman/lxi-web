@@ -82,19 +82,20 @@ hardware entries. SSA5000A is backlog.
 
 ## Acceptance criteria
 
-- [ ] New directory `packages/core/src/drivers/siglent/` with subfolders matching family (`sds/`, `spd/`, `sdm/`, optional `sdl/`, `sdg/`, `ssa/`). Shared SCPI helpers in `drivers/siglent/_shared/` mirror the Rigol layout.
-- [ ] **One driver class per family** (e.g. `SiglentSds` for all SDS scopes) with a profile table per variant listed above. Each driver implements the matching facade (`IOscilloscope`, etc.) and the profile advertises which optional capabilities are present.
-- [ ] **Registry** entries per variant + catch-all per family, following 4.2 pattern. Manufacturer pattern is `siglent|siglent technologies`.
-- [ ] **Refinement hook** per family: Siglent surfaces installed options and firmware-gated features through `*OPT?` and `:SYSTem:OPTion?`. Implement at least for SDS (bandwidth / decode / MSO options) and SPD (tracking / pairing availability by firmware).
-- [ ] **Simulator personalities** for at least **one variant per family** under `packages/sim/personalities/siglent/`:
-  - `sds1000x-e`, `sds2000x-plus` (scope).
-  - `spd3303x-e`, `spd1305x` (PSU).
-  - `sdm3065x`, `sdm3055` (DMM).
-  - `sdl1020x-e` if 4.3 shipped; `sdg2042x` if 4.4 shipped; `ssa3032x` if 4.5 shipped (already from that step — cross-reference only).
-  Other variants can ship as IDN-only stubs that reuse a sibling personality's handlers.
-- [ ] **Tests**: profile-resolution tests iterate every listed variant and assert the registry selects the right `DriverEntry`. Integration tests run each personality through the matching typed routes + WS topics against the simulator — this is the primary verification path because there is no hardware.
-- [ ] **Supported-hardware entry** in the table delivered by 4.9 with `Preview` status for every Siglent variant until a community hardware report lands; hardware reports flip entries to `Verified`.
-- [ ] **No regressions** on Rigol drivers or any shared facade logic — the Rigol family drivers from 4.2 stay byte-identical in behaviour.
+- [x] New directory `packages/core/src/drivers/siglent/` with shared SCPI helpers in `drivers/siglent/_shared/` (parsers, `queryOptList`). Per-family modules flat at that level — `spd-profile.ts` / `spd.ts`, `sdm-profile.ts` / `sdm.ts`, `sds-profile.ts` / `sds.ts`, `sdl-profile.ts` / `sdl.ts`, `sdg-profile.ts` / `sdg.ts`, plus the SSA from 4.5.
+- [x] **One driver class per family**: `SiglentSpd`, `SiglentSdm`, `SiglentSdsHd` (modern SCPI-2000 HD dialect — legacy X-E routes here as best-effort), `SiglentSdl`, `SiglentSdg`. Each implements its matching facade (`IPowerSupply`, `IMultimeter`, `IOscilloscope`, `IElectronicLoad`, `ISignalGenerator`) and reads capabilities from a variant profile. SDL and SDG ship as Preview — dynamic / battery / logging (SDL) and modulation / sweep / burst / arbitrary (SDG) advertise at the profile level but the driver intentionally omits the optional capability blocks until a hardware report confirms the shape.
+- [x] **Registry** entries per variant + catch-all per family, following 4.2 pattern. Manufacturer pattern is the shared `siglent` substring — matches both `Siglent Technologies` and `SIGLENT TECHNOLOGIES CO., LTD.`. Variants are registered longest-name first so prefix regexes (`^SPD3303X\b`) don't shadow more specific SKUs (`SPD3303X-E`).
+- [x] **Refinement hook** per family: `refineSpdProfile` probes `:SYSTem:CHANnel:COUNt?` to trim a 3-channel profile on a single-channel unit; `refineSdsProfile` narrows decoder protocols from `*OPT?` tokens (`SDS-I2C`, `SDS-SPI`, …); SDM / SDL / SDG / SSA refiners keep the base profile (no-ops pending hardware reports).
+- [x] **Simulator personalities** for at least one variant per family:
+  - `siglent-spd3303x-e` (PSU, 3-channel, tracking).
+  - `siglent-sdm3065x` (DMM, full SCPI-1999 surface).
+  - `siglent-sds824x-hd` (scope, SCPI-2000 HD dialect with synthetic 16-bit waveform).
+  - `siglent-sdl1020x-e` (eload, round-trip `:SOURce`/`:MEASure` tree).
+  - `siglent-sdg2042x` (SG, legacy `Cn:BSWV` dialect with two channels).
+  - `siglent-ssa3032x` carries over from 4.5. Other variants resolve against these personalities' IDN patterns via the registry's regex-based variant table.
+- [x] **Tests**: `packages/core/test/siglent-profiles.test.ts` iterates every SPD / SDM / SDS / SDL / SDG / SSA variant and asserts the registry selects the right entry with the right profile; includes a manufacturer-string tolerance check and refinement-hook coverage. `packages/sim/test/integration.test.ts` exercises SPD, SDM, SDS, SDL, SDG, and SSA end-to-end against their personalities — 190+ tests pass.
+- [ ] **Supported-hardware entry** — lands in 4.9 (pack ships with `Preview` status on every Siglent SKU until community reports flip to `Verified`).
+- [x] **No regressions** on Rigol drivers — every Rigol profile and integration test stays green.
 
 ## Notes
 

@@ -90,7 +90,7 @@ compose over `docker run`:
 ```yaml
 services:
   lxi-web:
-    image: ghcr.io/<owner>/lxi-web:latest
+    image: ghcr.io/bankersman/lxi-web:latest
     ports: ["8787:8787"]
     environment:
       HOST: 0.0.0.0
@@ -172,7 +172,7 @@ Triggers on `push` tags matching `v*.*.*`.
 - README **Quick start** (from 3.5) gets a Docker block as the primary
   path:
   ```bash
-  docker run --rm -p 8787:8787 -e HOST=0.0.0.0 ghcr.io/<owner>/lxi-web:latest
+  docker run --rm -p 8787:8787 -e HOST=0.0.0.0 ghcr.io/bankersman/lxi-web:latest
   ```
   and a compose block pointing at the committed `docker-compose.yml`.
 - `docs/user/installation.md` grows dedicated sections:
@@ -200,7 +200,7 @@ Triggers on `push` tags matching `v*.*.*`.
       on `http://127.0.0.1:8787/`; smoke test confirms `/`, `/healthz`,
       `/api/health`, and SPA fallback for `/device/:id` all return 200.
 - [x] `docker-compose.yml` at the repo root mirrors the README snippet
-      (pinned to `ghcr.io/lxi-web/lxi-web:latest`) and defines the
+      (pinned to `ghcr.io/bankersman/lxi-web:latest`) and defines the
       container-level health check.
 - [x] `.github/workflows/release.yml` fires on `v*.*.*` tag push:
   - [x] Sanity gate (`typecheck` + `test` + `build`) runs first and

@@ -1,7 +1,7 @@
 # @lxi-web/core
 
 Typed SCPI drivers and façades for LXI instruments. The portable core of
-[lxi-web](https://github.com/lxi-web/lxi-web) — use it without the dashboard
+[lxi-web](https://github.com/bankersman/lxi-web) — use it without the dashboard
 when you want to script instruments from a Node process.
 
 ## What you get
@@ -76,9 +76,9 @@ and may change without notice.
 
 ## Links
 
-- Repository: <https://github.com/lxi-web/lxi-web>
-- User manual: <https://lxi-web.github.io/lxi-web/>
+- Repository: <https://github.com/bankersman/lxi-web>
+- User manual: <https://bankersman.github.io/lxi-web/>
 - Issues & hardware reports:
-  <https://github.com/lxi-web/lxi-web/issues>
+  <https://github.com/bankersman/lxi-web/issues>
 
 MIT — see the bundled `LICENSE`.

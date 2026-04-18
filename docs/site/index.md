@@ -10,7 +10,7 @@ hero:
       link: /manual/installation
     - theme: alt
       text: Report your hardware
-      link: https://github.com/lxi-web/lxi-web/issues/new?template=instrument-report.yml
+      link: https://github.com/bankersman/lxi-web/issues/new?template=instrument-report.yml
 features:
   - title: Multi-instrument dashboard
     details: Card grid with live trigger / rail / primary-reading tiles. Open any card for the full panel.
@@ -23,7 +23,7 @@ features:
   - title: Browser-local address book
     details: Save instruments and optionally auto-connect on launch. All storage lives in your browser.
   - title: Built for solo engineers
-    details: One Docker container, trusted LAN, no multi-user auth. What you would deploy on your own workbench.
+    details: One Docker container, trusted LAN, single-operator by design. What you would deploy on your own workbench.
   - title: Drivers without the dashboard
     details: "`@lxi-web/core` publishes the SCPI transport, façades, and Rigol drivers to npm so you can script instruments straight from Node."
     link: /manual/embed-core

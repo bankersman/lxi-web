@@ -4,8 +4,9 @@
 
 Reduce repetitive setup: remember **which instruments the operator cares about**
 (host/port, label, optional auto-connect) and **reopen saved entries on launch**.
-**Single-operator, trusted LAN** — **no** login or accounts (see Epic 6 in
-`progress.md`).
+**Single-operator, trusted LAN** — **no** login or accounts (the LXI
+instruments themselves accept SCPI without authentication; this is a
+local bench utility, not a cloud application).
 
 ## Links
 
@@ -21,7 +22,7 @@ Reduce repetitive setup: remember **which instruments the operator cares about**
 - [x] **Auto-reopen on launch**: once per page load, after the first `sessions:init` frame arrives, the store opens every `autoConnect=true` row that isn't already live. Deferred on later WS reconnects so explicit "Disconnect" actions win for the rest of the session.
 - [x] Storage is documented as **browser `localStorage`** only, with a **version field** so future schema migrations can be detected and discarded safely.
 - [x] No secrets stored. Raw TCP SCPI has no auth today; if a future token shows up, keep it out of this list.
-- [x] **Out of scope**: server-side persistence, multi-user isolation, cloud sync, authentication.
+- [x] **Out of scope**: server-side persistence, cloud sync, authentication (this is a local single-operator bench utility).
 
 ## Architecture
 

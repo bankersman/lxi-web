@@ -6,11 +6,11 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping grow the [supported-hardware matrix](https://github.com/lxi-web/lxi-web/blob/main/docs/user/supported-hardware.md)!
+        Thanks for helping grow the [supported-hardware matrix](https://github.com/bankersman/lxi-web/blob/main/docs/user/supported-hardware.md)!
 
         Reports move driver rows up the lifecycle: **Preview** → **Community** → **Verified**. Full `*IDN?` + `*OPT?` + SCPI captures are what turn a status bump into a same-day turnaround.
 
-        See the [hardware-reports guide](https://github.com/lxi-web/lxi-web/blob/main/docs/user/hardware-reports.md) and — if you're thinking about writing a driver yourself — the [contributing/adding-a-driver guide](https://github.com/lxi-web/lxi-web/blob/main/docs/contributing/adding-a-driver.md).
+        See the [hardware-reports guide](https://github.com/bankersman/lxi-web/blob/main/docs/user/hardware-reports.md) and — if you're thinking about writing a driver yourself — the [contributing/adding-a-driver guide](https://github.com/bankersman/lxi-web/blob/main/docs/contributing/adding-a-driver.md).
 
   - type: dropdown
     id: report_kind
@@ -137,6 +137,6 @@ body:
     attributes:
       label: Dashboard build
       description: Docker image digest, or `git rev-parse HEAD` for a source build.
-      placeholder: ghcr.io/<owner>/lxi-web@sha256:... or abc1234
+      placeholder: ghcr.io/bankersman/lxi-web@sha256:... or abc1234
     validations:
       required: true

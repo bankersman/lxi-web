@@ -1,4 +1,6 @@
-# 5.3 — Sequences and parameter sweeps
+# X.3 — Sequences and parameter sweeps
+
+> **Status:** Deferred to Epic X (cross-device orchestration).
 
 ## Goal
 
@@ -7,9 +9,9 @@ example is "sweep PSU CH1 from 0 V to 5 V in 0.1 V steps; at each step settle
 200 ms, read DMM, single-capture the scope, collect waveform" — without
 dropping into raw SCPI or a console.
 
-Rules (5.2) are reactive ("when X, do Y"); sequences are imperative
+Rules (X.2) are reactive ("when X, do Y"); sequences are imperative
 ("do this, then this, then this"). Both consume the same event bus and
-action catalog from 5.1.
+action catalog from X.1.
 
 ## Scope
 
@@ -42,7 +44,7 @@ the given label (e.g. downloading a scope waveform, reading a DMM value).
 
 - State machine with `idle`, `running`, `paused`, `cancelling`, `finished`,
   `errored`.
-- Progress events on the 5.1 bus: `sequenceStarted`, `sequenceStep`,
+- Progress events on the X.1 bus: `sequenceStarted`, `sequenceStep`,
   `sequenceCaptured`, `sequenceFinished`, `sequenceErrored`.
 - Cancel / pause / resume from the REST surface; cancel aborts the current
   step gracefully (no hard `*RST`) and runs any configured cleanup steps.
@@ -56,7 +58,7 @@ the given label (e.g. downloading a scope waveform, reading a DMM value).
 - Waveforms are stored by the scope route's existing capture-id mechanism;
   the run just references them.
 - Exports: CSV (long format — one row per step × capture) and JSON (full
-  structure); the 5.4 timeline can replay a run chronologically.
+  structure); the X.4 timeline can replay a run chronologically.
 
 ### Persistence
 
@@ -113,5 +115,5 @@ the given label (e.g. downloading a scope waveform, reading a DMM value).
 - Sequence steps cannot invoke safety-flagged actions on other sessions
   without passing the same interlock-safety confirmation rule engine does
   (prevents foot-guns like "sweep PSU with OVP off").
-- Sequences are designed to integrate with 5.4: a run's timeline view is
-  just the 5.4 timeline scoped to the run window with step markers.
+- Sequences are designed to integrate with X.4: a run's timeline view is
+  just the X.4 timeline scoped to the run window with step markers.

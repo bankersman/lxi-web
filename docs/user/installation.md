@@ -6,19 +6,19 @@ a from-source development build.
 ## Docker
 
 ```bash
-docker run --rm -p 8787:8787 ghcr.io/<owner>/lxi-web:latest
+docker run --rm -p 8787:8787 ghcr.io/bankersman/lxi-web:latest
 ```
 
 - Container binds to `0.0.0.0:8787`; the host port is whatever you map
   with `-p`.
 - Open `http://localhost:8787/` in any modern browser.
-- Image is also mirrored to Docker Hub (`<owner>/lxi-web:latest`).
+- Image is also mirrored to Docker Hub (`bankersman/lxi-web:latest`) when the maintainer has configured the `DOCKERHUB_*` secrets; forks without those secrets still publish to GHCR.
 
 ### docker-compose
 
 A reference `docker-compose.yml` ships in the repo root. Drop it next to
 your other services and run `docker compose up -d`. It pins
-`ghcr.io/lxi-web/lxi-web:latest`, exposes port `8787`, and defines a
+`ghcr.io/bankersman/lxi-web:latest`, exposes port `8787`, and defines a
 container-level `/healthz` check.
 
 ### Verifying the image
@@ -29,9 +29,9 @@ specific digest with [cosign](https://docs.sigstore.dev/cosign/installation/):
 ```bash
 cosign verify-attestation \
   --type slsaprovenance \
-  --certificate-identity-regexp '^https://github.com/lxi-web/lxi-web/.github/workflows/release.yml@.*' \
+  --certificate-identity-regexp '^https://github.com/bankersman/lxi-web/.github/workflows/release.yml@.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  ghcr.io/lxi-web/lxi-web@sha256:<digest>
+  ghcr.io/bankersman/lxi-web@sha256:<digest>
 ```
 
 ### Environment variables
@@ -51,7 +51,7 @@ Prerequisites:
 - **pnpm ≥ 10**
 
 ```bash
-git clone https://github.com/<owner>/lxi-web.git
+git clone https://github.com/bankersman/lxi-web.git
 cd lxi-web
 pnpm install
 pnpm dev

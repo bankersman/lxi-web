@@ -7,8 +7,9 @@ drivers ship for the **Rigol DHO804** (scope), **DP932E** (PSU), and
 **DM858** (DMM); any other identifiable instrument falls back to a raw
 SCPI console.
 
-> **Not** a vendor replacement, **not** multi-user, **not** internet-exposed.
-> Run it yourself on a trusted LAN.
+> A **local bench utility** — single operator, one backend process, run it
+> yourself on a trusted LAN. The LXI instruments themselves accept SCPI
+> without authentication, so never expose this to the open internet.
 
 ## At a glance
 
@@ -32,7 +33,7 @@ SCPI console.
 ### Docker (recommended)
 
 ```bash
-docker run --rm -p 8787:8787 ghcr.io/<owner>/lxi-web:latest
+docker run --rm -p 8787:8787 ghcr.io/bankersman/lxi-web:latest
 ```
 
 The server binds to `0.0.0.0:8787` inside the container. Open

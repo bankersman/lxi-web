@@ -92,10 +92,13 @@ dBm source impedance list beyond the standard {50, 75, 600}.
   to a shared `InstrumentPresetCapability` in `@lxi-web/core`; the PSU
   implementation stays the compatibility baseline so 2.5 code keeps
   working. Tracked in `progress.md` under "Shared capability follow-ups".
-- **Trend recorder + Epic 5.** When 5.1's event bus lands, 2.6c's trend
-  recorder should emit `measurementSample` events so the 5.4 timeline
-  can render DMM + PSU + scope on a single axis without duplicate
-  pollers. Until then it runs a dedicated polling loop.
+- **Trend recorder + Epic X.** When the deferred Epic X.1 event bus
+  lands, 2.6c's trend recorder should emit `measurementSample` events
+  so the X.4 timeline can render DMM + PSU + scope on a single axis
+  without duplicate pollers. Until then it runs a dedicated polling
+  loop. (Epic 5.1's session transcript tees a different, lower-level
+  stream — every SCPI exchange rather than decoded samples — so the
+  two don't collide.)
 - **`MultimeterMode` expansion.** 2.6a adds `fourWireResistance` to the
   mode enum; because every sub-step lands after that slice, 2.6b / 2.6c
   code can assume the new mode is available.

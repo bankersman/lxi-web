@@ -17,7 +17,7 @@ export default defineConfig({
       { text: "Roadmap", link: "/manual/roadmap" },
       {
         text: "GitHub",
-        link: "https://github.com/lxi-web/lxi-web",
+        link: "https://github.com/bankersman/lxi-web",
       },
     ],
     sidebar: {
@@ -90,7 +90,7 @@ export default defineConfig({
       provider: "local",
     },
     socialLinks: [
-      { icon: "github", link: "https://github.com/lxi-web/lxi-web" },
+      { icon: "github", link: "https://github.com/bankersman/lxi-web" },
     ],
     footer: {
       message: "Released under the MIT License.",

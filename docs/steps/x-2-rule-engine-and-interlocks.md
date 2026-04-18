@@ -1,11 +1,16 @@
-# 5.2 — Rule engine with counters and safety interlocks
+# X.2 — Rule engine with counters and safety interlocks
+
+> **Status:** Deferred to Epic X (cross-device orchestration). Note that
+> the operator-facing safety primitives — panic stop, safe mode, error
+> surfacing — now live in Epic 5 (bench safety) and ship independently of
+> this rule engine.
 
 ## Goal
 
 Let the operator compose **when / then** automations across connected
 instruments — "when DMM current &gt; 500 mA, disable PSU CH1", "every scope
 trigger, bump a counter and log to the timeline" — reusing the event bus and
-action catalog from 5.1.
+action catalog from X.1.
 
 Safety interlocks are **not** a separate mechanism; they are rules with
 elevated priority and stricter ergonomics (confirm-to-disable, run-first).
@@ -22,7 +27,7 @@ interface Rule {
   priority: "safety" | "normal";
   match: EventMatch;                 // { kind, sessionId?, channel?, predicate? }
   condition?: Predicate;             // typed expression over event + counters
-  actions: ActionInvocation[];       // references into the 5.1 action catalog
+  actions: ActionInvocation[];       // references into the X.1 action catalog
   debounceMs?: number;
   cooldownMs?: number;
   counters?: CounterUpdate[];        // e.g. inc "scopeShots" by 1
@@ -38,7 +43,7 @@ operators: comparison (`<`, `<=`, `==`, `>=`, `>`, between), logical
 
 - Named, integer, per-rule-engine (not per-session) so multi-session rules
   can share a counter.
-- Observable: each change emits a `counterChanged` event on the 5.1 bus so
+- Observable: each change emits a `counterChanged` event on the X.1 bus so
   the UI can show live values without polling.
 - Resettable from the UI; persisted with rules so restart keeps state.
 
@@ -62,7 +67,7 @@ operators: comparison (`<`, `<=`, `==`, `>=`, `>`, between), logical
   before accepting HTTP traffic, so interlocks are live the moment devices
   reconnect.
 - Each rule fire writes a `ruleFired` event (id, trigger event id, actions
-  invoked, result) for the 5.4 timeline.
+  invoked, result) for the X.4 timeline.
 
 ### REST surface
 
@@ -73,7 +78,7 @@ operators: comparison (`<`, `<=`, `==`, `>=`, `>`, between), logical
   (safety rules require `confirm: true` to disable).
 - `POST /api/rules/counters/:name/reset` — explicit reset.
 - `GET /api/rules/activity?limit=100` — recent fires (backed by the bus
-  buffer from 5.1 until 5.4 gives it a real store).
+  buffer from X.1 until X.4 gives it a real store).
 
 ### UI
 
@@ -90,7 +95,7 @@ operators: comparison (`<`, `<=`, `==`, `>=`, `>`, between), logical
 ## Acceptance criteria
 
 - [ ] Rule CRUD validates the predicate tree and action references against
-      the 5.1 catalog (invalid action id → 400 with a clear error).
+      the X.1 catalog (invalid action id → 400 with a clear error).
 - [ ] Event bus subscription respects rule priority — safety rules fire
       before normal ones on the same event.
 - [ ] Debounce and cooldown are enforced per rule (not globally) and tested
@@ -102,13 +107,13 @@ operators: comparison (`<`, `<=`, `==`, `>=`, `>`, between), logical
 - [ ] Safety rules fire with no browser connected — integration test spins
       the backend headless, feeds a threshold-crossing event, and asserts
       the PSU driver receives `:OUTP OFF`.
-- [ ] Rule fires are recorded as `ruleFired` events on the bus so 5.4 can
+- [ ] Rule fires are recorded as `ruleFired` events on the bus so X.4 can
       draw them on the timeline.
 
 ## Notes
 
 - No arbitrary JavaScript in rules by design — this is a bench tool, not a
-  scripting host. 5.3's sequences cover imperative needs.
+  scripting host. X.3's sequences cover imperative needs.
 - The predicate tree stays small on purpose; when something needs more
   expressiveness it should probably be a sequence, not a rule.
 - Counters are intentionally global-per-engine rather than per-session so a

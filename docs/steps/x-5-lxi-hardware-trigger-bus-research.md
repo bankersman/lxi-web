@@ -1,4 +1,6 @@
-# 5.5 — LXI hardware trigger bus (research spike)
+# X.5 — LXI hardware trigger bus (research spike)
+
+> **Status:** Deferred to Epic X (cross-device orchestration).
 
 ## Goal
 
@@ -62,8 +64,8 @@ Keysight or R&S box shows up, the capability is a well-understood plug-in.
 
 - `common.triggerBroadcast` action: takes an array of `sessionId`s and
   issues `*TRG` to each back-to-back with `TCP_NODELAY` already set by
-  `TcpTransport`. Emit a single `triggerBroadcast` event on the 5.1 bus
-  with per-session dispatch timestamps so jitter is visible in the 5.4
+  `TcpTransport`. Emit a single `triggerBroadcast` event on the X.1 bus
+  with per-session dispatch timestamps so jitter is visible in the X.4
   timeline.
 - This is **not** a substitute for a hardware bus; document measured
   jitter in the notes and label the action accordingly in the UI.
@@ -77,11 +79,11 @@ Keysight or R&S box shows up, the capability is a well-understood plug-in.
 - `ITriggerBus` capability for wired-bus-capable instruments, with line
   assignment and direction.
 - A backend timestamp-alignment layer that prefers PTP when available
-  and falls back to wall-clock + sequence `seq` from 5.1.
+  and falls back to wall-clock + sequence `seq` from X.1.
 
 ## Acceptance criteria
 
-- [ ] `docs/steps/5-5-lxi-hardware-trigger-bus-research.md` contains the
+- [ ] `docs/steps/x-5-lxi-hardware-trigger-bus-research.md` contains the
       research notes, hardware table, and decision recommendation (ship
       the software broadcast spike or defer entirely).
 - [ ] If the optional spike lands, it lives behind a feature flag, adds
@@ -100,4 +102,4 @@ Keysight or R&S box shows up, the capability is a well-understood plug-in.
 - Near-simultaneous SCPI `*TRG` over TCP_NODELAY on a quiet LAN gets to
   low-single-digit-millisecond jitter in practice — plenty for most
   bench workflows, not a substitute for wired sync.
-- Nothing in this step should block 5.1–5.4 from shipping.
+- Nothing in this step should block X.1–X.4 from shipping.

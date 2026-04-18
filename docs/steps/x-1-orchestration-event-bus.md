@@ -1,13 +1,18 @@
-# 5.1 — Cross-device event bus and action catalog
+# X.1 — Cross-device event bus and action catalog
+
+> **Status:** Deferred to Epic X (cross-device orchestration). Reprioritised
+> behind Epic 5 (bench safety) and Epic 6 (UX pass). The design below is
+> retained verbatim for whoever picks it up next; adjust as needed when the
+> time comes.
 
 ## Goal
 
 Give the backend a vendor-neutral way to **publish events** from every
 connected instrument and **invoke actions** on any instrument, so higher-level
-orchestration (rules, sequences, timelines — 5.2–5.4) can be written without
+orchestration (rules, sequences, timelines — X.2–X.4) can be written without
 knowing which façade or driver is underneath.
 
-This is the plumbing layer for Epic 5. No rules, sequences, or UI workflows
+This is the plumbing layer for Epic X. No rules, sequences, or UI workflows
 are introduced here; they consume what this step exposes.
 
 ## Scope
@@ -78,11 +83,11 @@ Initial coverage:
 ### Backend internals
 
 - `EventBus` is a plain in-process emitter; the WebSocket layer is a
-  consumer, not the source of truth, so 5.2's rule engine can subscribe
+  consumer, not the source of truth, so X.2's rule engine can subscribe
   directly without going through a socket.
 - Events are buffered in a ring buffer (configurable, default 5 000 per
-  session) so late subscribers and 5.4's timeline can backfill.
-- No persistence in this step — durable run logs come with 5.4.
+  session) so late subscribers and X.4's timeline can backfill.
+- No persistence in this step — durable run logs come with X.4.
 
 ## Acceptance criteria
 
@@ -105,7 +110,7 @@ Initial coverage:
 
 - Deliberately **not** a generic pub/sub framework — events are a small
   closed enum so the UI can render them meaningfully without plugin code.
-- The catalog's `common.raw` action exists because otherwise 5.2/5.3 can't
+- The catalog's `common.raw` action exists because otherwise X.2/X.3 can't
   reach exotic vendor commands; it stays gated behind the existing raw-SCPI
   warnings from 2.4.
 - Waveform payloads travel on the existing scope REST route, not the event

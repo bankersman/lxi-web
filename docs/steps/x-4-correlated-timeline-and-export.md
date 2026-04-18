@@ -1,4 +1,6 @@
-# 5.4 — Correlated timeline and multi-device export
+# X.4 — Correlated timeline and multi-device export
+
+> **Status:** Deferred to Epic X (cross-device orchestration).
 
 ## Goal
 
@@ -14,10 +16,10 @@ someone a CSV.
 
 ### Recording
 
-- The event bus ring buffer (5.1) is promoted to a **persistent run log**
+- The event bus ring buffer (X.1) is promoted to a **persistent run log**
   when any of the following is active:
-  - A sequence run (5.3) is in progress.
-  - One or more rules (5.2) are tagged "record timeline".
+  - A sequence run (X.3) is in progress.
+  - One or more rules (X.2) are tagged "record timeline".
   - The user explicitly starts a recording from the Timeline page.
 - Otherwise the in-memory ring buffer continues to serve live-view clients
   only; persistence is opt-in so idle sessions don't grow log files.
@@ -43,10 +45,10 @@ someone a CSV.
 
 ### Timestamps
 
-- Every event carries both a wall-clock `timestamp` and a `seq` (from 5.1).
+- Every event carries both a wall-clock `timestamp` and a `seq` (from X.1).
 - Sequence runs add a `runElapsedMs` so step boundaries line up even if
   wall-clock drifts between instruments.
-- No attempt at IEEE 1588 PTP sync — that's in 5.5's research scope.
+- No attempt at IEEE 1588 PTP sync — that's in X.5's research scope.
 
 ### Export
 

@@ -1,7 +1,7 @@
 services:
   lxi-web:
     # Swap to :latest on release, or pin to a tag for reproducible deploys.
-    image: ghcr.io/lxi-web/lxi-web:latest
+    image: ghcr.io/bankersman/lxi-web:latest
     ports:
       - "8787:8787"
     environment:

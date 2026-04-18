@@ -12,8 +12,10 @@ device.
 
 ## What it cannot do
 
-- **No multi-user / auth / RBAC** — the API is unauthenticated by design.
-  Never expose it to the open internet.
+- **No accounts, no authentication** — the dashboard is a single-operator
+  tool for a trusted LAN. The LXI instruments themselves have no auth on
+  the SCPI TCP port, so adding a login layer here would be misleading.
+  Never expose this dashboard to the open internet.
 - **No data retention** on the server — history lives in the browser tab
   or in CSV exports you trigger yourself.
 - **Not a vendor replacement** — instrument-specific tuning that needs

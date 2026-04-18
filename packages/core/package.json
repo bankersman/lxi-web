@@ -21,12 +21,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lxi-web/lxi-web.git",
+    "url": "git+https://github.com/bankersman/lxi-web.git",
     "directory": "packages/core"
   },
-  "homepage": "https://github.com/lxi-web/lxi-web#readme",
+  "homepage": "https://github.com/bankersman/lxi-web#readme",
   "bugs": {
-    "url": "https://github.com/lxi-web/lxi-web/issues"
+    "url": "https://github.com/bankersman/lxi-web/issues"
   },
   "exports": {
     ".": {

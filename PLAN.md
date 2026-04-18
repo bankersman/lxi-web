@@ -37,25 +37,25 @@ todos:
     status: completed
   - id: epic-2-6a-dmm-range-triggering
     content: Epic 2.6a — DMM range + NPLC + AutoZero + triggering. Optional ranging/triggering capabilities on IMultimeter, 4-wire resistance added to MultimeterMode; REST /dmm/ranging, /dmm/trigger, /dmm/trigger/fire; UI Range & integration + Trigger cards; Rigol DM858 driver; progress + step doc; commit
-    status: pending
+    status: completed
   - id: epic-2-6b-dmm-math-dual
     content: Epic 2.6b — DMM math (null/dB/dBm/stats/limit) + dual display. Optional math/dualDisplay capabilities on IMultimeter; REST /dmm/math, /dmm/math/reset, /dmm/dual; UI Math card with pass/fail badge + dual-display strip; Rigol DM858 driver; progress + step doc; commit
-    status: pending
+    status: completed
   - id: epic-2-6c-dmm-logging-temperature
     content: Epic 2.6c — DMM trend logging + temperature + presets. Optional logging/temperature/presets capabilities on IMultimeter with shared InstrumentPresetCapability in @lxi-web/core (PSU retypes onto it); REST /dmm/logging/* (NDJSON stream), /dmm/temperature, /dmm/presets/*; UI Trend recorder with uPlot sparkline + CSV export, Temperature sub-card, Presets grid; Rigol DM858 driver; progress + step doc; commit
-    status: pending
+    status: completed
   - id: epic-2-7a-scope-capture-control
     content: Epic 2.7a — Scope capture control (trigger + acquisition). Optional trigger/acquisition capabilities on IOscilloscope with discriminated OscilloscopeTriggerConfig union, channel bandwidthLimit/invert/unit additions; REST /scope/trigger{,/sweep,/force}, /scope/acquisition, /scope/autoset, channel mutators; UI Trigger + Acquire tabs; Rigol DHO800 driver; progress + step doc; commit
-    status: pending
+    status: completed
   - id: epic-2-7b-scope-analysis
     content: Epic 2.7b — Scope analysis (measurements + cursors + math/FFT). Optional measurements/cursors/math capabilities with 41-item DHO800 catalog, statistics, Δ + 1/Δ cursor readouts, math incl. FFT (window/span/center); REST /scope/measurements{,/clear-stats}, /scope/cursors, /scope/math{,/waveform}; UI Measure + Cursors + Math tabs, math overlay on hero uPlot; Rigol DHO800 driver; progress + step doc; commit
-    status: pending
+    status: completed
   - id: epic-2-7c-scope-save-replay
     content: Epic 2.7c — Scope save & replay (references + history + screenshot + presets). Optional references/history/display/presets capabilities (shared InstrumentPresetCapability); REST /scope/references/* (incl. waveform), /scope/history{,/seek}, /scope/screenshot, /scope/display, /scope/presets/*; UI Refs grid with overlay, History scrubber, Display & Presets tab; Rigol DHO800 driver; progress + step doc; commit
-    status: pending
+    status: completed
   - id: epic-2-7d-scope-protocol-decoders
     content: Epic 2.7d — Scope protocol decoders (I2C/SPI/UART/CAN/LIN). Optional decoders capability with discriminated OscilloscopeDecoderConfig union, NDJSON packet stream with since=<seq>; REST /scope/buses{,/:id,/:id/packets}; UI Decoders tab with per-protocol forms + virtualised packet list + CSV export; Rigol DHO800 driver; progress + step doc; commit
-    status: pending
+    status: completed
   - id: epic-3-1-lan-discovery
     content: Epic 3.1 — LAN discovery (mDNS/DNS-SD); REST browse + Add-device pick-list; manual host/port fallback; keyboard/a11y; progress + docs/steps/3-1-*.md; commit
     status: completed
@@ -79,46 +79,73 @@ todos:
     status: completed
   - id: epic-4-1-simulator-framework
     content: Epic 4.1 — Simulator framework (hybrid TS + JSON personality fixtures). `packages/sim` with `SimulatorPersonality` type + registry + CLI; personalities for DHO804 / DP932E / DM858 + a generic-unknown; handler resolution order (exact → prefix → fixture → built-ins); `*IDN?` + `*OPT?` + SYST:ERR? built-ins; IEEE 488.2 definite-length block encoder; multi-instance config; pnpm scripts + CI target; README + contributor note. Every later Epic 4 step consumes the simulator. Progress + docs/steps/4-1-*.md; commit
-    status: pending
+    status: completed
   - id: epic-4-2-driver-family-profiles
     content: Epic 4.2 — Driver family profiles + *OPT? refinement on Rigol. Rename dho804.ts→dho800.ts, dp932e.ts→dp900.ts, dm858.ts→dm800.ts (deprecation alias for RigolDm858); lift variant-specific constants into Dho800Profile / Dp900Profile / Dm800Profile; variant tables per family (DHO802/804/812/814, DP932E/U/DP912, DM858/858E); catch-all entries; refine(profile, port) hook using *OPT? and a channel probe; shared helpers in drivers/rigol/_shared/; tests iterate every variant against 4.1 simulator. No behaviour change on real DHO804/DP932E/DM858. Progress + docs/steps/4-2-*.md; commit
-    status: pending
+    status: completed
   - id: epic-4-3-electronic-load
     content: Epic 4.3 — Instrument kind — electronic load. IElectronicLoad facade (CC/CV/CR/CP modes, setpoints, measure) + optional dynamic/list/protection/battery/logging/presets capabilities; DeviceKind grows `electronicLoad`; Rigol DL3000 profile-driven driver (DL3021/DL3031); simulator personality rigol-dl3021 + stub siglent-sdl1020x-e; REST /api/sessions/:id/eload/* + WS `eload.measurement`/`eload.state` topics; dashboard card + detail page with protection/dynamic/battery/logger/presets tabs; docs/user/electronic-load.md. Progress + docs/steps/4-3-*.md; commit
-    status: pending
+    status: completed
   - id: epic-4-4-signal-generator
     content: Epic 4.4 — Instrument kind — signal / function / arbitrary waveform generator. ISignalGenerator facade with discriminated waveform-type union + optional channels/modulation/sweep/burst/arbitrary/sync/presets capabilities; DeviceKind grows `signalGenerator`; Rigol DG800/DG900 profile-driven driver; simulator personalities rigol-dg812/rigol-dg932 + stubs siglent-sdg2042x/keysight-33511b; REST /api/sessions/:id/sg/* incl. arbitrary upload + WS `sg.channels`; dashboard card + detail page with Modulation/Sweep/Burst/Arbitrary/Sync/Presets tabs; docs/user/signal-generator.md. Progress + docs/steps/4-4-*.md; commit
-    status: pending
+    status: completed
   - id: epic-4-5-spectrum-analyzer
     content: Epic 4.5 — Instrument kind — spectrum analyzer. ISpectrumAnalyzer facade (frequency center/span or start/stop discriminated input, reference level, RBW/VBW, sweep, trace read via IEEE block) + trace/input/marker capabilities + optional channelPower/trigger/limitLines/averaging/presets; DeviceKind grows `spectrumAnalyzer`; Siglent SSA3000X profile-driven driver (drivers/siglent/ bootstrapped); simulator personality siglent-ssa3032x with tone injector + stubs rigol-rsa3030/keysight-n9320; REST /api/sessions/:id/sa/* + rate-limited WS `sa.sweep`; dashboard card + detail page with uPlot trace + markers + tabs; docs/user/spectrum-analyzer.md. Tracking generator and SSA5000A dialect deferred. Progress + docs/steps/4-5-*.md; commit
-    status: pending
+    status: completed
   - id: epic-4-6-vendor-pack-siglent
     content: Epic 4.6 — Vendor pack — Siglent. Profile-driven drivers under drivers/siglent/ covering SDS scope family (SDS1000X-E, SDS800X-HD, SDS2000X-Plus/HD, SDS3000X-HD, SDS6000A), SPD PSU family (SPD1168X, SPD1305X, SPD3303X-E/C), SDM DMM family (SDM3045X, SDM3055, SDM3065X), plus Siglent variants in the new-kind drivers from 4.3/4.4/4.5 (SDL / SDG / SSA). Simulator personalities per family; *OPT? refinement; manufacturer regex tolerant of "SIGLENT" / "Siglent Technologies" / "Siglent Technologies Co., Ltd." quirks; supported-hardware entries all Preview until community reports convert. Progress + docs/steps/4-6-*.md; commit
-    status: pending
+    status: completed
   - id: epic-4-7-vendor-pack-keysight
     content: Epic 4.7 — Vendor pack — Keysight (+ legacy Agilent). Profile-driven drivers under drivers/keysight/ covering InfiniiVision scope family (1000X/2000X/3000T/4000X/6000X DSOX+MSOX), E36xxx/EDU36xxx PSU family (EDU36311A, E36100-series, E36300-series, legacy E364xA), Truevolt DMM family (34450A, 34461A, 34465A, 34470A), plus Keysight variants in new-kind drivers (EL34143A/EL34243A for 4.3, 33500B/33600A for 4.4); N9xxx SA reserved. Manufacturer regex accepts both "Keysight" and "Agilent Technologies". Simulator personalities per family; *OPT? refinement. Supported-hardware entries all Preview. Progress + docs/steps/4-7-*.md; commit
-    status: pending
+    status: completed
   - id: epic-4-8-vendor-pack-owon
     content: Epic 4.8 — Vendor pack — Owon (smallest-scoped due to partial LXI conformance). Profile-driven drivers under drivers/owon/ covering XDM DMM family (XDM1041/1241/2041), SPE PSU family (SPE3103/3051/6053/6103), XDS3000 scope family (XDS3102A/3104AE). Narrower capability surface (no advanced math/logging/decoders). Per-driver defaultPort hint (Owon often uses 3000 instead of 5025); manufacturer regex catches empty-manufacturer + "Owon" / "Lilliput"; documented mDNS + LXI caveats. Simulator personalities per family. SG / e-load / SA explicitly out of scope until community reports justify. Progress + docs/steps/4-8-*.md; commit
-    status: pending
+    status: completed
   - id: epic-4-9-supported-hardware-matrix
     content: Epic 4.9 — Supported-hardware matrix + contributor guide. New docs/user/supported-hardware.md grouped by device kind with Vendor/Family/Variant/Status/Notes columns and Verified/Preview/Community/Reported status lifecycle; wired into user-manual index + VitePress sidebar + README flagship excerpt. Expanded docs/user/hardware-reports.md explaining the promotion workflow. New docs/contributing/adding-a-driver.md covering variant-add / family-add / kind-add paths. Refined issue templates. Backlog hygiene in progress.md so items promoted into 4.2–4.8 leave the v2 backlog. Roadmap refresh. Progress + docs/steps/4-9-*.md; commit
+    status: completed
+  - id: epic-4-10-vendor-pack-tektronix
+    content: Epic 4.10 — Vendor pack — Tektronix. Profile-driven drivers under drivers/tektronix/ covering TBS/MDO/MSO/DPO scope families (TBS1000C/2000B, MDO3000/4000C, MSO/DPO 2000B/3000/4000B/5 Series/6 Series), AFG function generators (AFG1000/3000C/31000), PWS bench PSUs (PWS2000/4000), and MDO built-in SA via the 4.5 facade. Manufacturer regex /tektronix/i; dual-path waveform decode (CURVE? vs WFMOutpre?); simulator personalities per representative variant; *OPT? refinement for decoders / MSO digital channels / RF option; Preview status. RSA real-time SA and AWG7000/5200 AWGs deferred. Progress + docs/steps/4-10-*.md; commit
     status: pending
-  - id: epic-5-1-event-bus
-    content: Epic 5.1 — Cross-device event bus + action catalog on @lxi-web/core; façade event sources for scope/PSU/DMM; REST for schema/catalog/invoke; WebSocket events channel with filters and ring-buffer backfill; progress + step doc; commit
+  - id: epic-4-11-vendor-pack-rohde-schwarz
+    content: Epic 4.11 — Vendor pack — Rohde & Schwarz (+ legacy Hameg). Profile-driven drivers under drivers/rnds/ covering RTB/RTM/RTA/MXO scopes, NGE/NGL/NGM/NGP/NGU PSUs, HMC bench DMMs, SMA/SMB/SMBV and HMF/HMC804x signal generators, FPC/FPL/HMS spectrum analyzers. Manufacturer regex matches Rohde&Schwarz variants and legacy HAMEG. Simulator personalities per family; *OPT? refinement. FSW/FSVA/ESR flagship SAs and NGU SMU surface deferred. Preview status. Progress + docs/steps/4-11-*.md; commit
     status: pending
-  - id: epic-5-2-rule-engine
-    content: Epic 5.2 — Rule engine (when/then) with typed predicate tree, counters, debounce/cooldown, and safety interlocks that run without a browser attached; confirm-to-disable on safety rules; Rules page + activity log; progress + step doc; commit
+  - id: epic-4-12-vendor-pack-fluke
+    content: Epic 4.12 — Vendor pack — Fluke (DMM-centric, narrow). Profile-driven FlukeBenchDmm driver under drivers/fluke/ covering 8808A / 8845A / 8846A / 8588A / 8508A. Manufacturer regex /fluke/i plus CR+LF termination tolerance and legacy *ID? fallback. Optional FlukeCalibrator driver (5520A/5522A/5730A) via IPowerSupply facade. Simulator personalities fluke-8845a / 8846a / 8588a. ScopeMeter handhelds and process tools explicitly out of scope. Preview status. Progress + docs/steps/4-12-*.md; commit
     status: pending
-  - id: epic-5-3-sequences
-    content: Epic 5.3 — Sequences and parameter sweeps (action/wait/waitForEvent/capture/sweep steps), runner with cancel/pause/resume, CSV + JSON export, Sequences page with step editor and live run UI; progress + step doc; commit
+  - id: epic-4-13-vendor-pack-gw-instek
+    content: Epic 4.13 — Vendor pack — GW Instek. Profile-driven drivers under drivers/gw-instek/ covering GDS scopes, GPP/GPD/PSW/PFR PSUs (GPD as reduced-capability sub-profile, no OVP/presets), GDM DMMs, AFG signal generators, GSP spectrum analyzers. Manufacturer regex tolerates GW Instek / GWINSTEK / GW-INSTEK. Conservative catch-alls per family, wider-than-usual *OPT? refinement. ASCII-preamble waveform decoder. Simulator personalities per family. PEL e-loads optional sub-scope. Preview status. Progress + docs/steps/4-13-*.md; commit
     status: pending
-  - id: epic-5-4-timeline
-    content: Epic 5.4 — Correlated multi-device timeline with lanes per session, cross-session rule/sequence markers, persistent run recordings (NDJSON on disk), replay scrubber, csv-long/csv-wide/json/ndjson exports, retention policy; progress + step doc; commit
+  - id: epic-5-1-scpi-observability
+    content: Epic 5.1 — SCPI observability. IErrorQueue capability on ScpiSession drained by a per-session poller (default 2 s) into a SessionManager ring; new WS topic device.errors. TranscriptSink captures every write/query/binary-block exchange with direction/timestamp/elapsed/origin into a ring (default 2000); REST /api/sessions/:id/transcript + /transcript/export (NDJSON); WS topic session.transcript. UI pill on overview card + dashboard card for device errors; new Transcript tab next to Raw SCPI with virtualised list, filters, pause, download. Raw SCPI inputs auto-tag into the transcript. Progress + docs/steps/5-1-*.md; commit
     status: pending
-  - id: epic-5-5-lxi-trigger-bus
-    content: Epic 5.5 — LXI hardware trigger bus research spike (Extended Functions / PTP / wired bus); document state of play and sketch IPtpClock / ITriggerBus capability shapes; optional common.triggerBroadcast software-trigger action with measured jitter; progress + step doc; commit
+  - id: epic-5-2-panic-stop
+    content: Epic 5.2 — Panic stop. New IOutputKillable capability on IPowerSupply / IElectronicLoad / ISignalGenerator facades; disableAllOutputs() on every shipped driver that owns outputs. New POST /api/panic endpoint iterates every session in parallel with a per-instrument timeout and returns a structured PanicResult; emits session.event frames with kind panicStop and transcript entries with origin panic. Persistent red header button (two-step confirm on first use per browser, single-click thereafter; keyboard shortcut Ctrl+Shift+.). Panic history panel on the dashboard. Progress + docs/steps/5-2-*.md; commit
     status: pending
+  - id: epic-5-3-safe-mode
+    content: Epic 5.3 — Safe mode read-only lockout. Pinia store useSafeMode persisted to localStorage; useSafeModeGate composable disables every write-capable control across every detail page and dashboard mini-panel with disabled + aria-disabled + tooltip. Raw SCPI panel splits into Query (enabled) and Write (gated). Panic button exempt. Header toggle + ambient border stripe + badge. Keyboard shortcut g s. Explicitly client-side only; instruments remain unauthenticated on the LAN. Progress + docs/steps/5-3-*.md; commit
+    status: pending
+  - id: epic-6-1-keyboard-shortcuts
+    content: Epic 6.1 — Keyboard shortcuts and help overlay. useShortcuts registration primitive with chord + sequence parsing, scope (global / dashboard / device / device:kind), category, and input-focus suppression. Initial bindings ? help overlay, Esc close, / focus search, g d dashboard, g s safe mode, Ctrl+Shift+. panic, j/k next-prev card, a add-device, r reopen saved; kind-scoped Space/R for scope, O for PSU/SG output, M for DMM mode, L for DMM trend log, etc. Help overlay modal with focus trap + search + scope filter; macOS Cmd/Meta swap; axe-core clean. Progress + docs/steps/6-1-*.md; commit
+    status: pending
+  - id: epic-6-2-detail-page-ia-audit
+    content: Epic 6.2 — Detail-page information architecture audit. Per-kind audit (touch frequency × density) with before/after screenshots; reorder so hero + safety-critical readouts sit first (PSU channels from 5th to 1st, trip state on hero row; DMM primary + mode + range on hero row; e-load V/I/P/R + trip on hero; SG per-channel hero with waveform pill + output toggle; SA hero trace + peak marker). Collapse setup-only blocks behind tabs, densify API-sandbox-feeling blocks into scannable tables + chip bars. Overview card action-row rebalance (Disconnect pushed right). Transcript tab positioning. Dashboard card mini-controls follow same hierarchy. Update 3-4-device-detail-ux.md to reflect new section order. No backend changes. Progress + docs/steps/6-2-*.md; commit
+    status: pending
+  - id: epic-x-1-event-bus
+    content: Epic X.1 — Cross-device event bus + action catalog on @lxi-web/core; façade event sources for scope/PSU/DMM; REST for schema/catalog/invoke; WebSocket events channel with filters and ring-buffer backfill. Deferred from Epic 5; lower priority than bench-safety (Epic 5) and UX pass (Epic 6). Progress + docs/steps/x-1-*.md; commit
+    status: deferred
+  - id: epic-x-2-rule-engine
+    content: Epic X.2 — Rule engine (when/then) with typed predicate tree, counters, debounce/cooldown, and safety interlocks that run without a browser attached; confirm-to-disable on safety rules; Rules page + activity log. Deferred from Epic 5. Progress + docs/steps/x-2-*.md; commit
+    status: deferred
+  - id: epic-x-3-sequences
+    content: Epic X.3 — Sequences and parameter sweeps (action/wait/waitForEvent/capture/sweep steps), runner with cancel/pause/resume, CSV + JSON export, Sequences page with step editor and live run UI. Deferred from Epic 5. Progress + docs/steps/x-3-*.md; commit
+    status: deferred
+  - id: epic-x-4-timeline
+    content: Epic X.4 — Correlated multi-device timeline with lanes per session, cross-session rule/sequence markers, persistent run recordings (NDJSON on disk), replay scrubber, csv-long/csv-wide/json/ndjson exports, retention policy. Deferred from Epic 5. Progress + docs/steps/x-4-*.md; commit
+    status: deferred
+  - id: epic-x-5-lxi-trigger-bus
+    content: Epic X.5 — LXI hardware trigger bus research spike (Extended Functions / PTP / wired bus); document state of play and sketch IPtpClock / ITriggerBus capability shapes; optional common.triggerBroadcast software-trigger action with measured jitter. Deferred from Epic 5. Progress + docs/steps/x-5-*.md; commit
+    status: deferred
 isProject: false
 ---
 
@@ -132,11 +159,11 @@ isProject: false
 
 ---
 
-## Product scope (v1) — keep functionality sensible
+## Product scope — keep functionality sensible
 
-- **One operator, one deployment:** a single person (or one lab machine) runs the **Node backend** and uses the **Vue UI** in a browser. **No** multi-user accounts, **no** roles/tenants, **no** shared concurrent editing, **no** per-user quotas — that is all explicitly **out of scope** until you need it.
-- **“Multi-session” means multi-instrument:** the backend may hold **several TCP connections at once** so you can see your scope, PSU, and DMM together. That is **one** UI session talking to **one** backend process — not many unrelated users on the internet.
-- **Prioritize features that help one person control lab gear:** reliable connect/disconnect, clear per-device state, safe defaults (e.g. confirm destructive actions, avoid surprise `*RST`), readable errors, and predictable API shapes. Add complexity only when a concrete workflow needs it.
+- **One operator, one deployment.** A single person (or one lab machine) runs the **Node backend** and uses the **Vue UI** in a browser. This is a **local bench utility**, not a cloud application. Accounts, roles, tenants, and per-user quotas are **not** part of the product — the LXI instruments themselves accept SCPI over raw TCP without authentication, so adding a login layer in the dashboard would be security theatre unless the operator also owns the network isolation (which is the documented posture: bind to a trusted LAN only).
+- **“Multi-session” means multi-instrument.** The backend holds **several TCP connections at once** so you can see your scope, PSU, and DMM together. That is **one** UI session talking to **one** backend process, not many unrelated users on a shared network.
+- **Prioritise features that help one person control lab gear:** reliable connect/disconnect, clear per-device state, safe defaults (e.g. confirm destructive actions, avoid surprise `*RST`), readable errors, visible device-error queue, per-session SCPI transcript, a panic-stop kill switch, and predictable API shapes. Add complexity only when a concrete workflow needs it.
 
 ---
 
@@ -232,7 +259,7 @@ Optional later: **Tauri/Electron** still reuses `packages/core`; not in v1 scope
 
 - **`git init` immediately** as the first implementation step (with a sensible root `.gitignore`). **Commit after every subplan/step** below completes — one focused commit per milestone (conventional prefixes welcome: `feat`, `fix`, `chore`, `docs`).
 - **`progress.md`** at the **repository root**: a living **checklist** that mirrors the subplan order (same items as the YAML todos in this plan). **Update it when starting a step** (optional “Started” date) and **when finishing** (check the box, add “Done” date and one-line summary if useful). This file is the human-facing source of truth for “where we are”; keep it in sync with reality before each commit that closes a step.
-- **One markdown file per subplan** under **`docs/steps/`** (filenames aligned with subplans, e.g. `1-1-transport-and-scpi-core.md`, `1-2-identity-and-routing.md`, … through `2-7-scope-advanced-features.md` for v1 + per-kind deep-dives, plus `5-1-…` through `5-5-…` for Epic 5). Each file holds: **goal**, **acceptance criteria** (checkboxes), **links** to the relevant plan section, and **notes** (decisions, model numbers tested). **Bootstrap** (second todo) may add **stub** files with headings and empty criteria to be filled when work begins, or create each file at the **start** of that subplan — either approach is fine; pick one and stay consistent.
+- **One markdown file per subplan** under **`docs/steps/`** (filenames aligned with subplans, e.g. `1-1-transport-and-scpi-core.md`, `1-2-identity-and-routing.md`, … through `2-7-scope-advanced-features.md` for v1 + per-kind deep-dives, `5-1-…` through `5-3-…` for Epic 5 bench safety, `6-1-…` through `6-2-…` for Epic 6 UX pass, `x-1-…` through `x-5-…` for the deferred Epic X orchestration work). Each file holds: **goal**, **acceptance criteria** (checkboxes), **links** to the relevant plan section, and **notes** (decisions, model numbers tested). **Bootstrap** (second todo) may add **stub** files with headings and empty criteria to be filled when work begins, or create each file at the **start** of that subplan — either approach is fine; pick one and stay consistent.
 - **Do not** bundle unrelated subplans into one commit; if a step is large, internal WIP commits on a branch are fine, but merge to `main` (or default branch) with a clear **final** commit message per subplan when possible.
 
 ---
@@ -345,7 +372,7 @@ These are the “typed extensions”: **not** primarily inheritance from one meg
 
 ## Epic 2 — Dashboard UI (every connected device visible and controllable)
 
-**Product requirement:** the dashboard must surface **every active backend session** at once (**card grid**) and let the **single operator** **see state and send controls** on each card and in **expanded** full panels—not a single hidden “active instrument”. (Still not multi-user: one browser session to one backend is enough for v1.)
+**Product requirement:** the dashboard must surface **every active backend session** at once (**card grid**) and let the **single operator** **see state and send controls** on each card and in **expanded** full panels — not a single hidden “active instrument”.
 
 ### Subplans (Epic 2)
 
@@ -388,8 +415,6 @@ and actions first). **Also** make the project **installable** and
 **discoverable** by someone who has never touched the code: a clear README,
 a user manual, a public landing page, a one-line Docker install, and an
 optional `@lxi-web/core` npm publish for people who only want the drivers.
-**Out of scope:** accounts, roles, and multi-tenant security — see
-**Epic 6 (deferred)** in `progress.md`.
 
 ### Subplans (Epic 3)
 
@@ -623,9 +648,239 @@ earlier.
   Roadmap refresh.  
   See [docs/steps/4-9-supported-hardware-matrix.md](docs/steps/4-9-supported-hardware-matrix.md).
 
+- **4.10 — Vendor pack: Tektronix**  
+  Profile-driven drivers under `drivers/tektronix/` covering the TBS /
+  MDO / MSO / DPO scope families (TBS1000C / 2000B, MDO3000 / 4000C,
+  MSO/DPO 2000B / 3000 / 4000B / 5 Series / 6 Series), AFG function
+  generators (AFG1000 / 3000C / 31000), PWS bench PSUs (PWS2000 /
+  4000), and MDO built-in SA via the 4.5 façade. Manufacturer regex
+  `/tektronix/i`; driver handles the dual-path waveform decode
+  (`CURVE?` vs `WFMOutpre?`). Simulator personalities per
+  representative variant. `*OPT?` refinement narrows decoders / MSO
+  digital channels / RF option. RSA real-time SA and AWG7000 / 5200
+  AWGs deferred. Preview status in the 4.9 matrix.  
+  See [docs/steps/4-10-vendor-pack-tektronix.md](docs/steps/4-10-vendor-pack-tektronix.md).
+
+- **4.11 — Vendor pack: Rohde & Schwarz (+ legacy Hameg)**  
+  Profile-driven drivers under `drivers/rnds/` covering RTB / RTM /
+  RTA / MXO scopes, NGE / NGL / NGM / NGP / NGU PSUs, HMC8012 /
+  HMC8015 bench DMMs, SMA / SMB / SMBV analog/vector generators and
+  HMF / HMC804x function gens, FPC / FPL / HMS spectrum analyzers.
+  Manufacturer regex matches `Rohde&Schwarz`, `Rohde & Schwarz`,
+  `R&S`, and legacy `HAMEG` IDN strings. Simulator personalities per
+  family; `*OPT?` refinement. FSW / FSVA / ESR flagship SAs and full
+  NGU SMU surface deferred to backlog. Preview status.  
+  See [docs/steps/4-11-vendor-pack-rohde-schwarz.md](docs/steps/4-11-vendor-pack-rohde-schwarz.md).
+
+- **4.12 — Vendor pack: Fluke**  
+  Narrow DMM-centric pack. Profile-driven `FlukeBenchDmm` driver
+  under `drivers/fluke/` covering 8808A / 8845A / 8846A / 8588A /
+  8508A bench DMMs. Manufacturer regex `/fluke/i`, CR+LF termination
+  tolerance, and legacy `*ID?` fallback. Optional `FlukeCalibrator`
+  driver (5520A / 5522A / 5730A) via the `IPowerSupply` façade.
+  Simulator personalities `fluke-8845a` / `8846a` / `8588a`.
+  ScopeMeter handhelds and process tools explicitly out of scope
+  (Fluke Connect, not LXI). Preview status.  
+  See [docs/steps/4-12-vendor-pack-fluke.md](docs/steps/4-12-vendor-pack-fluke.md).
+
+- **4.13 — Vendor pack: GW Instek**  
+  Profile-driven drivers under `drivers/gw-instek/` covering GDS
+  scopes, GPP / GPD (reduced) / PSW / PFR PSUs, GDM DMMs, AFG signal
+  generators, GSP spectrum analyzers. Manufacturer regex tolerates
+  `GW Instek` / `GWINSTEK` / `GW-INSTEK`. Conservative catch-alls per
+  family (wider SCPI variation than any other pack), wider-than-usual
+  `*OPT?` refinement, ASCII-preamble waveform decoder. Simulator
+  personalities per family. PEL electronic loads optional sub-scope.
+  Preview status.  
+  See [docs/steps/4-13-vendor-pack-gw-instek.md](docs/steps/4-13-vendor-pack-gw-instek.md).
+
 ---
 
-## Epic 5 — Cross-device orchestration
+## Epic 5 — Bench safety
+
+**Goal:** Raise the safety floor for a solo bench operator by making
+**what the instrument is actually doing** visible, giving operators a
+single big red **panic stop** to cut every output at once, and shipping
+a client-side **safe mode** that locks out accidental writes during
+demos. None of this is orchestration — it's the primitives that make
+the dashboard itself safer to use, on every kind, every driver.
+
+### Intent
+
+Three concrete user-facing outcomes:
+
+- **See what the instrument says back.** Today a rejected SCPI command
+  silently disappears. Poll `SYST:ERR?` on a cadence, surface the
+  queue on the card + detail page, and keep a per-session SCPI
+  transcript of every write / query / binary block the backend issued
+  — so "why did my panel click do nothing?" becomes a 2 second look
+  rather than a reverse-engineering exercise.
+- **Kill every output at once.** A persistent red header button that
+  iterates every PSU / electronic-load / signal-generator session and
+  disables outputs in parallel. Emergency-stop ergonomics: always
+  reachable, two-step confirm on first use per browser, single-click
+  thereafter. Records history and emits events so the transcript and
+  (later) Epic X.1's event bus can replay what happened.
+- **Demo mode.** A client-side toggle that makes every write-capable
+  control render as disabled with an `aria-disabled` hint, so the
+  operator can show the dashboard without worrying about a stray
+  click. Explicitly not an auth layer — the instruments have no auth
+  and neither does the server; this is an ergonomic guard.
+
+### Architecture at a glance
+
+```mermaid
+flowchart TB
+  subgraph ui [Vue SPA]
+    Card[Device card]
+    Detail[Detail page]
+    Header[Header: panic + safe mode]
+    Transcript[Transcript tab]
+  end
+  subgraph server [Fastify backend]
+    Sessions[SessionManager]
+    ErrPoller[Error queue poller]
+    Panic[POST /api/panic]
+    Trans[Transcript buffer]
+    ErrBuf[Device-error buffer]
+  end
+  subgraph core [@lxi-web/core]
+    Scpi[ScpiSession + TranscriptSink]
+    Drivers[Drivers + IErrorQueue + IOutputKillable]
+  end
+  Card --> ErrBuf
+  Detail --> Trans
+  Detail --> ErrBuf
+  Header --> Panic
+  Transcript --> Trans
+  ErrPoller --> Drivers
+  Panic --> Drivers
+  Trans --> Scpi
+  Sessions --> Scpi
+  Drivers --> Scpi
+```
+
+### Subplans (Epic 5)
+
+- **5.1 — SCPI observability: error queue + session transcript**  
+  New `IErrorQueue` capability on every driver; per-session poller
+  drains `SYST:ERR?` (or vendor equivalent) into a ring on
+  `SessionManager` and emits a `device.errors` WS topic. New
+  `TranscriptSink` captures every SCPI exchange (write / query /
+  binary / origin tag) into a ring, exposed via REST paging + NDJSON
+  export + `session.transcript` WS tail. UI: device-error pill on
+  overview + dashboard card; new Transcript tab next to Raw SCPI with
+  virtualised list, filters, pause, and download.  
+  See [docs/steps/5-1-scpi-observability.md](docs/steps/5-1-scpi-observability.md).
+
+- **5.2 — Panic stop: disable all outputs**  
+  New `IOutputKillable` capability on `IPowerSupply` /
+  `IElectronicLoad` / `ISignalGenerator`, implemented on every shipped
+  driver that owns outputs. New `POST /api/panic` iterates every
+  session in parallel (per-instrument timeout), returns a structured
+  `PanicResult`, and writes transcript entries + event frames with
+  kind `panicStop`. Persistent red header button, two-step confirm on
+  first use per browser, keyboard shortcut `Ctrl+Shift+.`, panic
+  history panel on the dashboard. Never issues `*RST`; preserves
+  display / capture / math state.  
+  See [docs/steps/5-2-panic-stop.md](docs/steps/5-2-panic-stop.md).
+
+- **5.3 — Safe mode: read-only lockout**  
+  Pinia store `useSafeMode` persisted to `localStorage`;
+  `useSafeModeGate` composable disables every write-capable control
+  across every detail page and dashboard mini-panel with `disabled` +
+  `aria-disabled` + descriptive tooltip. Raw SCPI panel splits into
+  Query (enabled) and Write (gated). Panic button exempt. Header
+  toggle + ambient border stripe + badge. Keyboard shortcut `g s`.
+  Purely client-side — documented as an ergonomic guard, not an auth
+  layer.  
+  See [docs/steps/5-3-safe-mode.md](docs/steps/5-3-safe-mode.md).
+
+### Non-goals for Epic 5
+
+- No server-side enforcement of safe mode — the instruments are
+  unauthenticated on the LAN; adding a pretend-auth layer in the
+  dashboard would be misleading.
+- No programmable safety rules (threshold-based interlocks) — that's
+  Epic X.2. Panic stop intentionally lives outside any rule engine so
+  it works even when the rest of the system lies.
+- No long-term on-disk logging — transcript + error rings stay
+  in-memory; Epic X.4's persistent run log is the right home for
+  durable recordings.
+
+---
+
+## Epic 6 — UX pass
+
+**Goal:** Take a second, opinionated look at how the dashboard reads
+and behaves for a solo bench operator, now that every device kind
+exists. Make the app keyboard-first where it counts, and audit every
+detail page's information architecture so the hero and most-used
+blocks surface first on every kind.
+
+### Intent
+
+- **Keyboard shortcuts.** One registration primitive, a discoverable
+  `?` help overlay, and a tight v1 binding set covering the things an
+  operator does every session: go to dashboard, add device, next/prev
+  card, trigger a capture, flip an output, toggle safe mode, panic
+  stop. No novel patterns — Gmail-style `g X` sequences where they
+  fit, modifier chords for destructive actions.
+- **Detail-page IA audit.** 3.4 set out "hero-first, safety-critical
+  readouts first" as the intent. In practice several detail pages
+  drifted: PSU channel rails sit fifth instead of first, protection
+  grids read as API-sandbox forms, preset banks occupy more real
+  estate than the hero. Rank every block by touch frequency × risk,
+  reorder, collapse setup-only blocks, and densify raw-form blocks
+  into scannable tables and chip bars.
+
+### Subplans (Epic 6)
+
+- **6.1 — Keyboard shortcuts and help overlay**  
+  `useShortcuts` registration primitive with chord + sequence
+  parsing, scope (global / dashboard / device / device:kind),
+  category, and input-focus suppression. Initial bindings: `?` help,
+  `Esc` close, `/` focus search, `g d` dashboard, `g s` safe mode,
+  `Ctrl+Shift+.` panic; `j`/`k`/`Enter` dashboard navigation; kind-
+  scoped bindings for scope single-capture / run-stop, PSU output
+  toggle, DMM mode / trend-log, e-load input / mode, SG output /
+  waveform, SA single-sweep / peak. Help overlay modal with focus
+  trap, search, scope filter; macOS `Cmd` swap; axe-core clean.  
+  See [docs/steps/6-1-keyboard-shortcuts.md](docs/steps/6-1-keyboard-shortcuts.md).
+
+- **6.2 — Detail-page information architecture audit**  
+  Per-kind audit (scoring touch frequency × density) with before /
+  after screenshots. Reorder so hero readouts + safety-critical state
+  sit first (PSU channels from fifth to first with trip state on the
+  hero row; DMM primary + mode + range on the hero row; e-load V / I
+  / P / R + trip on hero; SG per-channel hero with waveform pill +
+  output toggle; SA hero trace + peak marker). Collapse setup-only
+  blocks behind tabs, densify API-sandbox-feeling blocks into
+  scannable tables + chip bars. Overview-card action row rebalance
+  (Disconnect pushed to the right). Transcript-tab positioning.
+  Dashboard mini-controls follow the same hierarchy. Update 3.4's
+  documented section order. No backend changes.  
+  See [docs/steps/6-2-detail-page-ia-audit.md](docs/steps/6-2-detail-page-ia-audit.md).
+
+### Non-goals for Epic 6
+
+- No visual redesign. Tailwind utility reshuffles and small
+  collapse/densify edits only — keep the step's scope tight so it
+  doesn't balloon into a ground-up restyle.
+- No new backend endpoints or capabilities. If the IA audit reveals
+  a missing backend primitive, capture it as backlog and move on.
+- No i18n. English UI copy stays the baseline for this epic.
+
+---
+
+## Epic X — Cross-device orchestration (deferred)
+
+**Status:** Deferred behind Epics 5 and 6. Retained here verbatim
+(moved from the former Epic 5) so the design work isn't lost; revisit
+once bench-safety and the UX pass have shipped.
+
+Epic X focuses on a different axis: **what happens _between_ connected
+instruments**, independent of which kinds or how they were connected.
 
 Epic 5 focuses on a different axis: **what happens _between_ connected
 instruments**, independent of which kinds or how they were connected.
@@ -642,11 +897,11 @@ reality is that the interesting workflows are cross-device:
 - "Count every scope trigger that fires during this experiment; plot them
   on the same timeline as my PSU output changes and my OVP trips."
 
-Epic 5 builds the primitives that make these cases first-class, and does
+Epic X builds the primitives that make these cases first-class, and does
 so entirely in software. The v1 target Rigol trio is **LXI Core only**
 (no wired trigger bus, no IEEE 1588 PTP), so the hardware-sync path is
-explicitly a future-gated research spike — see **5.5** — rather than a
-blocker for the useful work in **5.1–5.4**.
+explicitly a future-gated research spike — see **X.5** — rather than a
+blocker for the useful work in **X.1–X.4**.
 
 ### Architecture at a glance
 
@@ -685,31 +940,34 @@ flowchart TB
 
 Nothing in the orchestration layer reaches around the existing façades or
 session manager — it only consumes the event bus and action catalog that
-the façades publish. This keeps Epic 5 vendor-neutral and keeps every
+the façades publish. This keeps Epic X vendor-neutral and keeps every
 driver (including future ones from Epic 4) automatically compatible.
 
-### Subplans (Epic 5)
+### Subplans (Epic X)
 
-- **5.1 — Cross-device event bus and action catalog**  
+- **X.1 — Cross-device event bus and action catalog**  
   Normalize the events every façade can emit (`triggerFired`,
   `measurementSample`, `outputStateChanged`, `protectionTripped`,
-  `errorFlagRaised`, `connectionStateChanged`) and the actions every
-  façade exposes, behind JSON-schema-validated catalog descriptors.
-  REST for catalog + invoke, WebSocket `events` channel with session /
-  kind filters, ring-buffer backfill so reconnecting clients see no
-  gaps. This step is the plumbing for everything that follows.
-  See [docs/steps/5-1-orchestration-event-bus.md](docs/steps/5-1-orchestration-event-bus.md).
+  `errorFlagRaised`, `connectionStateChanged`, `panicStop` from 5.2)
+  and the actions every façade exposes, behind JSON-schema-validated
+  catalog descriptors. REST for catalog + invoke, WebSocket `events`
+  channel with session / kind filters, ring-buffer backfill so
+  reconnecting clients see no gaps. This step is the plumbing for
+  everything that follows.
+  See [docs/steps/x-1-orchestration-event-bus.md](docs/steps/x-1-orchestration-event-bus.md).
 
-- **5.2 — Rule engine with counters and safety interlocks**  
+- **X.2 — Rule engine with counters and safety interlocks**  
   Typed `when event / optional predicate / then action` rules with a
   small non-Turing-complete expression tree, named counters that
   emit their own events, debounce and cooldown per rule, and a
   `priority: "safety"` tier that runs first, fires even with no browser
   attached, and requires two-step confirm to disable. Rules page with
-  activity log and counter strip.
-  See [docs/steps/5-2-rule-engine-and-interlocks.md](docs/steps/5-2-rule-engine-and-interlocks.md).
+  activity log and counter strip. Distinct from Epic 5.2's panic stop:
+  panic is always-on and rule-independent, the rule engine is opt-in
+  automation.
+  See [docs/steps/x-2-rule-engine-and-interlocks.md](docs/steps/x-2-rule-engine-and-interlocks.md).
 
-- **5.3 — Sequences and parameter sweeps**  
+- **X.3 — Sequences and parameter sweeps**  
   Imperative multi-step flows with `action`, `wait`, `waitForEvent`,
   `capture`, and first-class `sweep` steps. Runner with cancel / pause /
   resume, per-step progress events on the bus, results with captured
@@ -717,27 +975,28 @@ driver (including future ones from Epic 4) automatically compatible.
   time in v1. Sequences and rules compose — a sequence step can emit
   events that a rule listens for, and a safety rule can abort an
   in-flight sequence.
-  See [docs/steps/5-3-sequences-and-sweeps.md](docs/steps/5-3-sequences-and-sweeps.md).
+  See [docs/steps/x-3-sequences-and-sweeps.md](docs/steps/x-3-sequences-and-sweeps.md).
 
-- **5.4 — Correlated timeline and multi-device export**  
+- **X.4 — Correlated timeline and multi-device export**  
   A single time-axis view with lanes per session, event glyphs,
   sparklines of measurement samples, and cross-session markers for rule
   fires and sequence step boundaries. Persistent recordings on disk
   (NDJSON + manifest) activated by sequence runs, tagged rules, or
   manual Start. Exports in `csv-long`, `csv-wide`, `json`, `ndjson`;
-  retention with pinning.
-  See [docs/steps/5-4-correlated-timeline-and-export.md](docs/steps/5-4-correlated-timeline-and-export.md).
+  retention with pinning. Supersedes Epic 5.1's in-memory transcript
+  ring for durable multi-session recording.
+  See [docs/steps/x-4-correlated-timeline-and-export.md](docs/steps/x-4-correlated-timeline-and-export.md).
 
-- **5.5 — LXI hardware trigger bus (research spike)**  
+- **X.5 — LXI hardware trigger bus (research spike)**  
   Mostly a document: survey the LXI Extended Functions (PTP, wired
   trigger bus), confirm current hardware targets are Core-only, sketch
   future `IPtpClock` / `ITriggerBus` façade capabilities, and
   (optionally) ship a `common.triggerBroadcast` software action with
   measured jitter so users can at least fire multiple instruments
   nearly-simultaneously over SCPI today.
-  See [docs/steps/5-5-lxi-hardware-trigger-bus-research.md](docs/steps/5-5-lxi-hardware-trigger-bus-research.md).
+  See [docs/steps/x-5-lxi-hardware-trigger-bus-research.md](docs/steps/x-5-lxi-hardware-trigger-bus-research.md).
 
-### Non-goals for Epic 5
+### Non-goals for Epic X
 
 - No arbitrary JavaScript in rules or sequences — predicates stay a typed
   expression tree, sequences stay a typed step list. Escape hatch is
@@ -747,20 +1006,25 @@ driver (including future ones from Epic 4) automatically compatible.
   operator's common cross-device workflows fast and safe, not to replace
   enterprise test systems.
 - No PTP or wired trigger bus implementation on the v1 Rigol gear; see
-  5.5 for the research-only scope.
+  X.5 for the research-only scope.
 
 ---
 
 ## Version 2 (backlog)
 
-**Goal:** extend coverage without redesigning v1. **Epic 4** now delivers three
+**Goal:** extend coverage without redesigning v1. **Epic 4** delivers three
 **new device kinds** (electronic load 4.3, signal generator 4.4, spectrum
-analyzer 4.5) and three **vendor packs** (Siglent 4.6, Keysight 4.7, Owon
-4.8) on top of the profile-driven driver-family pattern from 4.2 and the
-simulator framework from 4.1. **Epic 3** covers **LAN discovery** and
-**platform** ergonomics previously listed here. **Deeper per-kind features**
-on existing façades remain the optional-capability pattern from **2.5 / 2.6
-/ 2.7**.
+analyzer 4.5) and **seven vendor packs** — Siglent 4.6, Keysight 4.7, Owon
+4.8, Tektronix 4.10, Rohde & Schwarz 4.11, Fluke 4.12, GW Instek 4.13 —
+on top of the profile-driven driver-family pattern from 4.2 and the
+simulator framework from 4.1. **Epics 5 and 6** ship bench-safety
+primitives (observability / panic / safe mode) and a UX pass (keyboard
+shortcuts / detail-page IA audit). **Epic 3** covers **LAN discovery**
+and **platform** ergonomics previously listed here. **Deeper per-kind
+features** on existing façades remain the optional-capability pattern
+from **2.5 / 2.6 / 2.7**. **Epic X** retains the cross-device
+orchestration design (event bus, rule engine, sequences, timeline,
+trigger-bus research) as deferred work.
 
 The authoritative, living list lives in `progress.md` under **Backlog — v2 and beyond**; this section records the shape of the work, not the ticking checklist.
 
@@ -801,15 +1065,14 @@ Follow the **optional capability** pattern from 2.5 / 2.6 / 2.7 rather than grow
 ### Platform-level follow-ups
 
 - **Reconnect / persistent sessions** — **Epic 3.2 / 3.3**.
-- **Recording / playback (broad)** — overlaps **Epic 5.4** (correlated timeline + on-disk NDJSON); keep a single design so simple “log readouts” does not duplicate orchestration recordings.
-- **Auth and multi-user** — **Epic 6 (deferred)** in `progress.md`; only if the product leaves single-operator / trusted-LAN posture.
+- **Recording / playback (broad)** — overlaps **Epic X.4** (correlated timeline + on-disk NDJSON); keep a single design so simple “log readouts” does not duplicate orchestration recordings.
 
 ---
 
 ## Suggested repository layout (when you start coding)
 
 - `progress.md`: root checklist mirroring subplans; updated when each step completes (see **Git, commits, and progress tracking**).
-- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-7-…` for Epic 3; `4-1-…` through `4-9-…` for Epic 4; `5-1-…` through `5-5-…` for Epic 5) with goals and acceptance criteria.
+- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-7-…` for Epic 3; `4-1-…` through `4-13-…` for Epic 4; `5-1-…` through `5-3-…` for Epic 5 bench safety; `6-1-…` through `6-2-…` for Epic 6 UX pass; `x-1-…` through `x-5-…` for the deferred Epic X orchestration work) with goals and acceptance criteria.
 - `docs/user/`: plain Markdown **user manual** (installation, getting-started, per-kind pages including electronic-load / signal-generator / spectrum-analyzer, raw SCPI fallback, troubleshooting, hardware reports, supported-hardware matrix, roadmap) — canonical source; authored in 3.5 and extended by Epic 4.
 - `docs/site/`: **VitePress** scaffolding for the GitHub Pages landing page — ingests `docs/user/*.md`; authored in 3.5.
 - `docs/assets/`: screenshots and static images referenced from the README, the user manual, and the Pages site.

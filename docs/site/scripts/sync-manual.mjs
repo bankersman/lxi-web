@@ -42,7 +42,7 @@ async function main() {
 // docs/site/. Rewrite them to absolute GitHub URLs so the rendered site
 // still links to the right file. On GitHub the original relative link
 // already works, so this only affects the site copy.
-const repoSlug = process.env.DOCS_REPO_SLUG ?? "lxi-web/lxi-web";
+const repoSlug = process.env.DOCS_REPO_SLUG ?? "bankersman/lxi-web";
 const repoBranch = process.env.DOCS_REPO_BRANCH ?? "main";
 const repoUrl = `https://github.com/${repoSlug}/blob/${repoBranch}`;
 

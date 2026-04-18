@@ -109,7 +109,7 @@ From the Rigol DHO800 datasheet and programming guide:
 - **Setup** save / recall via `:STORage` / `*SAV` / `*RCL`.
 
 What the DHO804 does **not** have (keep in mind):
-- LXI Extended Functions — no wired trigger bus, no PTP (see Epic 5.5).
+- LXI Extended Functions — no wired trigger bus, no PTP (see the deferred Epic X.5 research spike).
 - External sample clock / reference (higher-end DHO4000 only).
 - True hardware segmented memory separate from history mode.
 

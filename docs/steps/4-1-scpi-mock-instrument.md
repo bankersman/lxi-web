@@ -74,4 +74,4 @@ packages/sim/
 - Personality fixtures are the artefact that ships with every later step (4.3 adds `rigol/dl3021.*`, 4.5 adds `siglent/ssa3032x.*`, etc.). Keeping the fixture format cheap matters.
 - Multi-instance mode is what enables the **docs-only preview** posture from the plan: `pnpm sim --config sim/siglent-bench.json` produces a whole simulated Siglent bench for screenshots, manual UI exercise, and CI regression — which is the primary validation path for vendors we cannot physically test.
 - `*OPT?` is a first-class part of every personality because 4.2's capability refinement depends on it — personalities for the same model should be able to advertise different option strings ("DHO804 with SD-SPI but no BW upgrade" vs. "DHO804 with everything").
-- Keep the CLI stable — future Epic 5 orchestration tests will script the simulator, and churning the CLI contract invalidates fixtures.
+- Keep the CLI stable — future Epic X orchestration tests (event bus / rule engine / sequences) will script the simulator, and churning the CLI contract invalidates fixtures.

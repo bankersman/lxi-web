@@ -30,6 +30,13 @@ import { tektronixTbs2102bPersonality } from "./tektronix/tbs2102b.js";
 import { tektronixMso54Personality } from "./tektronix/mso54.js";
 import { tektronixAfg31102Personality } from "./tektronix/afg31102.js";
 import { tektronixPws4323Personality } from "./tektronix/pws4323.js";
+import { rndsRtb2004Personality } from "./rnds/rtb2004.js";
+import { rndsHmo1202Personality } from "./rnds/hmo1202.js";
+import { rndsNge103bPersonality } from "./rnds/nge103b.js";
+import { rndsHmc8012Personality } from "./rnds/hmc8012.js";
+import { rndsSmbv100aPersonality } from "./rnds/smbv100a.js";
+import { rndsHmf2525Personality } from "./rnds/hmf2525.js";
+import { rndsFpc1500Personality } from "./rnds/fpc1500.js";
 
 export { genericUnknownPersonality } from "./generic-unknown.js";
 export { rigolDho804Personality } from "./rigol/dho804.js";
@@ -62,6 +69,13 @@ export { tektronixTbs2102bPersonality } from "./tektronix/tbs2102b.js";
 export { tektronixMso54Personality } from "./tektronix/mso54.js";
 export { tektronixAfg31102Personality } from "./tektronix/afg31102.js";
 export { tektronixPws4323Personality } from "./tektronix/pws4323.js";
+export { rndsRtb2004Personality } from "./rnds/rtb2004.js";
+export { rndsHmo1202Personality } from "./rnds/hmo1202.js";
+export { rndsNge103bPersonality } from "./rnds/nge103b.js";
+export { rndsHmc8012Personality } from "./rnds/hmc8012.js";
+export { rndsSmbv100aPersonality } from "./rnds/smbv100a.js";
+export { rndsHmf2525Personality } from "./rnds/hmf2525.js";
+export { rndsFpc1500Personality } from "./rnds/fpc1500.js";
 
 /**
  * Registry with every personality this package ships with. Consumers can
@@ -101,5 +115,12 @@ export function createDefaultPersonalityRegistry(): PersonalityRegistry {
   registry.register(tektronixMso54Personality);
   registry.register(tektronixAfg31102Personality);
   registry.register(tektronixPws4323Personality);
+  registry.register(rndsRtb2004Personality);
+  registry.register(rndsHmo1202Personality);
+  registry.register(rndsNge103bPersonality);
+  registry.register(rndsHmc8012Personality);
+  registry.register(rndsSmbv100aPersonality);
+  registry.register(rndsHmf2525Personality);
+  registry.register(rndsFpc1500Personality);
   return registry;
 }

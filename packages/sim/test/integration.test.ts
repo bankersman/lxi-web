@@ -43,6 +43,13 @@ import { tektronixTbs2102bPersonality } from "../personalities/tektronix/tbs2102
 import { tektronixMso54Personality } from "../personalities/tektronix/mso54.js";
 import { tektronixAfg31102Personality } from "../personalities/tektronix/afg31102.js";
 import { tektronixPws4323Personality } from "../personalities/tektronix/pws4323.js";
+import { rndsRtb2004Personality } from "../personalities/rnds/rtb2004.js";
+import { rndsHmo1202Personality } from "../personalities/rnds/hmo1202.js";
+import { rndsNge103bPersonality } from "../personalities/rnds/nge103b.js";
+import { rndsHmc8012Personality } from "../personalities/rnds/hmc8012.js";
+import { rndsSmbv100aPersonality } from "../personalities/rnds/smbv100a.js";
+import { rndsHmf2525Personality } from "../personalities/rnds/hmf2525.js";
+import { rndsFpc1500Personality } from "../personalities/rnds/fpc1500.js";
 import type {
   KeysightE36,
   KeysightTrueVolt,
@@ -56,6 +63,12 @@ import type {
   TektronixMso,
   TektronixAfg,
   TektronixPws,
+  RndsRtb,
+  RndsNge,
+  RndsHmc,
+  RndsSma,
+  RndsHmf,
+  RndsFpc,
 } from "@lxi-web/core";
 
 async function withSimulator<T>(
@@ -647,5 +660,138 @@ test("pnpm test:sim — Tektronix PWS4323 personality + PWS driver drives 3 inde
     const meas = await psu.measureChannel(1);
     assert.ok(meas.voltage > 0, "PWS should report non-zero voltage when output is on");
     assert.equal(meas.channel, 1);
+  });
+});
+
+test("pnpm test:sim — R&S RTB2004 personality + RTB scope driver decodes 16-bit waveform", async () => {
+  await withSimulator(rndsRtb2004Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "RTB2004");
+    assert.match(parsed.manufacturer, /rohde/i);
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "rnds-rtb2004");
+    assert.equal(entry?.kind, "oscilloscope");
+    const scope = entry!.create(session, parsed) as RndsRtb;
+    const tb = await scope.getTimebase();
+    assert.ok(Number.isFinite(tb.scale));
+    await scope.setChannelEnabled(1, true);
+    const channels = await scope.getChannels();
+    assert.equal(channels.length, 4);
+    const wf = await scope.readWaveform(1);
+    assert.ok(wf.y.length > 0, "RTB CHANnel:DATA? 16-bit path must decode samples");
+  });
+});
+
+test("pnpm test:sim — HAMEG HMO1202 personality routes through the R&S manufacturer regex", async () => {
+  await withSimulator(rndsHmo1202Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "HMO1202");
+    assert.match(parsed.manufacturer, /hameg/i);
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "rnds-hmo1202");
+    assert.equal(entry?.kind, "oscilloscope");
+    const scope = entry!.create(session, parsed) as RndsRtb;
+    const wf = await scope.readWaveform(1);
+    assert.ok(wf.y.length > 0, "HMO 8-bit path must decode samples");
+    assert.equal(scope.profile.sampleWidth, 1);
+  });
+});
+
+test("pnpm test:sim — R&S NGE103B personality + NGE driver hops rails via INSTrument:SELect", async () => {
+  await withSimulator(rndsNge103bPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "NGE103B");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "rnds-nge103b");
+    assert.equal(entry?.kind, "powerSupply");
+    const psu = entry!.create(session, parsed) as RndsNge;
+    const channels = await psu.getChannels();
+    assert.equal(channels.length, 3);
+    await psu.setChannelVoltage(2, 3.3);
+    await psu.setChannelCurrent(2, 0.5);
+    await psu.setChannelOutput(2, true);
+    const meas = await psu.measureChannel(2);
+    assert.ok(meas.voltage > 0, "NGE103B must report non-zero voltage when rail is enabled");
+    assert.equal(meas.channel, 2);
+  });
+});
+
+test("pnpm test:sim — R&S HMC8012 personality + HMC DMM driver round-trips CONFigure/READ", async () => {
+  await withSimulator(rndsHmc8012Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "HMC8012");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "rnds-hmc8012");
+    assert.equal(entry?.kind, "multimeter");
+    const dmm = entry!.create(session, parsed) as RndsHmc;
+    await dmm.setMode("dcVoltage");
+    const reading = await dmm.read();
+    assert.equal(reading.mode, "dcVoltage");
+    assert.ok(Number.isFinite(reading.value));
+    assert.equal(await dmm.getMode(), "dcVoltage");
+  });
+});
+
+test("pnpm test:sim — R&S SMBV100A personality + SMA driver commands SOURce:FREQ/POW", async () => {
+  await withSimulator(rndsSmbv100aPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "SMBV100A");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "rnds-smbv100a");
+    assert.equal(entry?.kind, "signalGenerator");
+    const sg = entry!.create(session, parsed) as RndsSma;
+    await sg.setChannelEnabled(1, true);
+    await sg.setWaveform(1, {
+      type: "sine",
+      frequencyHz: 2.4e9,
+      amplitudeVpp: 0.2,
+      offsetV: 0,
+    });
+    const status = await sg.getChannelStatus(1);
+    assert.equal(status.frequencyHz, 2.4e9);
+    assert.ok(status.amplitudeVpp > 0);
+  });
+});
+
+test("pnpm test:sim — HAMEG HMF2525 personality + HMF driver round-trips waveform config", async () => {
+  await withSimulator(rndsHmf2525Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "HMF2525");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "rnds-hmf2525");
+    assert.equal(entry?.kind, "signalGenerator");
+    const fg = entry!.create(session, parsed) as RndsHmf;
+    await fg.setChannelEnabled(1, true);
+    await fg.setWaveform(1, {
+      type: "square",
+      frequencyHz: 1_000,
+      amplitudeVpp: 2,
+      offsetV: 0,
+    });
+    const status = await fg.getChannelStatus(1);
+    assert.equal(status.frequencyHz, 1_000);
+  });
+});
+
+test("pnpm test:sim — R&S FPC1500 personality + FPC spectrum-analyzer driver reads traces", async () => {
+  await withSimulator(rndsFpc1500Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "FPC1500");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "rnds-fpc1500");
+    assert.equal(entry?.kind, "spectrumAnalyzer");
+    const sa = entry!.create(session, parsed) as RndsFpc;
+    await sa.setFrequency({ kind: "centerSpan", centerHz: 1e8, spanHz: 1e8 });
+    await sa.setReferenceLevel(0);
+    const trace = await sa.readTrace(1);
+    assert.ok(trace.points > 0);
+    assert.equal(trace.unit, "dBm");
   });
 });

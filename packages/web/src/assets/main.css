@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f5f7;
+  --color-surface-3: #e7e9ee;
+  --color-border: #d6d9e0;
+  --color-fg: #10131a;
+  --color-fg-muted: #5c6273;
+  --color-accent: #2563eb;
+  --color-accent-fg: #ffffff;
+
+  --color-state-connected: #16a34a;
+  --color-state-connecting: #d97706;
+  --color-state-error: #dc2626;
+  --color-state-idle: #6b7280;
+
+  --radius-card: 0.875rem;
+}
+
+.dark {
+  --color-surface: #0d1016;
+  --color-surface-2: #161a22;
+  --color-surface-3: #1f2430;
+  --color-border: #2a3040;
+  --color-fg: #e6e8ef;
+  --color-fg-muted: #9aa0b0;
+  --color-accent: #60a5fa;
+  --color-accent-fg: #0b0f16;
+
+  --color-state-connected: #22c55e;
+  --color-state-connecting: #f59e0b;
+  --color-state-error: #f87171;
+  --color-state-idle: #9aa0b0;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-fg);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

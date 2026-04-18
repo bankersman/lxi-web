@@ -12,6 +12,8 @@ import type {
 } from "@/api/client";
 import { useLiveReading } from "@/composables/useLiveReading";
 import { usePolling } from "@/composables/usePolling";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
+import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 import { formatSi, formatTime } from "@/lib/format";
 import { multimeterModeLabel } from "@/lib/labels";
 import type {
@@ -28,6 +30,10 @@ import type {
 } from "@lxi-web/core/browser";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
+
+const gate = useSafeModeGate();
+const controlsLocked = computed(() => !props.enabled || gate.enabled);
+const lockTitle = computed(() => (gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined));
 
 const supported = ref<readonly MultimeterMode[]>([]);
 const selectedMode = ref<MultimeterMode | null>(null);
@@ -388,6 +394,8 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
           id="dmm-mode"
           :value="selectedMode ?? ''"
           class="mt-1 h-9 w-full rounded-md border border-border bg-surface px-2 text-sm"
+          :disabled="controlsLocked"
+          :title="lockTitle"
           @change="changeMode"
         >
           <option v-for="m in supported" :key="m" :value="m">{{ multimeterModeLabel(m) }}</option>
@@ -422,6 +430,8 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
           <select
             class="mt-1 h-9 rounded-md border border-border bg-surface px-2 text-sm"
             :value="ranging.current?.auto ? 'auto' : ranging.current?.upper"
+            :disabled="controlsLocked"
+            :title="lockTitle"
             @change="applyRange"
           >
             <option value="auto">Auto</option>
@@ -437,6 +447,8 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
           <select
             class="mt-1 h-9 rounded-md border border-border bg-surface px-2 text-sm"
             :value="ranging.nplc ?? ''"
+            :disabled="controlsLocked"
+            :title="lockTitle"
             @change="applyNplc"
           >
             <option v-for="n in ranging.capability?.nplc ?? []" :key="n" :value="n">{{ n }}</option>
@@ -446,6 +458,8 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
           AutoZero
           <select
             class="mt-1 h-9 rounded-md border border-border bg-surface px-2 text-sm"
+            :disabled="controlsLocked"
+            :title="lockTitle"
             @change="applyAutoZero"
           >
             <option value="on">On</option>
@@ -511,10 +525,16 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
       <div class="mt-3 flex gap-2">
         <button
           class="rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg"
+          :disabled="controlsLocked"
+          :aria-disabled="controlsLocked"
+          :title="lockTitle"
           @click="applyTrigger"
         >Apply</button>
         <button
           class="rounded-md border border-border px-3 py-1.5 text-sm"
+          :disabled="controlsLocked"
+          :aria-disabled="controlsLocked"
+          :title="lockTitle"
           @click="fireTrigger"
         >Fire (software)</button>
       </div>
@@ -585,11 +605,17 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
       <div class="mt-3 flex gap-2">
         <button
           class="rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg"
+          :disabled="controlsLocked"
+          :aria-disabled="controlsLocked"
+          :title="lockTitle"
           @click="applyMath"
         >Apply</button>
         <button
           v-if="mathFn === 'stats'"
           class="rounded-md border border-border px-3 py-1.5 text-sm"
+          :disabled="controlsLocked"
+          :aria-disabled="controlsLocked"
+          :title="lockTitle"
           @click="resetStats"
         >Reset stats</button>
       </div>
@@ -607,6 +633,8 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
           <select
             class="mt-1 h-9 rounded-md border border-border bg-surface px-2 text-sm"
             :value="dual.secondary ?? ''"
+            :disabled="controlsLocked"
+            :title="lockTitle"
             @change="applyDual"
           >
             <option value="">(off)</option>
@@ -632,6 +660,8 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
           <select
             v-model="tempUnit"
             class="mt-1 h-9 rounded-md border border-border bg-surface px-2 text-sm"
+            :disabled="controlsLocked"
+            :title="lockTitle"
           >
             <option v-for="u in temperature.capability?.units ?? []" :key="u" :value="u">{{ u }}</option>
           </select>
@@ -641,6 +671,8 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
           <select
             v-model="tempTransducer"
             class="mt-1 h-9 rounded-md border border-border bg-surface px-2 text-sm"
+            :disabled="controlsLocked"
+            :title="lockTitle"
           >
             <option v-for="t in temperature.capability?.transducers ?? []" :key="t" :value="t">{{ t }}</option>
           </select>
@@ -648,6 +680,9 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
         <div class="flex items-end">
           <button
             class="rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg"
+            :disabled="controlsLocked"
+            :aria-disabled="controlsLocked"
+            :title="lockTitle"
             @click="applyTemperature"
           >Apply</button>
         </div>
@@ -668,6 +703,8 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
             type="number"
             :min="logging.capability?.minIntervalMs"
             class="mt-1 h-9 rounded-md border border-border bg-surface px-2 text-sm"
+            :disabled="controlsLocked"
+            :title="lockTitle"
           />
         </label>
         <label class="flex flex-col text-xs text-fg-muted">
@@ -677,17 +714,23 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
             type="number"
             min="1"
             class="mt-1 h-9 rounded-md border border-border bg-surface px-2 text-sm"
+            :disabled="controlsLocked"
+            :title="lockTitle"
           />
         </label>
         <div class="flex items-end gap-2">
           <button
             class="rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg disabled:opacity-50"
-            :disabled="logging.status?.running"
+            :disabled="logging.status?.running || controlsLocked"
+            :aria-disabled="logging.status?.running || controlsLocked"
+            :title="lockTitle"
             @click="startLogging"
           >Start</button>
           <button
             class="rounded-md border border-border px-3 py-1.5 text-sm disabled:opacity-50"
-            :disabled="!logging.status?.running"
+            :disabled="!logging.status?.running || controlsLocked"
+            :aria-disabled="!logging.status?.running || controlsLocked"
+            :title="lockTitle"
             @click="stopLogging"
           >Stop</button>
         </div>
@@ -723,11 +766,16 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
           />
           <button
             class="rounded bg-accent px-1 py-0.5 text-[10px] text-accent-fg"
+            :disabled="controlsLocked"
+            :aria-disabled="controlsLocked"
+            :title="lockTitle"
             @click="savePreset(i)"
           >Save</button>
           <button
             class="rounded border border-border px-1 py-0.5 text-[10px] disabled:opacity-50"
-            :disabled="!occ"
+            :disabled="!occ || controlsLocked"
+            :aria-disabled="!occ || controlsLocked"
+            :title="lockTitle"
             @click="recallPreset(i)"
           >Recall</button>
         </div>

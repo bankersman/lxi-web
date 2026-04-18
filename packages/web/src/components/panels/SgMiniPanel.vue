@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { api, type SgChannelsInfo } from "@/api/client";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
 import { useLiveReading } from "@/composables/useLiveReading";
 import { formatSi } from "@/lib/format";
 import { signalGeneratorWaveformLabel } from "@/lib/labels";
 import type { SignalGeneratorChannelState } from "@lxi-web/core/browser";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
+
+const gate = useSafeModeGate();
+const outBtn = gate.bindWrite(() => !props.enabled);
 
 const { data, error } = useLiveReading<readonly SignalGeneratorChannelState[]>(
   () => props.sessionId,
@@ -58,7 +62,7 @@ void ({} as SgChannelsInfo);
             : 'bg-surface-2 text-fg-muted hover:bg-surface'
         "
         :aria-pressed="ch.enabled"
-        :disabled="!enabled"
+        v-bind="outBtn"
         @click="toggleChannel(ch)"
       >
         {{ ch.enabled ? "OUT ON" : "OUT OFF" }}

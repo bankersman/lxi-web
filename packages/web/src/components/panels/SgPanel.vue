@@ -2,7 +2,9 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { api, type SgChannelsInfo } from "@/api/client";
 import { useLiveReading } from "@/composables/useLiveReading";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
 import { formatSi } from "@/lib/format";
+import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 import { signalGeneratorWaveformLabel } from "@/lib/labels";
 import type {
   SignalGeneratorChannelState,
@@ -12,6 +14,10 @@ import type {
 } from "@lxi-web/core/browser";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
+
+const gate = useSafeModeGate();
+const controlsLocked = computed(() => !props.enabled || gate.enabled);
+const lockTitle = computed(() => (gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined));
 
 const initial = ref<SgChannelsInfo | null>(null);
 const initError = ref<string | null>(null);
@@ -235,7 +241,8 @@ async function applyWaveform(ch: SignalGeneratorChannelState): Promise<void> {
               : 'bg-accent text-accent-fg hover:opacity-90'
           "
           :aria-pressed="ch.enabled"
-          :disabled="!enabled"
+          :disabled="controlsLocked"
+          :title="lockTitle"
           @click="toggleChannel(ch)"
         >
           {{ ch.enabled ? "Disable output" : "Enable output" }}
@@ -265,7 +272,8 @@ async function applyWaveform(ch: SignalGeneratorChannelState): Promise<void> {
           <select
             v-model="draft[ch.id].type"
             class="h-9 rounded-md border border-border bg-surface px-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            :disabled="!enabled"
+            :disabled="controlsLocked"
+            :title="lockTitle"
           >
             <option v-for="w in WAVEFORMS" :key="w" :value="w">
               {{ signalGeneratorWaveformLabel(w) }}
@@ -279,7 +287,8 @@ async function applyWaveform(ch: SignalGeneratorChannelState): Promise<void> {
             type="number"
             step="any"
             class="h-9 rounded-md border border-border bg-surface px-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            :disabled="!enabled || draft[ch.id].type === 'dc' || draft[ch.id].type === 'noise'"
+            :disabled="controlsLocked || draft[ch.id].type === 'dc' || draft[ch.id].type === 'noise'"
+            :title="lockTitle"
           />
         </label>
         <label class="flex flex-col text-xs">
@@ -289,7 +298,8 @@ async function applyWaveform(ch: SignalGeneratorChannelState): Promise<void> {
             type="number"
             step="any"
             class="h-9 rounded-md border border-border bg-surface px-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            :disabled="!enabled || draft[ch.id].type === 'dc'"
+            :disabled="controlsLocked || draft[ch.id].type === 'dc'"
+            :title="lockTitle"
           />
         </label>
         <label class="flex flex-col text-xs">
@@ -299,7 +309,8 @@ async function applyWaveform(ch: SignalGeneratorChannelState): Promise<void> {
             type="number"
             step="any"
             class="h-9 rounded-md border border-border bg-surface px-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            :disabled="!enabled"
+            :disabled="controlsLocked"
+            :title="lockTitle"
           />
         </label>
         <label
@@ -312,7 +323,8 @@ async function applyWaveform(ch: SignalGeneratorChannelState): Promise<void> {
             type="number"
             step="any"
             class="h-9 rounded-md border border-border bg-surface px-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            :disabled="!enabled"
+            :disabled="controlsLocked"
+            :title="lockTitle"
           />
         </label>
         <label
@@ -325,7 +337,8 @@ async function applyWaveform(ch: SignalGeneratorChannelState): Promise<void> {
             type="number"
             step="any"
             class="h-9 rounded-md border border-border bg-surface px-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            :disabled="!enabled"
+            :disabled="controlsLocked"
+            :title="lockTitle"
           />
         </label>
         <label
@@ -338,7 +351,8 @@ async function applyWaveform(ch: SignalGeneratorChannelState): Promise<void> {
             type="number"
             step="any"
             class="h-9 rounded-md border border-border bg-surface px-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            :disabled="!enabled"
+            :disabled="controlsLocked"
+            :title="lockTitle"
           />
         </label>
       </div>
@@ -347,7 +361,8 @@ async function applyWaveform(ch: SignalGeneratorChannelState): Promise<void> {
         <button
           type="button"
           class="inline-flex h-9 items-center rounded-md bg-accent px-3 text-sm font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
-          :disabled="!enabled"
+          :disabled="controlsLocked"
+          :title="lockTitle"
           @click="applyWaveform(ch)"
         >
           Apply waveform
@@ -355,7 +370,8 @@ async function applyWaveform(ch: SignalGeneratorChannelState): Promise<void> {
         <button
           type="button"
           class="inline-flex h-9 items-center rounded-md border border-border bg-surface-3 px-3 text-xs hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          :disabled="!enabled"
+          :disabled="controlsLocked"
+          :title="lockTitle"
           @click="setImpedance(ch, '50ohm')"
         >
           50 Ω
@@ -363,7 +379,8 @@ async function applyWaveform(ch: SignalGeneratorChannelState): Promise<void> {
         <button
           type="button"
           class="inline-flex h-9 items-center rounded-md border border-border bg-surface-3 px-3 text-xs hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          :disabled="!enabled"
+          :disabled="controlsLocked"
+          :title="lockTitle"
           @click="setImpedance(ch, 'highZ')"
         >
           Hi-Z

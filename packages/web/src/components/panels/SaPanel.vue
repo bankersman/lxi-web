@@ -2,10 +2,16 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { api, type SaStateInfo } from "@/api/client";
 import { useLiveReading } from "@/composables/useLiveReading";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
 import { formatSi } from "@/lib/format";
+import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 import type { SpectrumAnalyzerMarkerReading } from "@lxi-web/core/browser";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
+
+const gate = useSafeModeGate();
+const controlsLocked = computed(() => !props.enabled || gate.enabled);
+const lockTitle = computed(() => (gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined));
 
 const state = ref<SaStateInfo | null>(null);
 const initError = ref<string | null>(null);
@@ -196,7 +202,8 @@ const activeMarkers = computed(() =>
         <button
           type="button"
           class="rounded-md border border-border bg-surface-2 px-3 py-1 text-sm hover:bg-surface-3 disabled:opacity-50"
-          :disabled="!enabled"
+          :disabled="controlsLocked"
+          :title="lockTitle"
           @click="peakSearch"
         >
           Peak search
@@ -204,7 +211,8 @@ const activeMarkers = computed(() =>
         <button
           type="button"
           class="rounded-md border border-border bg-surface-2 px-3 py-1 text-sm hover:bg-surface-3 disabled:opacity-50"
-          :disabled="!enabled"
+          :disabled="controlsLocked"
+          :title="lockTitle"
           @click="triggerSingleSweep"
         >
           Single sweep
@@ -298,7 +306,8 @@ const activeMarkers = computed(() =>
               v-model="centerDraft"
               type="number"
               class="rounded-md border border-border bg-surface-3 px-2 py-1 font-mono tabular-nums"
-              :disabled="!enabled"
+              :disabled="controlsLocked"
+              :title="lockTitle"
             />
           </label>
           <label class="flex flex-col gap-1">
@@ -307,14 +316,16 @@ const activeMarkers = computed(() =>
               v-model="spanDraft"
               type="number"
               class="rounded-md border border-border bg-surface-3 px-2 py-1 font-mono tabular-nums"
-              :disabled="!enabled"
+              :disabled="controlsLocked"
+              :title="lockTitle"
             />
           </label>
         </div>
         <button
           type="button"
           class="mt-3 rounded-md border border-border bg-surface-3 px-3 py-1 text-sm hover:bg-surface disabled:opacity-50"
-          :disabled="!enabled"
+          :disabled="controlsLocked"
+          :title="lockTitle"
           @click="applyFrequency"
         >
           Apply frequency
@@ -332,7 +343,8 @@ const activeMarkers = computed(() =>
               v-model="refLevelDraft"
               type="number"
               class="rounded-md border border-border bg-surface-3 px-2 py-1 font-mono tabular-nums"
-              :disabled="!enabled"
+              :disabled="controlsLocked"
+              :title="lockTitle"
             />
           </label>
           <label class="flex flex-col gap-1">
@@ -341,7 +353,8 @@ const activeMarkers = computed(() =>
               v-model="rbwDraft"
               type="number"
               class="rounded-md border border-border bg-surface-3 px-2 py-1 font-mono tabular-nums"
-              :disabled="!enabled"
+              :disabled="controlsLocked"
+              :title="lockTitle"
             />
           </label>
         </div>
@@ -349,7 +362,8 @@ const activeMarkers = computed(() =>
           <button
             type="button"
             class="rounded-md border border-border bg-surface-3 px-3 py-1 text-sm hover:bg-surface disabled:opacity-50"
-            :disabled="!enabled"
+            :disabled="controlsLocked"
+            :title="lockTitle"
             @click="applyReferenceLevel"
           >
             Apply ref level
@@ -357,7 +371,8 @@ const activeMarkers = computed(() =>
           <button
             type="button"
             class="rounded-md border border-border bg-surface-3 px-3 py-1 text-sm hover:bg-surface disabled:opacity-50"
-            :disabled="!enabled"
+            :disabled="controlsLocked"
+            :title="lockTitle"
             @click="applyBandwidth"
           >
             Apply RBW
@@ -376,7 +391,8 @@ const activeMarkers = computed(() =>
               v-model="pointsDraft"
               type="number"
               class="rounded-md border border-border bg-surface-3 px-2 py-1 font-mono tabular-nums"
-              :disabled="!enabled"
+              :disabled="controlsLocked"
+              :title="lockTitle"
             />
           </label>
           <div class="flex flex-col gap-1">
@@ -391,7 +407,8 @@ const activeMarkers = computed(() =>
         <button
           type="button"
           class="mt-3 rounded-md border border-border bg-surface-3 px-3 py-1 text-sm hover:bg-surface disabled:opacity-50"
-          :disabled="!enabled"
+          :disabled="controlsLocked"
+          :title="lockTitle"
           @click="applySweep"
         >
           Apply sweep

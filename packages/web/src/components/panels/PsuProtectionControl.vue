@@ -11,6 +11,8 @@ import {
   type PsuProtectionSnapshot,
 } from "@/api/client";
 import { useLiveReading } from "@/composables/useLiveReading";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
+import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 
 const props = defineProps<{
   sessionId: string;
@@ -24,6 +26,8 @@ const props = defineProps<{
   refreshKey?: number;
 }>();
 const emit = defineEmits<{ change: [] }>();
+
+const gate = useSafeModeGate();
 
 /**
  * Every channel card mounts its own `<PsuProtectionControl>` but the server
@@ -188,7 +192,9 @@ function summary(state: PsuProtectionState, unit: string): string {
             role="switch"
             :aria-checked="info[kind].enabled"
             :aria-label="`${KIND_LABEL[kind]} protection`"
-            :disabled="!enabled || busy[kind]"
+            :disabled="!enabled || busy[kind] || gate.enabled"
+            :aria-disabled="!enabled || busy[kind] || gate.enabled"
+            :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
             class="relative inline-flex h-5 w-9 flex-none items-center rounded-full border border-border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
             :class="info[kind].enabled ? 'bg-accent' : 'bg-surface-3'"
             @click="toggle(kind)"
@@ -218,7 +224,8 @@ function summary(state: PsuProtectionState, unit: string): string {
             step="any"
             :min="info[kind].range.min"
             :max="info[kind].range.max"
-            :disabled="!enabled || busy[kind]"
+            :disabled="!enabled || busy[kind] || gate.enabled"
+            :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
             class="h-7 w-24 rounded-md border border-border bg-surface px-1.5 text-right font-mono text-[11px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed"
           />
           <span class="text-[10px] text-fg-muted">{{ KIND_UNIT[kind] }}</span>
@@ -228,7 +235,9 @@ function summary(state: PsuProtectionState, unit: string): string {
           <button
             type="button"
             class="rounded-md bg-accent px-2 py-1 text-[11px] font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="!enabled || busy[kind] || draft[kind] === info[kind].level"
+            :disabled="!enabled || busy[kind] || draft[kind] === info[kind].level || gate.enabled"
+            :aria-disabled="!enabled || busy[kind] || draft[kind] === info[kind].level || gate.enabled"
+            :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
             @click="applyLevel(kind)"
           >
             Set
@@ -237,7 +246,9 @@ function summary(state: PsuProtectionState, unit: string): string {
             v-if="info[kind].tripped"
             type="button"
             class="rounded-md bg-state-error px-2 py-1 text-[11px] font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="!enabled || busy[kind]"
+            :disabled="!enabled || busy[kind] || gate.enabled"
+            :aria-disabled="!enabled || busy[kind] || gate.enabled"
+            :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
             @click="clear(kind)"
           >
             Clear

@@ -2,6 +2,8 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import type { DeviceErrorEntry } from "@lxi-web/core/browser";
 import { api } from "@/api/client";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
+import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 import { useSessionsStore } from "@/stores/sessions";
 
 const props = defineProps<{
@@ -13,6 +15,9 @@ const props = defineProps<{
 }>();
 
 const sessions = useSessionsStore();
+const gate = useSafeModeGate();
+const clearLocked = computed(() => gate.enabled);
+const clearTitle = computed(() => (gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined));
 const entries = ref<DeviceErrorEntry[]>([]);
 const open = ref(false);
 const busy = ref(false);
@@ -146,7 +151,9 @@ async function clearErrors(): Promise<void> {
       <button
         type="button"
         class="mt-2 w-full rounded-md border border-border py-1.5 text-xs font-medium hover:bg-surface-3 disabled:opacity-50"
-        :disabled="busy || entries.length === 0"
+        :disabled="busy || entries.length === 0 || clearLocked"
+        :aria-disabled="busy || entries.length === 0 || clearLocked"
+        :title="clearTitle"
         @click="clearErrors"
       >
         Clear buffer

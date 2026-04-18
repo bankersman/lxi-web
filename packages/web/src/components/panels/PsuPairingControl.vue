@@ -3,6 +3,8 @@ import { ref, watch } from "vue";
 import { Link2, AlertTriangle } from "lucide-vue-next";
 import type { PsuPairingMode } from "@lxi-web/core/browser";
 import { api, type PsuPairingInfo } from "@/api/client";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
+import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 
 const props = defineProps<{
   sessionId: string;
@@ -11,6 +13,8 @@ const props = defineProps<{
   refreshKey?: number;
 }>();
 const emit = defineEmits<{ change: [mode: PsuPairingMode] }>();
+
+const gate = useSafeModeGate();
 
 const info = ref<PsuPairingInfo | null>(null);
 const loadError = ref<string | null>(null);
@@ -107,7 +111,8 @@ function cancel(): void {
         type="button"
         role="radio"
         :aria-checked="info.mode === mode"
-        :disabled="!enabled || busy"
+        :disabled="!enabled || busy || gate.enabled"
+        :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
         class="flex flex-col items-start gap-1 rounded-md border px-3 py-2 text-left text-xs transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
         :class="
           info.mode === mode
@@ -162,7 +167,8 @@ function cancel(): void {
         <button
           type="button"
           class="rounded-md bg-state-connecting px-2 py-1 text-xs font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-40"
-          :disabled="busy"
+          :disabled="busy || gate.enabled"
+          :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
           @click="confirm"
         >
           {{ busy ? "Applying…" : "Confirm" }}

@@ -2,8 +2,19 @@
 import { ref } from "vue";
 import { Send } from "lucide-vue-next";
 import { api } from "@/api/client";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
 
 const props = defineProps<{ sessionId: string; disabled?: boolean }>();
+
+const gate = useSafeModeGate();
+const queryBtn = gate.bindWrite(
+  () => Boolean(props.disabled) || busyQuery.value || !queryCommand.value.trim(),
+);
+const writeBtn = gate.bindWrite(
+  () => busyWrite.value || Boolean(props.disabled) || !writeCommand.value.trim(),
+);
+const writeTextarea = gate.bindWrite(() => Boolean(props.disabled));
+const writeCheckbox = gate.bindWrite(() => Boolean(props.disabled));
 
 interface LogEntry {
   readonly id: number;
@@ -77,6 +88,9 @@ function onKeydownWrite(event: KeyboardEvent): void {
     <p class="mb-3 text-xs text-fg-muted">
       <strong>Query</strong> always waits for a reply. <strong>Write</strong> sends a command;
       enable “Wait for reply” when the instrument returns data without <code>?</code>.
+      When <strong>safe mode</strong> is on in the header, writes are disabled here only — queries
+      still run — so commands like <code>*RST</code> are not sent accidentally from the UI (other
+      clients are unaffected).
     </p>
     <div class="grid gap-4 sm:grid-cols-2">
       <form class="flex flex-col gap-2" @submit.prevent="sendQuery">
@@ -95,7 +109,7 @@ function onKeydownWrite(event: KeyboardEvent): void {
         <button
           type="submit"
           class="inline-flex items-center justify-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
-          :disabled="busyQuery || disabled || !queryCommand.trim()"
+          v-bind="queryBtn"
         >
           <Send class="h-3.5 w-3.5" aria-hidden="true" />
           Run query
@@ -109,22 +123,22 @@ function onKeydownWrite(event: KeyboardEvent): void {
           v-model="writeCommand"
           rows="2"
           placeholder="OUTP ON"
-          :disabled="disabled"
           spellcheck="false"
           class="rounded-md border border-border bg-surface px-2 py-1.5 font-mono text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          v-bind="writeTextarea"
           @keydown="onKeydownWrite"
         />
         <div class="flex flex-wrap items-center gap-2">
           <button
             type="submit"
             class="inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
-            :disabled="busyWrite || disabled || !writeCommand.trim()"
+            v-bind="writeBtn"
           >
             <Send class="h-3.5 w-3.5" aria-hidden="true" />
             Send write
           </button>
           <label class="flex items-center gap-1 text-[11px] text-fg-muted">
-            <input v-model="writeExpectReply" type="checkbox" />
+            <input v-model="writeExpectReply" type="checkbox" v-bind="writeCheckbox" />
             Wait for reply
           </label>
         </div>

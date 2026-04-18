@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { api } from "@/api/client";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
 import { useLiveReading } from "@/composables/useLiveReading";
 import { formatSi } from "@/lib/format";
 import { electronicLoadModeLabel } from "@/lib/labels";
 import type { ElectronicLoadState } from "@lxi-web/core/browser";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
+
+const gate = useSafeModeGate();
+const inputBtn = gate.bindWrite(() => !props.enabled);
 
 const { data, error } = useLiveReading<ElectronicLoadState>(
   () => props.sessionId,
@@ -57,6 +61,7 @@ async function toggleInput(): Promise<void> {
             : 'bg-surface-2 text-fg-muted hover:bg-surface'
         "
         :aria-pressed="data.enabled"
+        v-bind="inputBtn"
         @click="toggleInput"
       >
         {{ data.enabled ? "LOAD ON" : "LOAD OFF" }}

@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { api } from "@/api/client";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
 import { useLiveReading } from "@/composables/useLiveReading";
 import { formatSi } from "@/lib/format";
 import type { PsuChannelState } from "@lxi-web/core/browser";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
+
+const gate = useSafeModeGate();
+const outputBtn = gate.bindWrite(() => !props.enabled);
 
 const { data, error } = useLiveReading<PsuChannelState[]>(
   () => props.sessionId,
@@ -42,6 +46,7 @@ async function toggleOutput(channel: PsuChannelState): Promise<void> {
             : 'bg-surface-2 text-fg-muted hover:bg-surface'
         "
         :aria-pressed="ch.output"
+        v-bind="outputBtn"
         @click="toggleOutput(ch)"
       >
         {{ ch.output ? "ON" : "OFF" }}

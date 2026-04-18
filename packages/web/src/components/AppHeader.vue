@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { Activity } from "lucide-vue-next";
 import ThemeToggle from "./ThemeToggle.vue";
 import PanicStopControl from "./PanicStopControl.vue";
+import SafeModeControl from "./SafeModeControl.vue";
 import { useSessionsStore } from "@/stores/sessions";
 
 const sessions = useSessionsStore();
@@ -23,7 +24,8 @@ const wsLabel = computed(() =>
       <h1 class="text-base font-semibold tracking-tight">lxi-web</h1>
       <span class="text-xs text-fg-muted">bench instrument dashboard</span>
     </div>
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center justify-end gap-3">
+      <SafeModeControl />
       <PanicStopControl />
       <span
         class="flex items-center gap-2 text-xs text-fg-muted"

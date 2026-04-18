@@ -18,6 +18,8 @@ import {
 } from "@/api/client";
 import { useLiveReading } from "@/composables/useLiveReading";
 import { usePolling } from "@/composables/usePolling";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
+import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 import { useThemeStore } from "@/stores/theme";
 import { formatSi, formatTime } from "@/lib/format";
 import type {
@@ -33,6 +35,10 @@ import type {
 } from "@lxi-web/core/browser";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
+
+const gate = useSafeModeGate();
+const writeOff = gate.bindWrite(() => !props.enabled);
+const writeCap = gate.bindWrite(() => !props.enabled || capturing.value);
 
 const theme = useThemeStore();
 
@@ -489,7 +495,7 @@ async function disableBus(busId: number): Promise<void> {
           <button
             type="button"
             class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
-            :disabled="capturing || !enabled"
+            v-bind="writeCap"
             @click="capture"
           >
             <Activity class="h-3.5 w-3.5" aria-hidden="true" />
@@ -528,6 +534,7 @@ async function disableBus(busId: number): Promise<void> {
                   : 'bg-surface-2 text-fg-muted hover:bg-surface'
               "
               :aria-pressed="ch.enabled"
+              v-bind="writeOff"
               @click="toggleChannel(ch)"
             >
               {{ ch.enabled ? "ON" : "OFF" }}
@@ -565,6 +572,7 @@ async function disableBus(busId: number): Promise<void> {
           <button
             type="submit"
             class="mt-1 inline-flex items-center justify-center rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            v-bind="writeOff"
           >
             Apply
           </button>
@@ -620,18 +628,20 @@ async function disableBus(busId: number): Promise<void> {
       </label>
     </div>
     <div class="mt-3 flex items-center gap-2">
-      <button class="rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg" @click="applyTrigger">Apply</button>
+      <button class="rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg" v-bind="writeOff" @click="applyTrigger">Apply</button>
       <span class="text-xs text-fg-muted">Sweep:</span>
       <button
         v-for="m in trigger.capability?.sweepModes ?? []"
         :key="m"
         class="rounded-md border border-border px-2 py-1 text-xs"
         :class="trigger.sweep === m ? 'bg-accent text-accent-fg' : ''"
+        v-bind="writeOff"
         @click="setSweep(m)"
       >{{ m }}</button>
       <button
         v-if="trigger.capability?.supportsForce"
         class="ml-auto rounded-md border border-border px-3 py-1.5 text-sm"
+        v-bind="writeOff"
         @click="forceTrigger"
       >Force</button>
     </div>
@@ -664,17 +674,18 @@ async function disableBus(busId: number): Promise<void> {
         </select>
       </label>
       <div class="flex items-end gap-2">
-        <button class="rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg" @click="applyAcquisition">Apply</button>
+        <button class="rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg" v-bind="writeOff" @click="applyAcquisition">Apply</button>
         <button
           v-if="acquisition.capability?.supportsAutoset"
           class="rounded-md border border-border px-3 py-1.5 text-sm"
+          v-bind="writeOff"
           @click="autoset"
         >Autoset</button>
       </div>
     </div>
     <div class="mt-3 flex gap-2">
-      <button class="rounded-md border border-border px-3 py-1.5 text-sm" @click="runScope">Run</button>
-      <button class="rounded-md border border-border px-3 py-1.5 text-sm" @click="stopScope">Stop</button>
+      <button class="rounded-md border border-border px-3 py-1.5 text-sm" v-bind="writeOff" @click="runScope">Run</button>
+      <button class="rounded-md border border-border px-3 py-1.5 text-sm" v-bind="writeOff" @click="stopScope">Stop</button>
     </div>
   </details>
 
@@ -698,12 +709,12 @@ async function disableBus(busId: number): Promise<void> {
         <span v-if="measurements.results?.[i]" class="ml-auto font-mono text-xs">
           {{ formatSi(measurements.results[i].value, measurements.results[i].unit, 4) }}
         </span>
-        <button class="rounded-md border border-border px-2 py-0.5 text-xs" @click="removeMeasurement(i)">×</button>
+        <button class="rounded-md border border-border px-2 py-0.5 text-xs" v-bind="writeOff" @click="removeMeasurement(i)">×</button>
       </div>
       <div class="flex gap-2">
-        <button class="rounded-md border border-border px-2 py-1 text-xs" @click="addMeasurement">+ Add</button>
-        <button class="rounded-md bg-accent px-3 py-1 text-xs text-accent-fg" @click="applyMeasurements">Apply</button>
-        <button class="rounded-md border border-border px-2 py-1 text-xs" @click="clearStats">Clear stats</button>
+        <button class="rounded-md border border-border px-2 py-1 text-xs" v-bind="writeOff" @click="addMeasurement">+ Add</button>
+        <button class="rounded-md bg-accent px-3 py-1 text-xs text-accent-fg" v-bind="writeOff" @click="applyMeasurements">Apply</button>
+        <button class="rounded-md border border-border px-2 py-1 text-xs" v-bind="writeOff" @click="clearStats">Clear stats</button>
       </div>
     </div>
   </details>
@@ -749,7 +760,7 @@ async function disableBus(busId: number): Promise<void> {
       <span v-if="cursors.state.readout.deltaX">Δ = {{ formatSi(cursors.state.readout.deltaX, "s", 4) }}</span>
       <span v-if="cursors.state.readout.inverseDeltaX">1/Δ = {{ formatSi(cursors.state.readout.inverseDeltaX, "Hz", 4) }}</span>
     </div>
-    <button class="mt-2 rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg" @click="applyCursors">Apply</button>
+    <button class="mt-2 rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg" v-bind="writeOff" @click="applyCursors">Apply</button>
   </details>
 
   <!-- 2.7b math -->
@@ -780,7 +791,7 @@ async function disableBus(busId: number): Promise<void> {
         </select>
       </label>
     </div>
-    <button class="mt-2 rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg" @click="applyScopeMath">Apply</button>
+    <button class="mt-2 rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg" v-bind="writeOff" @click="applyScopeMath">Apply</button>
   </details>
 
   <!-- 2.7c references -->
@@ -794,10 +805,11 @@ async function disableBus(busId: number): Promise<void> {
       >
         <span class="text-xs font-semibold">R{{ slot.slot + 1 }}</span>
         <span class="text-[10px] text-fg-muted">{{ slot.source ?? '—' }}</span>
-        <button class="rounded bg-accent px-1 py-0.5 text-[10px] text-accent-fg" @click="saveReference(slot.slot, `CH${waveformChannel}`)">Save</button>
+        <button class="rounded bg-accent px-1 py-0.5 text-[10px] text-accent-fg" v-bind="writeOff" @click="saveReference(slot.slot, `CH${waveformChannel}`)">Save</button>
         <button
           class="rounded border border-border px-1 py-0.5 text-[10px]"
           :class="slot.enabled ? 'bg-state-success/20' : ''"
+          v-bind="writeOff"
           @click="toggleReference(slot.slot, !slot.enabled)"
         >{{ slot.enabled ? 'Shown' : 'Hidden' }}</button>
       </div>
@@ -811,9 +823,10 @@ async function disableBus(busId: number): Promise<void> {
       <button
         class="rounded-md border border-border px-2 py-1"
         :class="history.state?.enabled ? 'bg-state-success/20' : ''"
+        v-bind="writeOff"
         @click="setHistoryEnabled(!history.state?.enabled)"
       >{{ history.state?.enabled ? 'Enabled' : 'Disabled' }}</button>
-      <button class="rounded-md border border-border px-2 py-1" @click="setHistoryPlayback(!history.state?.playing)">
+      <button class="rounded-md border border-border px-2 py-1" v-bind="writeOff" @click="setHistoryPlayback(!history.state?.playing)">
         {{ history.state?.playing ? 'Pause' : 'Play' }}
       </button>
       <input
@@ -822,6 +835,8 @@ async function disableBus(busId: number): Promise<void> {
         :max="history.state?.totalFrames ?? 0"
         :value="history.state?.currentFrame ?? 0"
         class="flex-1"
+        :disabled="gate.enabled"
+        :title="gate.enabled ? 'Safe mode — unlock in the header' : undefined"
         @change="(e) => setHistoryFrame(Number((e.target as HTMLInputElement).value))"
       />
       <span class="font-mono text-xs">{{ history.state?.currentFrame ?? 0 }} / {{ history.state?.totalFrames ?? 0 }}</span>
@@ -837,6 +852,8 @@ async function disableBus(busId: number): Promise<void> {
         <select
           class="mt-1 h-9 rounded-md border border-border bg-surface px-2 text-sm"
           :value="display.persistence ?? 'min'"
+          :disabled="gate.enabled"
+          :title="gate.enabled ? 'Safe mode — unlock in the header' : undefined"
           @change="setPersistence"
         >
           <option v-for="p in display.capability?.persistenceOptions ?? []" :key="p" :value="p">{{ p }}</option>
@@ -863,10 +880,12 @@ async function disableBus(busId: number): Promise<void> {
       >
         <span class="text-xs font-semibold">{{ i }}</span>
         <span class="block h-1.5 w-full rounded-full" :class="occ ? 'bg-state-success' : 'bg-border'" />
-        <button class="rounded bg-accent px-1 py-0.5 text-[10px] text-accent-fg" @click="saveScopePreset(i)">Save</button>
+        <button class="rounded bg-accent px-1 py-0.5 text-[10px] text-accent-fg" v-bind="writeOff" @click="saveScopePreset(i)">Save</button>
         <button
           class="rounded border border-border px-1 py-0.5 text-[10px] disabled:opacity-50"
-          :disabled="!occ"
+          :disabled="!occ || gate.enabled"
+          :aria-disabled="!occ || gate.enabled"
+          :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
           @click="recallScopePreset(i)"
         >Recall</button>
       </div>
@@ -888,6 +907,7 @@ async function disableBus(busId: number): Promise<void> {
         <button
           v-if="bus.enabled"
           class="ml-auto rounded border border-border px-2 py-0.5 text-xs"
+          v-bind="writeOff"
           @click="disableBus(bus.id)"
         >Disable</button>
         <span class="ml-auto text-fg-muted">Supported: {{ (buses.capability?.protocols ?? []).join(', ') }}</span>

@@ -2,6 +2,8 @@
 import { computed, ref, watch } from "vue";
 import { Save, Upload, Slash } from "lucide-vue-next";
 import { api, type PsuPresetsInfo } from "@/api/client";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
+import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 
 const props = defineProps<{
   sessionId: string;
@@ -10,6 +12,8 @@ const props = defineProps<{
   refreshKey?: number;
 }>();
 const emit = defineEmits<{ recalled: [slot: number] }>();
+
+const gate = useSafeModeGate();
 
 const info = ref<PsuPresetsInfo | null>(null);
 const loadError = ref<string | null>(null);
@@ -133,7 +137,8 @@ async function doRecall(slot: number): Promise<void> {
           <button
             type="button"
             class="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-surface px-2 py-1 text-[11px] font-medium hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="!enabled || busySlot !== null"
+            :disabled="!enabled || busySlot !== null || gate.enabled"
+            :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
             :aria-label="`Save current state to slot ${i - 1}`"
             @click="requestSave(i - 1)"
           >
@@ -143,7 +148,8 @@ async function doRecall(slot: number): Promise<void> {
           <button
             type="button"
             class="inline-flex flex-1 items-center justify-center gap-1 rounded-md bg-accent/10 px-2 py-1 text-[11px] font-medium text-accent hover:bg-accent/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="!enabled || busySlot !== null || !info!.occupied[i - 1]"
+            :disabled="!enabled || busySlot !== null || !info!.occupied[i - 1] || gate.enabled"
+            :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
             :aria-label="`Recall state from slot ${i - 1}`"
             @click="doRecall(i - 1)"
           >
@@ -182,6 +188,8 @@ async function doRecall(slot: number): Promise<void> {
         <button
           type="button"
           class="rounded-md bg-state-connecting px-2 py-1 text-xs font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          :disabled="gate.enabled"
+          :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
           @click="doSave(confirmingSave!)"
         >
           Overwrite

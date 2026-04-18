@@ -14,6 +14,12 @@ does not show what you expect.
   implicit system-wide write. If you want one, type it yourself.
 :::
 
+## Safe mode
+
+**Safe mode** is a browser-only switch (header: **Safe mode**, shortcut `g` then `s`) that dims write paths across the app while leaving readbacks, queries, and the **Panic stop** control available. It persists in this browser’s `localStorage` and is meant as an ergonomic guard when you are reviewing a bench or sharing a screen — it is **not** authentication and does not change server behaviour.
+
+In the Raw SCPI console, **Query** stays enabled; **Write** is disabled until you turn safe mode off.
+
 - **Queries vs writes** — the console parses the command and uses
   `query` for anything ending in `?`, `write` otherwise. Binary
   replies (`IEEE-488.2` block) are not decoded in the console; use a

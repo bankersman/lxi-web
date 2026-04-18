@@ -17,6 +17,7 @@
   --color-state-connecting: #d97706;
   --color-state-error: #dc2626;
   --color-state-idle: #6b7280;
+  --color-safe-mode-stripe: #d97706;
 
   --radius-card: 0.875rem;
 }
@@ -35,6 +36,7 @@
   --color-state-connecting: #f59e0b;
   --color-state-error: #f87171;
   --color-state-idle: #9aa0b0;
+  --color-safe-mode-stripe: #fbbf24;
 }
 
 html,
@@ -48,6 +50,16 @@ body {
   color: var(--color-fg);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
+}
+
+/** Epic 5.3 — ambient safe-mode indicator (no animation). */
+.safe-mode-shell {
+  box-sizing: border-box;
+  min-height: 100%;
+}
+
+.safe-mode-shell[data-safe-mode="on"] {
+  border-top: 3px solid var(--color-safe-mode-stripe);
 }
 
 @media (prefers-reduced-motion: reduce) {

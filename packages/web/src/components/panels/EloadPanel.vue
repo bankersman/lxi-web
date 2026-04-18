@@ -2,7 +2,9 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { api, type EloadStateInfo } from "@/api/client";
 import { useLiveReading } from "@/composables/useLiveReading";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
 import { formatSi } from "@/lib/format";
+import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 import {
   electronicLoadModeLabel,
   electronicLoadModeUnit,
@@ -15,6 +17,10 @@ import type {
 } from "@lxi-web/core/browser";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
+
+const gate = useSafeModeGate();
+const controlsLocked = computed(() => !props.enabled || gate.enabled);
+const lockTitle = computed(() => (gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined));
 
 const initial = ref<EloadStateInfo | null>(null);
 const initError = ref<string | null>(null);
@@ -192,7 +198,8 @@ async function stopBattery(): Promise<void> {
               : 'bg-accent text-accent-fg hover:opacity-90'
           "
           :aria-pressed="state.enabled"
-          :disabled="!enabled"
+          :disabled="controlsLocked"
+          :title="lockTitle"
           @click="toggleInput"
         >
           {{ state.enabled ? "Disable input" : "Enable input" }}
@@ -251,7 +258,8 @@ async function stopBattery(): Promise<void> {
             <button
               type="button"
               class="text-[11px] text-accent hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              :disabled="!enabled || state?.mode === m"
+              :disabled="controlsLocked || state?.mode === m"
+              :title="lockTitle"
               @click="changeMode(m)"
             >
               {{ state?.mode === m ? "Active" : "Select" }}
@@ -263,7 +271,8 @@ async function stopBattery(): Promise<void> {
               type="number"
               step="any"
               class="h-9 flex-1 rounded-md border border-border bg-surface px-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              :disabled="!enabled"
+              :disabled="controlsLocked"
+              :title="lockTitle"
               :aria-label="`${electronicLoadModeLabel(m)} setpoint`"
             />
             <span class="w-6 text-xs text-fg-muted">
@@ -272,7 +281,8 @@ async function stopBattery(): Promise<void> {
             <button
               type="button"
               class="inline-flex h-9 items-center rounded-md bg-accent px-3 text-xs font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
-              :disabled="!enabled || setpointBusy[m]"
+              :disabled="controlsLocked || setpointBusy[m]"
+              :title="lockTitle"
               @click="commitSetpoint(m)"
             >
               Set
@@ -369,7 +379,8 @@ async function stopBattery(): Promise<void> {
                   v-if="kind !== 'otp'"
                   type="button"
                   class="rounded-md border border-border px-2 py-0.5 text-[11px] hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                  :disabled="!enabled"
+                  :disabled="controlsLocked"
+                  :title="lockTitle"
                   @click="toggleProtection(kind)"
                 >
                   Toggle
@@ -378,7 +389,8 @@ async function stopBattery(): Promise<void> {
                   v-if="protectionState[kind]?.tripped"
                   type="button"
                   class="ml-1 rounded-md border border-state-error/30 px-2 py-0.5 text-[11px] text-state-error hover:bg-state-error/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                  :disabled="!enabled"
+                  :disabled="controlsLocked"
+                  :title="lockTitle"
                   @click="clearTrip(kind)"
                 >
                   Clear
@@ -429,6 +441,8 @@ async function stopBattery(): Promise<void> {
           v-if="battery?.running"
           type="button"
           class="mt-3 inline-flex h-9 items-center rounded-md bg-state-error/20 px-3 text-sm text-state-error hover:bg-state-error/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          :disabled="controlsLocked"
+          :title="lockTitle"
           @click="stopBattery"
         >
           Stop discharge
@@ -449,7 +463,8 @@ async function stopBattery(): Promise<void> {
                 <button
                   type="button"
                   class="flex-1 rounded bg-surface px-1 py-0.5 text-[10px] hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                  :disabled="!enabled"
+                  :disabled="controlsLocked"
+                  :title="lockTitle"
                   @click="api.saveEloadPreset(sessionId, slot)"
                 >
                   Save
@@ -457,7 +472,8 @@ async function stopBattery(): Promise<void> {
                 <button
                   type="button"
                   class="flex-1 rounded bg-surface px-1 py-0.5 text-[10px] hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                  :disabled="!enabled || !occ"
+                  :disabled="controlsLocked || !occ"
+                  :title="lockTitle"
                   @click="api.recallEloadPreset(sessionId, slot)"
                 >
                   Recall

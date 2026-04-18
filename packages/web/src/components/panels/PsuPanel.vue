@@ -2,7 +2,9 @@
 import { computed, reactive, ref, watch } from "vue";
 import { Link2 } from "lucide-vue-next";
 import { api, type PsuPairingInfo } from "@/api/client";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
 import { useLiveReading } from "@/composables/useLiveReading";
+import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 import { formatSi } from "@/lib/format";
 import type { PsuChannelState, PsuPairingMode } from "@lxi-web/core/browser";
 import PsuPairingControl from "./PsuPairingControl.vue";
@@ -11,6 +13,8 @@ import PsuPresetsControl from "./PsuPresetsControl.vue";
 import PsuProtectionControl from "./PsuProtectionControl.vue";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
+
+const gate = useSafeModeGate();
 
 const { data, error } = useLiveReading<PsuChannelState[]>(
   () => props.sessionId,
@@ -248,7 +252,9 @@ function onPairingChange(mode: PsuPairingMode): void {
                 : 'bg-surface-3 text-fg-muted hover:bg-surface'
             "
             :aria-pressed="ch.output"
-            :disabled="isFollowerLocked(ch.id)"
+            :disabled="isFollowerLocked(ch.id) || !enabled || gate.enabled"
+            :aria-disabled="isFollowerLocked(ch.id) || !enabled || gate.enabled"
+            :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
             @click="toggleOutput(ch)"
           >
             Output {{ ch.output ? "ON" : "OFF" }}
@@ -283,7 +289,8 @@ function onPairingChange(mode: PsuPairingMode): void {
               step="any"
               :min="0"
               :max="effectiveLimits(ch).voltageMax"
-              :disabled="isFollowerLocked(ch.id)"
+              :disabled="isFollowerLocked(ch.id) || !enabled || gate.enabled"
+              :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
               class="h-8 w-28 rounded-md border border-border bg-surface px-2 text-right font-mono focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed"
             />
           </label>
@@ -295,13 +302,16 @@ function onPairingChange(mode: PsuPairingMode): void {
               step="any"
               :min="0"
               :max="effectiveLimits(ch).currentMax"
-              :disabled="isFollowerLocked(ch.id)"
+              :disabled="isFollowerLocked(ch.id) || !enabled || gate.enabled"
+              :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
               class="h-8 w-28 rounded-md border border-border bg-surface px-2 text-right font-mono focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed"
             />
           </label>
           <button
             type="submit"
-            :disabled="isFollowerLocked(ch.id)"
+            :disabled="isFollowerLocked(ch.id) || !enabled || gate.enabled"
+            :aria-disabled="isFollowerLocked(ch.id) || !enabled || gate.enabled"
+            :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
             class="mt-1 inline-flex items-center justify-center rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             Apply

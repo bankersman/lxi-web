@@ -2,9 +2,13 @@
 import { ref } from "vue";
 import { Activity } from "lucide-vue-next";
 import { api } from "@/api/client";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
 import { formatTime } from "@/lib/format";
 
 const props = defineProps<{ sessionId: string; disabled?: boolean }>();
+
+const gate = useSafeModeGate();
+const captureBtn = gate.bindWrite(() => Boolean(props.disabled) || busy.value);
 
 const busy = ref(false);
 const lastCapturedAt = ref<number | null>(null);
@@ -36,7 +40,7 @@ async function singleCapture(): Promise<void> {
     <button
       type="button"
       class="inline-flex items-center gap-1.5 rounded-md bg-accent px-2 py-1 text-xs font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40"
-      :disabled="disabled || busy"
+      v-bind="captureBtn"
       @click="singleCapture"
     >
       <Activity class="h-3.5 w-3.5" aria-hidden="true" />

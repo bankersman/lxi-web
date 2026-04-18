@@ -3,6 +3,8 @@ import { computed, ref, watch } from "vue";
 import { Waves } from "lucide-vue-next";
 import { api, type PsuTrackingInfo } from "@/api/client";
 import { useLiveReading } from "@/composables/useLiveReading";
+import { useSafeModeGate } from "@/composables/useSafeModeGate";
+import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 
 const props = defineProps<{
   sessionId: string;
@@ -11,6 +13,8 @@ const props = defineProps<{
   refreshKey?: number;
 }>();
 const emit = defineEmits<{ change: [enabled: boolean] }>();
+
+const gate = useSafeModeGate();
 
 /**
  * `psu.tracking` is pushed over WebSocket (refcounted at the store so this
@@ -96,7 +100,9 @@ async function toggle(): Promise<void> {
         type="button"
         role="switch"
         :aria-checked="info!.enabled"
-        :disabled="!enabled || busy"
+        :disabled="!enabled || busy || gate.enabled"
+        :aria-disabled="!enabled || busy || gate.enabled"
+        :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
         class="relative inline-flex h-6 w-11 flex-none items-center rounded-full border border-border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
         :class="info!.enabled ? 'bg-accent' : 'bg-surface-3'"
         @click="toggle"

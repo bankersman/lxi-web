@@ -20,3 +20,52 @@ Living checklist mirroring the subplans. Update when a step finishes (check the 
 - [x] **2.2 REST + WebSocket API** — connect/list/disconnect + WS broadcast of session updates, raw SCPI route, and typed routes per device kind. See [docs/steps/2-2-rest-and-websocket.md](docs/steps/2-2-rest-and-websocket.md).
 - [x] **2.3 Vue shell** — card grid, status, light/dark toggle, Add-device dialog. See [docs/steps/2-3-vue-dashboard-shell.md](docs/steps/2-3-vue-dashboard-shell.md).
 - [x] **2.4 session panels** — card mini-controls + expanded panels; scope uPlot; raw SCPI fallback. See [docs/steps/2-4-per-session-detail-views.md](docs/steps/2-4-per-session-detail-views.md).
+- [x] **2.5 PSU advanced features** — channel coupling (series / parallel) as an optional capability on `IPowerSupply`, wired through the Rigol DP900 driver and the detail page. See [docs/steps/2-5-psu-advanced-features.md](docs/steps/2-5-psu-advanced-features.md).
+
+## Backlog — v2 and beyond
+
+Items explicitly deferred from v1. Not committed to an order; pick up when the
+relevant hardware or use case lands.
+
+### New instrument kinds
+
+- [ ] **Signal / function generators** — typed `ISignalGenerator` facade plus a
+      first vendor driver.
+- [ ] **Electronic loads** — typed `IElectronicLoad` facade (constant I / V /
+      R / P modes, measurement streaming).
+- [ ] **Spectrum / network analyzers** — typed facade for trace capture and
+      marker queries.
+- [ ] **Temperature / data loggers** — multi-channel rolling history with
+      export.
+
+### Discovery and connectivity
+
+- [ ] **mDNS / VXI-11 / LXI discovery** — scan the LAN for instruments and
+      offer a pick-list in the Add-device dialog instead of typed host/port.
+- [ ] **Reconnect on transient network loss** — backoff + session resume so a
+      Wi-Fi blip doesn't kill running captures.
+
+### Advanced PSU features (extends 2.5)
+
+- [ ] **OVP / OCP** — per-channel enable, threshold, trip detect, clear-trip.
+- [ ] **Tracking** — `:OUTPut:TRACk` to slave CH2 set-values to CH1 without
+      combining outputs.
+- [ ] **Preset memory** — `*SAV` / `*RCL` for saving and recalling full PSU
+      state with named slots.
+
+### Advanced scope features
+
+- [ ] **Multi-channel overlay** — plot multiple enabled channels on one uPlot
+      canvas with legend and per-channel color.
+- [ ] **Math channels / FFT** — driver-dependent, starts with Rigol DHO.
+- [ ] **Cursors and measurements** — on-chart time/voltage cursors plus a
+      readout of common measurements (Vpp, frequency, rise time).
+
+### Platform
+
+- [ ] **Persistent layouts** — remember which devices were last connected and
+      offer "reopen last session" on launch.
+- [ ] **Recording / playback** — log instrument readouts to disk with CSV /
+      Parquet export and an offline review mode.
+- [ ] **Auth and multi-user** — only relevant if we drop the
+      single-user / trusted-LAN posture.

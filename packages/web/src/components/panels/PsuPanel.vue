@@ -44,8 +44,25 @@ const isPaired = computed(
 function isMaster(id: number): boolean {
   return isPaired.value && id === pairMasterId.value;
 }
-function isFollower(id: number): boolean {
-  return isPaired.value && pairFollowerIds.value.includes(id);
+function isMember(id: number): boolean {
+  return (
+    isPaired.value &&
+    (id === pairMasterId.value || pairFollowerIds.value.includes(id))
+  );
+}
+/**
+ * Only parallel mode truly locks the follower: CH2 becomes a passive slave of
+ * CH1's output. In series mode the user still sets each channel's voltage
+ * independently (the two supplies are just wired together internally, so the
+ * pair's total = CH1 + CH2). We therefore leave CH2's controls active in
+ * series and only disable them in parallel.
+ */
+function isFollowerLocked(id: number): boolean {
+  return (
+    isPaired.value &&
+    pairing.value!.mode === "parallel" &&
+    pairFollowerIds.value.includes(id)
+  );
 }
 
 const PAIR_LABEL: Record<PsuPairingMode, string> = {
@@ -55,10 +72,16 @@ const PAIR_LABEL: Record<PsuPairingMode, string> = {
 };
 
 function effectiveLimits(ch: PsuChannelState): { voltageMax: number; currentMax: number } {
-  if (!isMaster(ch.id) || !pairing.value) return ch.limits;
-  const mode = pairing.value.mode;
-  if (mode === "series") return { voltageMax: ch.limits.voltageMax * 2, currentMax: ch.limits.currentMax };
-  if (mode === "parallel") return { voltageMax: ch.limits.voltageMax, currentMax: ch.limits.currentMax * 2 };
+  // Only the parallel master gets boosted limits — in series each channel's
+  // own max stays 30V/3A and the combined output is the sum the user reads
+  // at the terminals.
+  if (
+    isMaster(ch.id) &&
+    pairing.value &&
+    pairing.value.mode === "parallel"
+  ) {
+    return { voltageMax: ch.limits.voltageMax, currentMax: ch.limits.currentMax * 2 };
+  }
   return ch.limits;
 }
 
@@ -100,7 +123,7 @@ async function toggleOutput(channel: PsuChannelState): Promise<void> {
         class="flex flex-col gap-3 rounded-[var(--radius-card)] border bg-surface-2 p-4 transition-opacity"
         :class="[
           isMaster(ch.id) ? 'border-accent/60' : 'border-border',
-          isFollower(ch.id) ? 'opacity-60' : '',
+          isFollowerLocked(ch.id) ? 'opacity-60' : '',
         ]"
       >
         <header class="flex items-center justify-between gap-2">
@@ -108,24 +131,24 @@ async function toggleOutput(channel: PsuChannelState): Promise<void> {
             <div class="flex items-center gap-2">
               <h3 class="text-sm font-semibold">{{ ch.label }}</h3>
               <span
-                v-if="isMaster(ch.id) && pairing"
+                v-if="isMember(ch.id) && pairing"
                 class="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-accent"
               >
                 <Link2 class="h-3 w-3" aria-hidden="true" />
                 {{ PAIR_LABEL[pairing.mode] }}
-                <span class="sr-only">
-                  paired with CH{{ pairFollowerIds.join(", CH") }}
-                </span>
               </span>
             </div>
             <p class="text-xs text-fg-muted">
-              <template v-if="isMaster(ch.id)">
+              <template v-if="isMaster(ch.id) && pairing?.mode === 'parallel'">
                 Combined limits
                 {{ formatSi(effectiveLimits(ch).voltageMax, "V", 2) }} /
                 {{ formatSi(effectiveLimits(ch).currentMax, "A", 2) }}
               </template>
-              <template v-else-if="isFollower(ch.id)">
+              <template v-else-if="isFollowerLocked(ch.id)">
                 Controlled via CH{{ pairMasterId }}
+              </template>
+              <template v-else-if="isMember(ch.id) && pairing?.mode === 'series'">
+                Sum of CH1 + CH2 appears across the pair
               </template>
               <template v-else>
                 Limits {{ formatSi(ch.limits.voltageMax, "V", 2) }} /
@@ -142,7 +165,7 @@ async function toggleOutput(channel: PsuChannelState): Promise<void> {
                 : 'bg-surface-3 text-fg-muted hover:bg-surface'
             "
             :aria-pressed="ch.output"
-            :disabled="isFollower(ch.id)"
+            :disabled="isFollowerLocked(ch.id)"
             @click="toggleOutput(ch)"
           >
             Output {{ ch.output ? "ON" : "OFF" }}
@@ -166,7 +189,7 @@ async function toggleOutput(channel: PsuChannelState): Promise<void> {
 
         <form
           class="flex flex-col gap-2 text-xs"
-          :aria-disabled="isFollower(ch.id)"
+          :aria-disabled="isFollowerLocked(ch.id)"
           @submit.prevent="apply(ch)"
         >
           <label class="flex items-center justify-between gap-2">
@@ -177,7 +200,7 @@ async function toggleOutput(channel: PsuChannelState): Promise<void> {
               step="any"
               :min="0"
               :max="effectiveLimits(ch).voltageMax"
-              :disabled="isFollower(ch.id)"
+              :disabled="isFollowerLocked(ch.id)"
               class="h-8 w-28 rounded-md border border-border bg-surface px-2 text-right font-mono focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed"
             />
           </label>
@@ -189,13 +212,13 @@ async function toggleOutput(channel: PsuChannelState): Promise<void> {
               step="any"
               :min="0"
               :max="effectiveLimits(ch).currentMax"
-              :disabled="isFollower(ch.id)"
+              :disabled="isFollowerLocked(ch.id)"
               class="h-8 w-28 rounded-md border border-border bg-surface px-2 text-right font-mono focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed"
             />
           </label>
           <button
             type="submit"
-            :disabled="isFollower(ch.id)"
+            :disabled="isFollowerLocked(ch.id)"
             class="mt-1 inline-flex items-center justify-center rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-fg hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             Apply

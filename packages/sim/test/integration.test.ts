@@ -30,6 +30,18 @@ import { siglentSdl1020xEPersonality } from "../personalities/siglent/sdl1020x-e
 import { siglentSdg2042xPersonality } from "../personalities/siglent/sdg2042x.js";
 import { siglentSsa3032xPersonality } from "../personalities/siglent/ssa3032x.js";
 import { keysight33511bPersonality } from "../personalities/keysight/33511b.js";
+import { keysightEdu36311aPersonality } from "../personalities/keysight/edu36311a.js";
+import { keysightTruevolt34461aPersonality } from "../personalities/keysight/truevolt-34461a.js";
+import { keysightInfiniivisionDsox2024aPersonality } from "../personalities/keysight/infiniivision-dsox2024a.js";
+import { keysightInfiniivisionDsox3034tPersonality } from "../personalities/keysight/infiniivision-dsox3034t.js";
+import { keysightEl34243aPersonality } from "../personalities/keysight/el34243a.js";
+import type {
+  KeysightE36,
+  KeysightTrueVolt,
+  KeysightInfiniiVision,
+  KeysightEl3,
+  KeysightTrueform33500,
+} from "@lxi-web/core";
 
 async function withSimulator<T>(
   personality: Parameters<typeof rigolDho804Personality extends never ? never : (p: typeof rigolDho804Personality) => void>[0],
@@ -301,13 +313,123 @@ test("pnpm test:sim — SSA3032X driver refuses frequency above profile ceiling"
   });
 });
 
-test("pnpm test:sim — Keysight 33511B personality reserves IDN for 4.7", async () => {
+test("pnpm test:sim — Keysight 33511B personality + SG driver round-trips waveform config", async () => {
   await withSimulator(keysight33511bPersonality, async (session) => {
     const parsed = parseIdn(await session.query("*IDN?"));
     assert.match(parsed.manufacturer, /keysight/i);
     assert.equal(parsed.model, "33511B");
     const registry = createDefaultRegistry();
-    assert.equal(registry.resolve(parsed), null);
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "keysight-33511b");
+    assert.equal(entry?.kind, "signalGenerator");
+    const sg = entry!.create(session, parsed) as KeysightTrueform33500;
+    await sg.setWaveform(1, {
+      type: "sine",
+      frequencyHz: 2_500,
+      amplitudeVpp: 0.5,
+      offsetV: 0,
+    });
+    const state = await sg.getChannelState(1);
+    assert.equal(state.waveform.type, "sine");
+    assert.equal(Math.round(state.actual.frequencyHz), 2_500);
+    await sg.setChannelEnabled(1, true);
+    const again = await sg.getChannelState(1);
+    assert.equal(again.enabled, true);
+  });
+});
+
+test("pnpm test:sim — Keysight EDU36311A personality + PSU driver round-trips channel state", async () => {
+  await withSimulator(keysightEdu36311aPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "EDU36311A");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "keysight-edu36311a");
+    assert.equal(entry?.kind, "powerSupply");
+    const psu = entry!.create(session, parsed) as KeysightE36;
+    await psu.setChannelVoltage(1, 3.3);
+    await psu.setChannelCurrent(1, 0.5);
+    await psu.setChannelOutput(1, true);
+    const channels = await psu.getChannels();
+    assert.equal(channels.length, 3);
+    const ch1 = channels.find((c) => c.id === 1)!;
+    assert.equal(ch1.setVoltage, 3.3);
+    assert.equal(ch1.output, true);
+    // Pairing surface exists (CH2/CH3 series/parallel on EDU36311A).
+    assert.ok(psu.pairing);
+    await psu.setPairingMode("series");
+    assert.equal(await psu.getPairingMode(), "series");
+  });
+});
+
+test("pnpm test:sim — Keysight Truevolt 34461A personality + DMM driver reads mode + value", async () => {
+  await withSimulator(keysightTruevolt34461aPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "34461A");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "keysight-34461a");
+    assert.equal(entry?.kind, "multimeter");
+    const dmm = entry!.create(session, parsed) as KeysightTrueVolt;
+    await dmm.setMode("dcVoltage");
+    assert.equal(await dmm.getMode(), "dcVoltage");
+    const reading = await dmm.read();
+    assert.ok(Number.isFinite(reading.value));
+    assert.equal(reading.mode, "dcVoltage");
+    await dmm.setRange("dcVoltage", 10);
+    const range = await dmm.getRange();
+    assert.equal(range.mode, "dcVoltage");
+  });
+});
+
+test("pnpm test:sim — Keysight InfiniiVision DSOX2024A personality + scope driver decodes a waveform", async () => {
+  await withSimulator(keysightInfiniivisionDsox2024aPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.match(parsed.model, /DSO.?X ?2024A/i);
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "keysight-dsox2024a");
+    assert.equal(entry?.kind, "oscilloscope");
+    const scope = entry!.create(session, parsed) as KeysightInfiniiVision;
+    const timebase = await scope.getTimebase();
+    assert.ok(Number.isFinite(timebase.scale));
+    await scope.setChannelEnabled(1, true);
+    const channels = await scope.getChannels();
+    assert.equal(channels.length, 4);
+    const waveform = await scope.readWaveform(1);
+    assert.ok(waveform.y.length > 0);
+  });
+});
+
+test("pnpm test:sim — Keysight InfiniiVision DSOX3034T accepts dashed IDN + resolves correctly", async () => {
+  await withSimulator(keysightInfiniivisionDsox3034tPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    // Real firmware emits `DSO-X 3034T`; the resolver must tolerate it.
+    assert.match(parsed.model, /DSO-X\s3034T/i);
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "keysight-dsox3034t");
+  });
+});
+
+test("pnpm test:sim — Keysight EL34243A personality + eload driver round-trips setpoints", async () => {
+  await withSimulator(keysightEl34243aPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "EL34243A");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "keysight-el34243a");
+    assert.equal(entry?.kind, "electronicLoad");
+    const eload = entry!.create(session, parsed) as KeysightEl3;
+    await eload.setMode("cc");
+    await eload.setInputEnabled(true);
+    await eload.setSetpoint("cc", 2.0);
+    const state = await eload.getState();
+    assert.equal(state.enabled, true);
+    assert.equal(state.mode, "cc");
+    assert.equal(state.setpoints.cc, 2.0);
+    const m = await eload.measure();
+    assert.ok(m.current >= 0);
   });
 });
 

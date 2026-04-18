@@ -70,3 +70,33 @@ export type {
   SdlProfile,
   SdgProfile,
 } from "./drivers/siglent/index.js";
+export {
+  KeysightE36,
+  KeysightTrueVolt,
+  KeysightInfiniiVision,
+  KeysightEl3,
+  KeysightTrueform33500,
+  registerKeysightDrivers,
+  E36_VARIANTS,
+  E36_DEFAULT,
+  TRUEVOLT_VARIANTS,
+  TRUEVOLT_DEFAULT,
+  INFINIIVISION_VARIANTS,
+  INFINIIVISION_DEFAULT,
+  EL3_VARIANTS,
+  EL3_DEFAULT,
+  T33500B_VARIANTS,
+  T33500_DEFAULT,
+  refineE36Profile,
+  refineTrueVoltProfile,
+  refineInfiniiVisionProfile,
+  refineEl3Profile,
+  refineTrueform33500Profile,
+} from "./drivers/keysight/index.js";
+export type {
+  E36Profile,
+  TrueVoltProfile,
+  InfiniiVisionProfile,
+  El3Profile,
+  Trueform33500Profile,
+} from "./drivers/keysight/index.js";

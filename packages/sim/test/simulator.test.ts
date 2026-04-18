@@ -175,5 +175,12 @@ test("default personality registry ships the full built-in roster", () => {
   assert.ok(ids.has("rigol-rsa3030"));
   assert.ok(ids.has("keysight-33511b"));
   assert.ok(ids.has("keysight-n9320b"));
+  assert.ok(ids.has("keysight-edu36311a"));
+  assert.ok(ids.has("keysight-e36313a"));
+  assert.ok(ids.has("keysight-truevolt-34461a"));
+  assert.ok(ids.has("keysight-truevolt-34470a"));
+  assert.ok(ids.has("keysight-infiniivision-dsox2024a"));
+  assert.ok(ids.has("keysight-infiniivision-dsox3034t"));
+  assert.ok(ids.has("keysight-el34243a"));
   assert.ok(ids.has("generic-unknown"));
 });

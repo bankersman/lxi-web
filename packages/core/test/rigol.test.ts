@@ -39,7 +39,7 @@ test("default registry falls back to catch-all for unknown family variants", () 
 
 test("default registry returns null for unsupported vendors", () => {
   const registry = createDefaultRegistry();
-  const idn = parseIdn("KEYSIGHT,DSOX1204G,SN,FW");
+  const idn = parseIdn("TEKTRONIX,MSO58,SN,FW");
   assert.equal(registry.resolve(idn), null);
 });
 

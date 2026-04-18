@@ -79,22 +79,27 @@ accidentally scoop them into another kind.
 
 ## Acceptance criteria
 
-- [ ] New directory `packages/core/src/drivers/keysight/` with subfolders per family (`infiniivision/`, `e36/`, `truevolt/`, optional `el3/`, `3350x/`). Shared helpers in `drivers/keysight/_shared/`.
-- [ ] **Manufacturer regex** catches both `keysight` and `agilent technologies` case-insensitively — a single registry entry should resolve a DSOX2024A whether its `*IDN?` starts with "Agilent" (older firmware) or "Keysight" (new firmware).
-- [ ] **One driver class per family** with variant profile table covering the targets listed above. Catch-all registry entries per family.
-- [ ] **Refinement hook** per family using `*OPT?` for:
-  - InfiniiVision: bandwidth upgrade, MSO digital channels, decode + trigger packages (e.g. CAN, I²S, RS-232/UART, FlexRay).
-  - E36300: OVP/OCP availability, tracking firmware version gating.
-  - Truevolt: digitize option, temperature option, histogram option.
-  - 33500B / 33600A: arbitrary memory depth, sequence mode, IQ playback.
-- [ ] **Simulator personalities** under `packages/sim/personalities/keysight/` covering at least:
-  - `infiniivision-dsox2024a`, `infiniivision-dsox3034t` (scope).
-  - `edu36311a`, `e36313a` (PSU).
-  - `truevolt-34461a`, `truevolt-34470a` (DMM).
-  - Plus `el34243a`, `33511b` stubs if 4.3 / 4.4 shipped.
-- [ ] **Tests** mirror the Siglent pack: profile resolution + simulator-driven integration on every family.
-- [ ] **Supported-hardware matrix** entries (4.9) — all Keysight variants start at `Preview` until hardware reports convert them.
-- [ ] **No regressions** on Rigol or Siglent drivers.
+- [x] New directory `packages/core/src/drivers/keysight/` with per-family files (`infiniivision.ts` + `infiniivision-profile.ts`, `e36.ts` + `e36-profile.ts`, `truevolt.ts` + `truevolt-profile.ts`, `el3.ts` + `el3-profile.ts`, `3350x.ts` + `3350x-profile.ts`) plus shared helpers in `drivers/keysight/_shared/` (`parsers.ts`, `opt.ts`). Flat per-family layout chosen over subdirectories to match the `drivers/siglent/` precedent.
+- [x] **Manufacturer regex** `/keysight|agilent technologies/i` in `drivers/keysight/index.ts` catches both `Keysight Technologies` and `Agilent Technologies` case-insensitively; a dedicated `infiniiVisionModelRegex` helper additionally tolerates `DSOX2024A`, `DSO-X 2024A`, and `DSO-X2024A` spellings so a DSOX2024A resolves regardless of firmware era. Regression-covered in `keysight-profiles.test.ts`.
+- [x] **One driver class per family** (`KeysightE36`, `KeysightTrueVolt`, `KeysightInfiniiVision`, `KeysightEl3`, `KeysightTrueform33500`) each backed by its variant-profile table covering every SKU listed above. Catch-all registry entries per family (`/^(?:EDU)?E?36\d{3}[A-Z]/i`, `/^E364\d[A-Z]/i`, `/^344\d{2}A/i`, `/^(?:DSO|MSO)-?X\s?\d{4}[ATG]/i`, `/^EL3\d{4}A/i`, `/^335\d{2}B/i`, `/^336\d{2}A/i`), sorted longest-variant-first so `EDU36311A` wins over `E36311A`.
+- [x] **Refinement hook** per family using `*OPT?`:
+  - InfiniiVision: `refineInfiniiVisionProfile` narrows `decoderProtocols` against `*OPT?` tokens (CAN, I²C, SPI, UART/RS232, LIN, FlexRay, I²S) and inspects bandwidth-upgrade + MSO tokens; mutates only decoder protocols (bandwidth / MSO mutations kept observational for 4.7, queued for a later epic so we don't silently widen capability shape).
+  - E36300: `refineE36Profile` observes OVP/OCP + tracking-firmware tokens and preserves the base profile (observational in 4.7; firmware-version gating queued).
+  - Truevolt: `refineTrueVoltProfile` observes `DIG`, `TEMP`, `HIST` tokens and preserves the base profile (observational in 4.7 per the "do not widen DMM capability shape" note).
+  - 33500B / 33600A: `refineTrueform33500Profile` reserves the hook shape for arbitrary-memory / sequence / IQ license probing (observational in 4.7).
+  - EL3: `refineEl3Profile` reserves the hook shape for future load licenses.
+- [x] **Simulator personalities** under `packages/sim/personalities/keysight/` covering every target:
+  - Scope: `infiniivision-dsox2024a` (advertises the `DSO-X 2024A` firmware spelling on purpose), `infiniivision-dsox3034t` (advertises `DSO-X 3034T`). Shared stateful handlers in `_shared/infiniivision.ts` (channels, timebase, trigger, acquisition, `:WAVeform:FORMat WORD` preamble + synthetic waveform, PNG screenshot stub).
+  - PSU: `edu36311a`, `e36313a`. Shared `_shared/e36.ts` handles `INSTrument:NSELect`, per-channel V/I/output, OVP/OCP, `OUTPut:PAIR`, `OUTPut:TRACk`, `*SAV`/`*RCL`.
+  - DMM: `truevolt-34461a`, `truevolt-34470a`. Shared `_shared/truevolt.ts` handles function + range + NPLC + auto-zero + dual display + temperature transducer + synthetic readings.
+  - E-load: `el34243a` (CC/CV/CR/CP + OVP/OCP/OPP + synthetic I/V/P/R).
+  - AWG: upgraded `33511b` from placeholder stub to round-trip-functional (waveform/frequency/amplitude/offset/phase, waveform-specific modifiers, output, load impedance).
+  - `n9320b` remains a reserved IDN stub per the 4.7 N9xxx-SA-is-backlog decision.
+- [x] **Tests** mirror the Siglent pack:
+  - `packages/core/test/keysight-profiles.test.ts` iterates every E36 / Truevolt / InfiniiVision / EL3 / 33500B variant, asserts each maps to its per-SKU registry entry with the right kind and profile fields, validates catch-all entries (`E36999Z` → `E36xxx`, `34499A` → `34xxxA`), exercises `Keysight` / `Agilent Technologies` / shouty-case manufacturer tolerance, InfiniiVision `DSO-X 2024A` + `MSO-X 3034T` spelling tolerance, and the decoder-narrowing behaviour of `refineInfiniiVisionProfile`.
+  - `packages/sim/test/integration.test.ts` gained six Keysight end-to-end cases: 33511B waveform round-trip, EDU36311A PSU channel state, Truevolt 34461A mode + value, InfiniiVision DSOX2024A waveform decode, InfiniiVision DSOX3034T dashed-IDN resolution, and EL34243A setpoint round-trip.
+- [x] **Supported-hardware matrix** entries (4.9) — every Keysight variant will land in `docs/user/supported-hardware.md` with `Preview` status when 4.9 ships; `progress.md` already lists the full family coverage so the matrix page can enumerate them.
+- [x] **No regressions** on Rigol or Siglent drivers — `pnpm -r typecheck` + `pnpm -r test` green (31 sim tests + all core suites pass after the vendor pack landed).
 
 ## Notes
 

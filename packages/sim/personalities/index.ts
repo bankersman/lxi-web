@@ -15,6 +15,13 @@ import { siglentSdg2042xPersonality } from "./siglent/sdg2042x.js";
 import { siglentSsa3032xPersonality } from "./siglent/ssa3032x.js";
 import { keysight33511bPersonality } from "./keysight/33511b.js";
 import { keysightN9320bPersonality } from "./keysight/n9320b.js";
+import { keysightEdu36311aPersonality } from "./keysight/edu36311a.js";
+import { keysightE36313aPersonality } from "./keysight/e36313a.js";
+import { keysightTruevolt34461aPersonality } from "./keysight/truevolt-34461a.js";
+import { keysightTruevolt34470aPersonality } from "./keysight/truevolt-34470a.js";
+import { keysightInfiniivisionDsox2024aPersonality } from "./keysight/infiniivision-dsox2024a.js";
+import { keysightInfiniivisionDsox3034tPersonality } from "./keysight/infiniivision-dsox3034t.js";
+import { keysightEl34243aPersonality } from "./keysight/el34243a.js";
 
 export { genericUnknownPersonality } from "./generic-unknown.js";
 export { rigolDho804Personality } from "./rigol/dho804.js";
@@ -32,6 +39,13 @@ export { siglentSdg2042xPersonality } from "./siglent/sdg2042x.js";
 export { siglentSsa3032xPersonality } from "./siglent/ssa3032x.js";
 export { keysight33511bPersonality } from "./keysight/33511b.js";
 export { keysightN9320bPersonality } from "./keysight/n9320b.js";
+export { keysightEdu36311aPersonality } from "./keysight/edu36311a.js";
+export { keysightE36313aPersonality } from "./keysight/e36313a.js";
+export { keysightTruevolt34461aPersonality } from "./keysight/truevolt-34461a.js";
+export { keysightTruevolt34470aPersonality } from "./keysight/truevolt-34470a.js";
+export { keysightInfiniivisionDsox2024aPersonality } from "./keysight/infiniivision-dsox2024a.js";
+export { keysightInfiniivisionDsox3034tPersonality } from "./keysight/infiniivision-dsox3034t.js";
+export { keysightEl34243aPersonality } from "./keysight/el34243a.js";
 
 /**
  * Registry with every personality this package ships with. Consumers can
@@ -56,5 +70,12 @@ export function createDefaultPersonalityRegistry(): PersonalityRegistry {
   registry.register(siglentSsa3032xPersonality);
   registry.register(keysight33511bPersonality);
   registry.register(keysightN9320bPersonality);
+  registry.register(keysightEdu36311aPersonality);
+  registry.register(keysightE36313aPersonality);
+  registry.register(keysightTruevolt34461aPersonality);
+  registry.register(keysightTruevolt34470aPersonality);
+  registry.register(keysightInfiniivisionDsox2024aPersonality);
+  registry.register(keysightInfiniivisionDsox3034tPersonality);
+  registry.register(keysightEl34243aPersonality);
   return registry;
 }

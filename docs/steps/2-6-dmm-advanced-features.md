@@ -1,4 +1,4 @@
-# 2.6 — DMM advanced features
+# 2.6 — DMM advanced features (overview)
 
 ## Goal
 
@@ -8,8 +8,17 @@ that the DM858 actually has — manual range, NPLC, math (null / dB / dBm /
 statistics / pass-fail), dual display, trend logging, triggering, and
 temperature — without forcing those features on other vendors.
 
-The current facade is "set mode, press read"; this step gives the UI
-everything a bench operator expects from a 5½-digit DMM.
+2.6 is **sliced into three sub-steps** so each can ship independently with
+its own commit, tests, and UI surface:
+
+| Sub-step  | Slice                                                    | Step doc |
+| --------- | -------------------------------------------------------- | -------- |
+| **2.6a**  | Range, NPLC, AutoZero, triggering, 4-wire resistance      | [2-6a](./2-6a-dmm-range-and-triggering.md) |
+| **2.6b**  | Math (null / dB / dBm / stats / limit) and dual display   | [2-6b](./2-6b-dmm-math-and-dual-display.md) |
+| **2.6c**  | Trend logging, temperature, preset memory                 | [2-6c](./2-6c-dmm-logging-and-temperature.md) |
+
+Each sub-step pulls its background from this overview rather than
+duplicating the research.
 
 ## Standards landscape
 
@@ -76,167 +85,28 @@ What the DM858 does **not** have (keep in mind when we draw the UI):
 segmented memory, digitize mode with sample rates above ~50 kS/s, direct
 dBm source impedance list beyond the standard {50, 75, 600}.
 
-## Scope of this step
-
-### Facade additions (all optional)
-
-```ts
-export interface MultimeterRange {
-  readonly label: string;       // "10 V", "100 mA", "10 MΩ"
-  readonly upper: number;       // upper limit in base units (V / A / Ω / F / Hz)
-  readonly resolution?: number; // preferred resolution for this range
-}
-
-export interface MultimeterRangingCapability {
-  readonly modes: readonly MultimeterMode[];
-  readonly ranges: Readonly<Record<MultimeterMode, readonly MultimeterRange[]>>;
-  readonly nplc: readonly number[];     // e.g. [0.02, 0.2, 1, 10, 100]
-  readonly autoZero: boolean;           // driver supports AutoZero ON/OFF/ONCE
-}
-
-export type MultimeterMathFunction =
-  | "none" | "null" | "db" | "dbm" | "stats" | "limit";
-
-export interface MultimeterMathCapability {
-  readonly functions: readonly MultimeterMathFunction[];
-  /** Per-function list of modes where it's permitted (e.g. dBm is usually VAC/VDC only). */
-  readonly allowedModes: Readonly<Record<MultimeterMathFunction, readonly MultimeterMode[]>>;
-  readonly dbmReferences: readonly number[];   // ohms
-}
-
-export interface MultimeterLoggingCapability {
-  readonly maxSamples: number;      // driver's buffer depth (e.g. 1e6)
-  readonly minIntervalMs: number;   // fastest sample pacing the driver can reliably deliver
-}
-
-export type MultimeterTriggerSource = "immediate" | "external" | "bus" | "software";
-export type MultimeterTriggerSlope = "positive" | "negative";
-
-export interface MultimeterTriggerCapability {
-  readonly sources: readonly MultimeterTriggerSource[];
-  readonly slopes: readonly MultimeterTriggerSlope[];
-  readonly sampleCountRange: { min: number; max: number };
-  readonly delayRangeSec: { min: number; max: number };
-}
-
-export type TemperatureUnit = "celsius" | "fahrenheit" | "kelvin";
-export type TemperatureTransducer =
-  | "pt100" | "pt1000" | "thermocouple-k" | "thermocouple-j"
-  | "thermocouple-t" | "thermocouple-e" | "thermistor";
-
-export interface MultimeterTemperatureCapability {
-  readonly units: readonly TemperatureUnit[];
-  readonly transducers: readonly TemperatureTransducer[];
-}
-
-export interface MultimeterDualDisplayCapability {
-  /** Which secondary readouts are compatible with each primary mode. */
-  readonly pairs: Readonly<Record<MultimeterMode, readonly MultimeterMode[]>>;
-}
-```
-
-Methods (all optional, capability-gated on the server side):
-
-- `getRange()` / `setRange(mode, upper | "auto")` / `getNplc()` / `setNplc(value)`
-- `setAutoZero(mode: "on" | "off" | "once")`
-- `getMath()` / `setMath(config: MultimeterMathConfig)` / `fetchMathState()`
-- `startLogging(config)` / `stopLogging()` / `fetchLoggedSamples(since?)`
-- `configureTrigger(config)` / `trigger()` (software trigger)
-- `getTemperatureConfig()` / `setTemperatureConfig(config)`
-- `setDualDisplay(secondary | null)` / `readDual()`
-- `savePreset(slot)` / `recallPreset(slot)` / `getPresetCatalog()` —
-  reuse of the preset shape from 2.5 (consolidated; see follow-ups).
-
-### REST surface (additions)
-
-- `GET  /api/sessions/:id/dmm/ranging` — returns capability + current.
-- `POST /api/sessions/:id/dmm/ranging` — body `{ mode?, range?, nplc?, autoZero? }`.
-- `GET  /api/sessions/:id/dmm/math` / `POST …/math`.
-- `GET  /api/sessions/:id/dmm/logging` — status + latest chunk metadata.
-- `POST /api/sessions/:id/dmm/logging/start` / `…/stop`.
-- `GET  /api/sessions/:id/dmm/logging/samples?since=<seq>` — paged NDJSON.
-- `GET  /api/sessions/:id/dmm/trigger` / `POST …/trigger`.
-- `POST /api/sessions/:id/dmm/trigger/fire` — software trigger.
-- `GET  /api/sessions/:id/dmm/temperature` / `POST …/temperature`.
-- `GET  /api/sessions/:id/dmm/dual` / `POST …/dual`.
-- `GET  /api/sessions/:id/dmm/presets` / save / recall (matches 2.5 shape).
-
-Capability-missing routes return `supported: false` on GET and `409` on
-mutating POSTs, exactly like 2.5.
-
-### UI additions on the DMM detail page
-
-Laid out as cards so sections hide cleanly when unsupported:
-
-- **Range & integration** card — mode-aware manual-range picker with an
-  explicit **Auto** option, NPLC chip bar (0.02 … 100), AutoZero tri-state
-  button (On / Off / Once).
-- **Math** card — function selector (Null / dB / dBm / Stats / Limit),
-  context-appropriate inputs (null offset with "snap current reading"
-  button, dBm reference Ω drop-down, upper/lower limit fields with a live
-  pass / fail / in-range badge, min/max/avg/stddev/count readouts with a
-  reset button).
-- **Trend recorder** card — interval + total-samples inputs, start / stop,
-  live uPlot sparkline with last-N-samples window, CSV export. Emits
-  `measurementSample` events on the 5.1 bus (when Epic 5 ships) so the
-  reading flows into the timeline automatically.
-- **Trigger** card — source (Imm / Ext / Bus / Software), slope (when
-  Ext), delay, sample count, a "Fire software trigger" button.
-- **Temperature** sub-card — only shown when the current mode is
-  `temperature`; unit chips (°C / °F / K) and a transducer drop-down.
-- **Dual display** strip — toggles on, secondary drop-down filtered to
-  `pairs[currentMode]`; shows a smaller secondary reading under the
-  primary.
-- **Presets** — same 10-slot grid component as 2.5's PSU presets.
-
-All dynamic readouts stay inside `aria-live="polite"` regions (matches
-the 2.3 / 2.4 accessibility rules).
-
-## Acceptance criteria
-
-- [ ] `IMultimeter` gains optional `ranging`, `math`, `logging`,
-      `triggering`, `temperature`, `dualDisplay`, `presets` capabilities
-      plus matching optional methods. Non-supporting drivers keep
-      working unchanged (the core facade surface is backwards compatible).
-- [ ] `MultimeterMode` gains `fourWireResistance`; existing drivers that
-      don't list it are unaffected.
-- [ ] `RigolDm858` advertises all applicable capabilities with ranges,
-      NPLC options, math functions, transducers, and preset slot count
-      drawn from the DM858 programming guide.
-- [ ] REST endpoints advertise a capability descriptor on GET, validate
-      bodies (400 for bad input, 409 for unsupported), and forward to
-      the driver. Trend-logger endpoints stream samples via NDJSON and
-      support `since=<seq>` continuation.
-- [ ] DMM detail page hides each control cleanly when unsupported; the
-      new cards live under the existing primary reading area.
-- [ ] Math card renders a visible pass/fail/in-range badge when Limit is
-      active, and a reset button for Stats.
-- [ ] Trend recorder's sparkline respects `prefers-reduced-motion`, and
-      CSV export carries wall-clock + elapsed-ms columns.
-- [ ] Unit tests cover the driver SCPI for each new capability, including
-      range clamping, NPLC round-tripping, null-offset snap, dBm reference
-      write, buffered `:INITiate` + `:FETCh?` flow, temperature
-      unit/transducer round-trip, and preset save/recall.
-- [ ] Integration tests cover the new REST routes — capability
-      advertising, input validation, NDJSON streaming, and SCPI
-      side-effects against a fake port.
-
-## Notes and follow-ups
+## Cross-cutting notes
 
 - **Consolidate preset shape.** The PSU preset capability in 2.5 and the
-  DMM preset capability here describe the same thing. Promote them to a
-  shared `InstrumentPresetCapability` in `@lxi-web/core`; the PSU
+  DMM preset capability here (2.6c) describe the same thing. Promote them
+  to a shared `InstrumentPresetCapability` in `@lxi-web/core`; the PSU
   implementation stays the compatibility baseline so 2.5 code keeps
-  working.
-- **Trend recorder + Epic 5.** When 5.1's event bus lands, the trend
+  working. Tracked in `progress.md` under "Shared capability follow-ups".
+- **Trend recorder + Epic 5.** When 5.1's event bus lands, 2.6c's trend
   recorder should emit `measurementSample` events so the 5.4 timeline
   can render DMM + PSU + scope on a single axis without duplicate
   pollers. Until then it runs a dedicated polling loop.
-- **AutoZero ONCE** is a pulse semantic (no persistent state). The UI
-  button should spring back to Off after firing.
-- **4-wire resistance** requires wiring guidance in the UI (there's no
-  way to detect it remotely); show a non-blocking hint the first time
-  someone selects the mode.
-- Deferred for a future 2.6 follow-up: frequency-measurement aperture
-  (`:SENSe:FREQuency:APERture`), explicit digitize mode, and per-range
-  bandwidth setting for ACV / ACI.
+- **`MultimeterMode` expansion.** 2.6a adds `fourWireResistance` to the
+  mode enum; because every sub-step lands after that slice, 2.6b / 2.6c
+  code can assume the new mode is available.
+- **Accessibility.** All dynamic readouts introduced across 2.6a–c stay
+  inside `aria-live="polite"` regions, matching the 2.3 / 2.4 rules.
+
+## Deferred for 2.6 follow-ups
+
+- Frequency-measurement aperture (`:SENSe:FREQuency:APERture`).
+- Explicit digitize mode distinct from the buffered trend logger.
+- Per-range ACV / ACI bandwidth setting (`:SENSe:VOLTage:AC:BANDwidth`).
+
+These are tracked in `progress.md` under "Advanced DMM features (extends
+2.6)".

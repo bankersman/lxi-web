@@ -1,6 +1,6 @@
 ---
 name: LXI client and UI
-overview: "Bench utility for solo/small-lab: Node 24+ pnpm monorepo, Fastify :8787, SCPI core + Rigol DHO804/DP932E/DM858, Vue grid dashboard (Router, Tailwind, Pinia, Lucide, uPlot, light/dark). Git + progress.md per step."
+overview: "Bench utility for solo/small-lab: Node 24+ pnpm monorepo, Fastify :8787, SCPI core + Rigol DHO804/DP932E/DM858, Vue grid dashboard (Router, Tailwind, Pinia, Lucide, uPlot, light/dark). Epics 3–4: LAN discovery + resilient sessions + detail UX; SCPI mock + first extra device kind. Git + progress.md per step."
 todos:
   - id: git-init
     content: Initialize git repo, root .gitignore (Node, Vite, Vue, OS/IDE); first commit
@@ -35,11 +35,44 @@ todos:
   - id: epic-2-5-psu-advanced
     content: Epic 2.5 — Advanced PSU features as optional capabilities on IPowerSupply (channel coupling via :OUTPut:PAIR, per-channel OVP/OCP via :OUTPut:O[V|C]P:*, CH1/CH2 tracking via :OUTPut:TRACk, 10-slot *SAV/*RCL preset memory); REST routes + UI panels (pairing, tracking, presets, protection) in PSU detail; Rigol DP900 driver (DP932E tested); progress + step doc; commit
     status: completed
-  - id: epic-2-6-dmm-advanced
-    content: Epic 2.6 — Advanced DMM features as optional capabilities on IMultimeter (manual range + NPLC + AutoZero via :SENSe:<fn>:*, math via :CALCulate:FUNCtion NULL|DB|DBM|AVERage|LIMit, buffered trend logging via :INITiate/:FETCh?/:DATA:*, triggering via :TRIGger:SOURce/SLOPe/DELay + :SAMPle:COUNt, dual display, temperature unit/transducer, 4-wire resistance, shared preset memory); REST routes + UI cards (range/NPLC, math, trend recorder, trigger, temperature, dual); Rigol DM858 driver; progress + step doc; commit
+  - id: epic-2-6a-dmm-range-triggering
+    content: Epic 2.6a — DMM range + NPLC + AutoZero + triggering. Optional ranging/triggering capabilities on IMultimeter, 4-wire resistance added to MultimeterMode; REST /dmm/ranging, /dmm/trigger, /dmm/trigger/fire; UI Range & integration + Trigger cards; Rigol DM858 driver; progress + step doc; commit
     status: pending
-  - id: epic-2-7-scope-advanced
-    content: Epic 2.7 — Advanced scope features as optional capabilities on IOscilloscope (trigger types beyond edge, sweep modes + force, acquisition modes inc. averaging + high-res, memory depth, automatic measurements with statistics, math + FFT, reference-waveform slots, cursors, protocol decoders I2C/SPI/UART/CAN/LIN, history/segmented frames, display screenshot, setup presets); REST routes + tabbed UI on scope detail; Rigol DHO800 driver (DHO804 tested); progress + step doc; commit
+  - id: epic-2-6b-dmm-math-dual
+    content: Epic 2.6b — DMM math (null/dB/dBm/stats/limit) + dual display. Optional math/dualDisplay capabilities on IMultimeter; REST /dmm/math, /dmm/math/reset, /dmm/dual; UI Math card with pass/fail badge + dual-display strip; Rigol DM858 driver; progress + step doc; commit
+    status: pending
+  - id: epic-2-6c-dmm-logging-temperature
+    content: Epic 2.6c — DMM trend logging + temperature + presets. Optional logging/temperature/presets capabilities on IMultimeter with shared InstrumentPresetCapability in @lxi-web/core (PSU retypes onto it); REST /dmm/logging/* (NDJSON stream), /dmm/temperature, /dmm/presets/*; UI Trend recorder with uPlot sparkline + CSV export, Temperature sub-card, Presets grid; Rigol DM858 driver; progress + step doc; commit
+    status: pending
+  - id: epic-2-7a-scope-capture-control
+    content: Epic 2.7a — Scope capture control (trigger + acquisition). Optional trigger/acquisition capabilities on IOscilloscope with discriminated OscilloscopeTriggerConfig union, channel bandwidthLimit/invert/unit additions; REST /scope/trigger{,/sweep,/force}, /scope/acquisition, /scope/autoset, channel mutators; UI Trigger + Acquire tabs; Rigol DHO800 driver; progress + step doc; commit
+    status: pending
+  - id: epic-2-7b-scope-analysis
+    content: Epic 2.7b — Scope analysis (measurements + cursors + math/FFT). Optional measurements/cursors/math capabilities with 41-item DHO800 catalog, statistics, Δ + 1/Δ cursor readouts, math incl. FFT (window/span/center); REST /scope/measurements{,/clear-stats}, /scope/cursors, /scope/math{,/waveform}; UI Measure + Cursors + Math tabs, math overlay on hero uPlot; Rigol DHO800 driver; progress + step doc; commit
+    status: pending
+  - id: epic-2-7c-scope-save-replay
+    content: Epic 2.7c — Scope save & replay (references + history + screenshot + presets). Optional references/history/display/presets capabilities (shared InstrumentPresetCapability); REST /scope/references/* (incl. waveform), /scope/history{,/seek}, /scope/screenshot, /scope/display, /scope/presets/*; UI Refs grid with overlay, History scrubber, Display & Presets tab; Rigol DHO800 driver; progress + step doc; commit
+    status: pending
+  - id: epic-2-7d-scope-protocol-decoders
+    content: Epic 2.7d — Scope protocol decoders (I2C/SPI/UART/CAN/LIN). Optional decoders capability with discriminated OscilloscopeDecoderConfig union, NDJSON packet stream with since=<seq>; REST /scope/buses{,/:id,/:id/packets}; UI Decoders tab with per-protocol forms + virtualised packet list + CSV export; Rigol DHO800 driver; progress + step doc; commit
+    status: pending
+  - id: epic-3-1-lan-discovery
+    content: Epic 3.1 — LAN discovery (mDNS/DNS-SD); REST browse + Add-device pick-list; manual host/port fallback; keyboard/a11y; progress + docs/steps/3-1-*.md; commit
+    status: pending
+  - id: epic-3-2-resilient-connectivity
+    content: Epic 3.2 — Resilient connectivity (reconnect/backoff, connection-lost UX, optional retry); session semantics documented; progress + docs/steps/3-2-*.md; commit
+    status: pending
+  - id: epic-3-3-session-persistence
+    content: Epic 3.3 — Session persistence (saved connections, reopen last session on launch); no auth; progress + docs/steps/3-3-*.md; commit
+    status: pending
+  - id: epic-3-4-device-detail-ux
+    content: Epic 3.4 — Device detail UX (per-kind section order, overview cards, quick actions within reason); progress + docs/steps/3-4-*.md; commit
+    status: pending
+  - id: epic-4-1-scpi-mock
+    content: Epic 4.1 — SCPI TCP mock instrument(s) for dev/CI; configurable *IDN?, minimal typed SCPI per kind + unknown; progress + docs/steps/4-1-*.md; commit
+    status: pending
+  - id: epic-4-2-new-instrument-kind
+    content: Epic 4.2 — First additional instrument kind (new I… facade + registry + dashboard/detail); one vendor driver or doc-driven stub; progress + docs/steps/4-2-*.md; commit
     status: pending
   - id: epic-5-1-event-bus
     content: Epic 5.1 — Cross-device event bus + action catalog on @lxi-web/core; façade event sources for scope/PSU/DMM; REST for schema/catalog/invoke; WebSocket events channel with filters and ring-buffer backfill; progress + step doc; commit
@@ -282,25 +315,95 @@ These are the “typed extensions”: **not** primarily inheritance from one meg
 - **2.5 — Advanced PSU capabilities**  
   Extend `IPowerSupply` with **optional capability objects** (`pairing`, `protection`, `tracking`, `presets`) so vendor drivers can advertise features without forcing every PSU to implement them. Implement on the **Rigol DP900** driver (verified against **DP932E**): **channel coupling** (`:OUTPut:PAIR` — off / series / parallel, with UI rules that leave CH2 editable in series and lock it only in parallel), **per-channel OVP/OCP** (`:OUTPut:O[V|C]P:*` — enable, level, trip state, clear), **CH1↔CH2 tracking** (`:OUTPut:TRACk`), and **10-slot `*SAV` / `*RCL` preset memory** with `:MEMory:VALid?` catalog. Surfaced in the PSU detail page with capability-gated panels that re-query the device after every write and share a `refreshKey` so recall / pairing / tracking changes rehydrate all dependent UI state.
 
-- **2.6 — Advanced DMM capabilities**  
-  Extend `IMultimeter` with **optional capability objects** modelled on the **IVI-4.8 IviDmm** class (`ranging`, `math`, `logging`, `triggering`, `temperature`, `dualDisplay`, `presets`) so the DM858's 5½-digit feature set is actually reachable: **manual range + NPLC + AutoZero** (`:SENSe:<fn>:RANGe`, `:NPLC`, `:ZERO:AUTO`), **math** (`:CALCulate:FUNCtion NULL|DB|DBM|AVERage|LIMit` with live stats and pass/fail badge), **trend recorder** (`:SAMPle:COUNt` + `:INITiate` / `:FETCh?` / `:DATA:REMove?` streamed as NDJSON), **triggering** (immediate / external / bus / software with slope + delay + sample count), **temperature** unit + transducer selection, **dual display** with a `pairs[primary]` compatibility map, and **4-wire resistance** as a first-class mode. Surfaced as capability-gated cards on the DMM detail page, with `aria-live="polite"` readouts for every dynamic number.
-  See [docs/steps/2-6-dmm-advanced-features.md](docs/steps/2-6-dmm-advanced-features.md).
+- **2.6 — Advanced DMM capabilities** (sliced into **2.6a / 2.6b / 2.6c**)  
+  Extend `IMultimeter` with **optional capability objects** modelled on the **IVI-4.8 IviDmm** class so the DM858's 5½-digit feature set is actually reachable. Shared background and SCPI landscape live in the overview — [docs/steps/2-6-dmm-advanced-features.md](docs/steps/2-6-dmm-advanced-features.md).
+  - **2.6a — Range, NPLC, triggering.** `ranging` + `triggering` capabilities on `IMultimeter`, plus **4-wire resistance** promoted to a first-class `MultimeterMode`. Manual-range picker with Auto option, NPLC chip bar, AutoZero tri-state (On / Off / Once), trigger source + slope + delay + sample-count + software-trigger action. See [docs/steps/2-6a-dmm-range-and-triggering.md](docs/steps/2-6a-dmm-range-and-triggering.md).
+  - **2.6b — Math and dual display.** `math` + `dualDisplay` capabilities. `:CALCulate:FUNCtion NULL|DB|DBM|AVERage|LIMit` with Null snap, dBm reference-Ω, statistics readouts + Reset, pass/fail badge, and a secondary-reading strip gated by a `pairs[primary]` compatibility map. See [docs/steps/2-6b-dmm-math-and-dual-display.md](docs/steps/2-6b-dmm-math-and-dual-display.md).
+  - **2.6c — Trend logging, temperature, presets.** `logging` + `temperature` + shared `presets` capabilities. Buffered `:SAMPle:COUNt` + `:INITiate` / `:FETCh?` / `:DATA:REMove?` streamed as **NDJSON** with a live uPlot sparkline + CSV export, `:UNIT:TEMPerature C|F|K` + transducer selection, and 10-slot `*SAV` / `*RCL` preset memory that introduces the shared `InstrumentPresetCapability` (PSU retypes onto it). See [docs/steps/2-6c-dmm-logging-and-temperature.md](docs/steps/2-6c-dmm-logging-and-temperature.md).
 
-- **2.7 — Advanced scope capabilities**  
-  Extend `IOscilloscope` with **optional capability objects** modelled on the **IVI-4.1 IviScope** class (`trigger`, `acquisition`, `measurements`, `math`, `references`, `cursors`, `decoders`, `history`, `display`, `presets`). Covers the DHO800's real front-panel surface: **non-edge trigger types** (Pulse, Slope, Runt, Window, Timeout, Setup/Hold, Nth-Edge, Delay, and the serial triggers I²C / SPI / UART / CAN / LIN) with Auto / Normal / Single sweep + Force; **acquisition** modes (Normal / Average / Peak-Detect / High-Resolution) with selectable **memory depth** up to 25 Mpts; **automatic measurements** against the 41-item catalog with statistics; **math** (`:MATH:OPERator` including FFT with window / span / center); **10 reference waveforms**; cursors (Manual / Track / Auto); **protocol decoders** I²C / SPI / UART / CAN / LIN with an NDJSON packet stream; **history / segmented frames**; display screenshot (`:DISPlay:DATA?` in PNG / BMP / JPG); and setup save / recall. Surfaced as tabs on the side column so the hero uPlot keeps its real estate, with every tab hidden when its capability is absent.
-  See [docs/steps/2-7-scope-advanced-features.md](docs/steps/2-7-scope-advanced-features.md).
+- **2.7 — Advanced scope capabilities** (sliced into **2.7a / 2.7b / 2.7c / 2.7d**)  
+  Extend `IOscilloscope` with **optional capability objects** modelled on the **IVI-4.1 IviScope** class. Surfaced as tabs on the existing side column so the hero uPlot keeps its real estate, with every tab hidden when its capability is absent. Shared background and SCPI landscape live in the overview — [docs/steps/2-7-scope-advanced-features.md](docs/steps/2-7-scope-advanced-features.md).
+  - **2.7a — Capture control.** `trigger` + `acquisition` capabilities, with a **discriminated** `OscilloscopeTriggerConfig` union so each of Edge / Pulse / Slope / Video / Pattern / Duration / Timeout / Runt / Window / Delay / Setup-Hold / Nth-Edge / I²C / SPI / UART / CAN / LIN gets a type-safe payload. Sweep mode (Auto / Normal / Single), `:TFORce`, acquisition modes (Normal / Average / Peak-Detect / High-Resolution), **memory depth** up to 25 Mpts, `:AUToset` with a confirm dialog, and the channel-state additions (`bandwidthLimit`, `invert`, `unit`). See [docs/steps/2-7a-scope-capture-control.md](docs/steps/2-7a-scope-capture-control.md).
+  - **2.7b — Analysis.** `measurements` + `cursors` + `math` capabilities. 41-item DHO800 measurement catalog with statistics, Manual / Track / Auto cursors with Δ + 1/Δ readouts, and a math channel covering A±B, A×B, A÷B, integration, differentiation, sqrt / log / ln / exp / abs, and **FFT** (window + span + center) overlaid on the hero uPlot with a distinct color. See [docs/steps/2-7b-scope-analysis.md](docs/steps/2-7b-scope-analysis.md).
+  - **2.7c — Save and replay.** `references` + `history` + `display` + shared `presets` capabilities. 10 reference-waveform slots with overlays on the hero plot, history / segmented-frame scrubber with keyboard + play/pause + frame-jump, display screenshot in PNG / BMP / JPG as a binary download, persistence selector, and the shared preset grid. See [docs/steps/2-7c-scope-save-and-replay.md](docs/steps/2-7c-scope-save-and-replay.md).
+  - **2.7d — Protocol decoders.** `decoders` capability with a discriminated `OscilloscopeDecoderConfig` union per protocol (I²C / SPI / UART / CAN / LIN), `:BUS<N>:*` wiring, and an **NDJSON packet stream** with `since=<seq>` resumption. UI gives each bus its own protocol-specific form and a virtualised packet list with protocol-aware columns, filters, auto-scroll, and CSV export. See [docs/steps/2-7d-scope-protocol-decoders.md](docs/steps/2-7d-scope-protocol-decoders.md).
+
+---
+
+## Epic 3 — Usability and platform (solo bench)
+
+**Goal:** Reduce friction for daily use on a trusted LAN: find instruments
+without typing IPs, survive brief network glitches, restore the last bench
+layout, and make **`/device/:sessionId`** scannable (most important information
+and actions first). **Out of scope:** accounts, roles, and multi-tenant
+security — see **Epic 6 (deferred)** in `progress.md`.
+
+### Subplans (Epic 3)
+
+- **3.1 — LAN discovery (mDNS / DNS-SD)**  
+  Backend browse for an allowlisted set of service types (e.g. `_lxi._tcp`,
+  `_scpi._tcp`, `_visa._tcp` — exact strings vary by vendor; discover empirically
+  on your gear). REST endpoint returns candidates (host, port, hostname, TXT
+  hints). Add-device dialog: **Scan** populates a list; user **confirms**
+  before connect (no silent TCP opens to lab hardware). Manual **Host** /
+  **Port** remains. Document limitations (different subnet, AP isolation,
+  firewalls).  
+  See [docs/steps/3-1-lan-discovery-mdns.md](docs/steps/3-1-lan-discovery-mdns.md).
+
+- **3.2 — Resilient connectivity**  
+  Detect TCP/session failure; surface **connection lost** state on the card and
+  detail page; offer **Retry** with exponential backoff policy. Decide and
+  document **`sessionId` semantics** on reconnect (new session vs stable slot).
+  Optional: auto-retry for transient errors without wedging the UI.  
+  See [docs/steps/3-2-resilient-connectivity.md](docs/steps/3-2-resilient-connectivity.md).
+
+- **3.3 — Session persistence**  
+  Persist a **saved connection list** (host, port, optional label) and optional
+  **“reopen last session”** on app load (backend file or local config — pick one
+  coherent story for single-operator). Must not require authentication.  
+  See [docs/steps/3-3-session-persistence.md](docs/steps/3-3-session-persistence.md).
+
+- **3.4 — Device detail UX**  
+  Per **device kind**, order sections so the **hero** and safety-critical
+  readouts come first (e.g. scope: waveform + arm/trigger; PSU: output state +
+  measured V/I; DMM: primary reading + mode). Improve **overview** summary
+  cards: copy IDN, disconnect, link to raw SCPI, last error if exposed — avoid
+  large new backend features unless cheap. Align with existing accessibility
+  rules (`aria-live`, focus order).  
+  See [docs/steps/3-4-device-detail-ux.md](docs/steps/3-4-device-detail-ux.md).
+
+---
+
+## Epic 4 — SCPI mock and additional device kinds
+
+**Goal:** Enable development and CI **without** a full Rigol rack, and prove the
+**registry + façade + dashboard** pipeline for **one** new instrument category
+beyond the v1 trio.
+
+**Order:** implement the **mock** first so new kinds and regression tests do not
+depend on physical hardware.
+
+### Subplans (Epic 4)
+
+- **4.1 — SCPI / LXI-style mock instrument**  
+  In-repo TCP server(s) speaking enough SCPI for tests: `*IDN?`, `SYST:ERR?`,
+  newline framing, and a **minimal** command set per emulated kind (scope / PSU
+  / DMM) plus an **unknown** string for raw-SCPI paths. Configurable host/port;
+  scriptable from **pnpm** or CI. Used to validate WebSocket routing,
+  `sessionId` isolation, and typed routes without LAN hardware.  
+  See [docs/steps/4-1-scpi-mock-instrument.md](docs/steps/4-1-scpi-mock-instrument.md).
+
+- **4.2 — First new instrument kind**  
+  Add one new **`I…`** façade interface, device-kind enum value, registry entry,
+  and **dashboard + detail** UI surface for **one** concrete driver (vendor
+  module) **or** a documented stub backed by the mock until hardware exists.
+  Examples from the backlog: signal/function generator, electronic load — pick
+  one and ship end-to-end. Further categories stay in the Version 2 backlog.  
+  See [docs/steps/4-2-first-new-instrument-kind.md](docs/steps/4-2-first-new-instrument-kind.md).
 
 ---
 
 ## Epic 5 — Cross-device orchestration
-
-**Reserved numbering:** Epics **3** and **4** are intentionally held for the
-two shapes of work already described in **Version 2 (backlog)**:
-
-- **Epic 3 — New instrument kinds** (signal / AWG, electronic loads,
-  spectrum analyzers, SMU, counters, switch matrices, data loggers).
-- **Epic 4 — Discovery and connectivity** (mDNS / LXI discovery in the Add-
-  device dialog, reconnect on transient network loss).
 
 Epic 5 focuses on a different axis: **what happens _between_ connected
 instruments**, independent of which kinds or how they were connected.
@@ -361,7 +464,7 @@ flowchart TB
 Nothing in the orchestration layer reaches around the existing façades or
 session manager — it only consumes the event bus and action catalog that
 the façades publish. This keeps Epic 5 vendor-neutral and keeps every
-driver (including future ones from Epic 3) automatically compatible.
+driver (including future ones from Epic 4) automatically compatible.
 
 ### Subplans (Epic 5)
 
@@ -428,13 +531,17 @@ driver (including future ones from Epic 3) automatically compatible.
 
 ## Version 2 (backlog)
 
-**Goal:** extend coverage without redesigning v1—new **device kinds** = new façade interfaces + registry entries + dashboard panels; **discovery** = new backend services + UI entry points; **deeper per-kind features** = new optional capability objects on existing façades (the pattern established in **2.5**).
+**Goal:** extend coverage without redesigning v1—**Epic 4.2** delivers the first
+additional **device kind** beyond the Rigol trio; further kinds follow the same
+pattern. **Epic 3** covers **LAN discovery** and **platform** ergonomics
+previously listed here. **Deeper per-kind features** on existing façades remain
+the optional-capability pattern from **2.5 / 2.6 / 2.7**.
 
 The authoritative, living list lives in `progress.md` under **Backlog — v2 and beyond**; this section records the shape of the work, not the ticking checklist.
 
 ### More device types (examples)
 
-Add typed façades and UI panels as you acquire hardware or demand; illustrative categories:
+After **Epic 4.2**, add typed façades and UI panels as you acquire hardware or demand; illustrative categories:
 
 - **Signal / function generators** and **Arbitrary waveform generators (AWG)**
 - **Electronic loads** (constant I / V / R / P modes, measurement streaming)
@@ -452,34 +559,31 @@ Follow the **optional capability** pattern from 2.5 / 2.6 / 2.7 rather than grow
 
 - **PSU (landed in 2.5):** channel coupling, OVP/OCP, tracking, numbered preset memory — **done** for Rigol DP900.
 - **PSU follow-ups:** **named preset slots** (`:MEMory:STORe` / `:MEMory:LOAD`) and **OVP/OCP delay** (`:OUTPut:O[V|C]P:DELay`) to avoid nuisance-tripping fast transients.
-- **DMM (planned in 2.6):** manual range + NPLC, math (null/dB/dBm/stats/limit), buffered trend logging, triggering, temperature, dual display, 4-wire resistance, shared preset memory.
+- **DMM (planned in 2.6, sliced 2.6a / 2.6b / 2.6c):** manual range + NPLC + triggering + 4-wire resistance (2.6a), math (null/dB/dBm/stats/limit) + dual display (2.6b), buffered trend logging (NDJSON) + temperature + shared preset memory (2.6c).
 - **DMM follow-ups:** frequency-measurement aperture, explicit digitize mode, per-range ACV / ACI bandwidth setting.
-- **Oscilloscope (planned in 2.7):** full trigger matrix (Edge / Pulse / Slope / Runt / Window / Timeout / Setup-Hold / Nth-Edge / Delay + serial I²C/SPI/UART/CAN/LIN), acquisition modes with memory depth, 41-item automatic measurements with statistics, math incl. FFT, reference waveforms, cursors, protocol decoders with NDJSON packet stream, history/segmented frames, display screenshot, setup presets.
-- **Oscilloscope follow-ups:** pass/fail mask testing with a mask editor, zone trigger with an on-plot region editor, digital/logic channels on DHO804's MSO option, richer protocol-decoder waterfall view.
+- **Oscilloscope (planned in 2.7, sliced 2.7a / 2.7b / 2.7c / 2.7d):** capture control — full trigger matrix + acquisition modes + memory depth (2.7a); analysis — 41-item measurements with statistics + cursors + math incl. FFT (2.7b); save & replay — reference waveforms + history/segmented frames + screenshot + presets (2.7c); protocol decoders — I²C / SPI / UART / CAN / LIN with NDJSON packet stream (2.7d).
+- **Oscilloscope follow-ups:** pass/fail mask testing with a mask editor, zone trigger with an on-plot region editor, digital/logic channels on DHO804's MSO option, richer protocol-decoder waterfall view, reference-level thresholds (`:MEASure:SETup:MAX|MID|MIN`).
+- **Shared across kinds:** `InstrumentPresetCapability` — introduced in 2.6c, re-used by 2.5 (via retype) and 2.7c — so PSU / DMM / scope all expose the same `{ slots }` shape rather than each re-declaring it.
 
-### Device auto-discovery (v2)
+### Device auto-discovery
 
-Discovery runs **only on the backend** (browser still cannot scan the LAN arbitrarily in a portable way):
+**Implemented in Epic 3.1** (see [docs/steps/3-1-lan-discovery-mdns.md](docs/steps/3-1-lan-discovery-mdns.md)). Discovery runs **only on the backend** (the browser cannot scan the LAN portably). Design details:
 
-- **mDNS / DNS-SD**: browse common service types instruments advertise (e.g. `_scpi._tcp`, `_lxi._tcp`, `_visa._tcp`—exact types vary by vendor/firmware).
-- **LXI discovery helpers**: where applicable, leverage **LXI identification** (including reserved **“LXI Device Specification”** discovery patterns such as class-specific identification URLs); many instruments also expose a small **web UI** on port 80 you can probe cautiously (feature-gated, rate-limited).
-- **Optional VISA**: if you later require USB/GPIB, **NI-VISA** (or equivalent) `list_resources()` on the host complements LAN discovery—but that is a host dependency, not pure TCP.
-
-UI: “Discover devices” → backend returns candidate list (host, port hints, TXT records, friendly name) → user still confirms connect (avoid surprise connections to lab gear). Discovery UI must be keyboard-operable and announce results to assistive tech.
+- **mDNS / DNS-SD**: browse allowlisted service types (e.g. `_scpi._tcp`, `_lxi._tcp`, `_visa._tcp` — verify per vendor/firmware).
+- **Optional later:** cautious HTTP identity probes (rate-limited); **NI-VISA** `list_resources()` on the host for USB/GPIB — not required for TCP v1.
 
 ### Platform-level follow-ups
 
-- **Reconnect on transient network loss** — backoff + session resume so a Wi-Fi blip doesn't kill running captures.
-- **Persistent layouts** — remember which devices were last connected and offer "reopen last session" on launch.
-- **Recording / playback** — log instrument readouts to disk with CSV / Parquet export and an offline review mode.
-- **Auth and multi-user** — only if we drop the single-user / trusted-LAN posture that v1 deliberately assumes.
+- **Reconnect / persistent sessions** — **Epic 3.2 / 3.3**.
+- **Recording / playback (broad)** — overlaps **Epic 5.4** (correlated timeline + on-disk NDJSON); keep a single design so simple “log readouts” does not duplicate orchestration recordings.
+- **Auth and multi-user** — **Epic 6 (deferred)** in `progress.md`; only if the product leaves single-operator / trusted-LAN posture.
 
 ---
 
 ## Suggested repository layout (when you start coding)
 
 - `progress.md`: root checklist mirroring subplans; updated when each step completes (see **Git, commits, and progress tracking**).
-- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `5-1-…` through `5-5-…` for Epic 5 cross-device orchestration) with goals and acceptance criteria.
+- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-4-…` for Epic 3; `4-1-…` through `4-2-…` for Epic 4; `5-1-…` through `5-5-…` for Epic 5) with goals and acceptance criteria.
 - `packages/core` (**`@lxi-web/core`**): `ScpiSession`, transports, `*IDN?` router, facades, Rigol drivers for **DHO804 / DP932E / DM858** (pure TS, no Vue)
 - `packages/server` (**`@lxi-web/server`**): Fastify + `@fastify/websocket`, **session manager**, depends on `@lxi-web/core`
 - `packages/web` (**`@lxi-web/web`**): **Vue 3 + Vite + Vue Router + Tailwind + Pinia + Lucide + uPlot** SPA; depends on `@lxi-web/core` for shared DTOs/types only (no server imports in bundle)

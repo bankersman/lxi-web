@@ -39,8 +39,8 @@ import type {
   TimebaseState,
   Waveform,
 } from "../../facades/oscilloscope.js";
-
-const CHANNEL_IDS = [1, 2, 3, 4] as const;
+import { type Dho800Profile, DHO800_DEFAULT } from "./dho800-profile.js";
+import { parseBool } from "./_shared/index.js";
 
 const ONE_OF_COUPLINGS: Record<string, OscilloscopeCoupling> = {
   DC: "dc",
@@ -53,32 +53,39 @@ const REV_COUPLINGS: Record<OscilloscopeCoupling, string> = {
   gnd: "GND",
 };
 
-// ---- Capabilities ----
+// ---- Shared SCPI shape (identical across every DHO800 variant) ----
 
-const TRIGGER_CAP: OscilloscopeTriggerCapability = {
-  types: [
-    "edge",
-    "pulse",
-    "slope",
-    "video",
-    "runt",
-    "window",
-    "timeout",
-    "nthEdge",
-  ],
-  sources: ["CH1", "CH2", "CH3", "CH4", "EXT", "AC"],
-  couplings: ["dc", "ac", "hfReject", "lfReject", "nReject"],
-  sweepModes: ["auto", "normal", "single"],
-  holdoffRangeSec: { min: 8e-9, max: 10 },
-  supportsForce: true,
-};
+const TRIGGER_TYPES: OscilloscopeTriggerCapability["types"] = [
+  "edge",
+  "pulse",
+  "slope",
+  "video",
+  "runt",
+  "window",
+  "timeout",
+  "nthEdge",
+];
 
-const ACQUISITION_CAP: OscilloscopeAcquisitionCapability = {
-  modes: ["normal", "average", "peakDetect", "highResolution"],
-  averagesRange: { min: 2, max: 65536 },
-  memoryDepths: ["auto", "1k", "10k", "100k", "1M", "10M", "25M"],
-  supportsAutoset: true,
-};
+const TRIGGER_COUPLINGS: OscilloscopeTriggerCapability["couplings"] = [
+  "dc",
+  "ac",
+  "hfReject",
+  "lfReject",
+  "nReject",
+];
+
+const TRIGGER_SWEEP_MODES: OscilloscopeTriggerCapability["sweepModes"] = [
+  "auto",
+  "normal",
+  "single",
+];
+
+const ACQ_MODES: OscilloscopeAcquisitionCapability["modes"] = [
+  "normal",
+  "average",
+  "peakDetect",
+  "highResolution",
+];
 
 const MEASUREMENT_ITEMS: OscilloscopeMeasurementCapability["items"] = [
   { id: "vmax", label: "Vmax", unit: "V", category: "voltage" },
@@ -105,44 +112,34 @@ const MEASUREMENT_ITEMS: OscilloscopeMeasurementCapability["items"] = [
   { id: "phaseAB", label: "Phase A→B", unit: "°", category: "time" },
 ];
 
-const MEASUREMENT_CAP: OscilloscopeMeasurementCapability = {
-  items: MEASUREMENT_ITEMS,
-  sources: ["CH1", "CH2", "CH3", "CH4", "MATH"],
-  maxSelections: 10,
-  supportsStatistics: true,
-};
-
 const CURSOR_CAP: OscilloscopeCursorCapability = {
   modes: ["off", "manual", "track", "auto"],
 };
 
-const MATH_CAP: OscilloscopeMathCapability = {
-  operators: [
-    "add",
-    "sub",
-    "mul",
-    "div",
-    "fft",
-    "int",
-    "diff",
-    "sqrt",
-    "log",
-    "ln",
-    "exp",
-    "abs",
-  ],
-  fftWindows: [
-    "rectangle",
-    "hanning",
-    "hamming",
-    "blackmanHarris",
-    "flatTop",
-    "triangle",
-  ],
-  sources: ["CH1", "CH2", "CH3", "CH4"],
-};
+const MATH_OPERATORS: OscilloscopeMathCapability["operators"] = [
+  "add",
+  "sub",
+  "mul",
+  "div",
+  "fft",
+  "int",
+  "diff",
+  "sqrt",
+  "log",
+  "ln",
+  "exp",
+  "abs",
+];
 
-const REF_CAP: OscilloscopeReferenceCapability = { slots: 10 };
+const FFT_WINDOWS: OscilloscopeMathCapability["fftWindows"] = [
+  "rectangle",
+  "hanning",
+  "hamming",
+  "blackmanHarris",
+  "flatTop",
+  "triangle",
+];
+
 const HISTORY_CAP: OscilloscopeHistoryCapability = {
   maxFrames: 1000,
   supportsPlayback: true,
@@ -151,28 +148,32 @@ const DISPLAY_CAP: OscilloscopeDisplayCapability = {
   screenshotFormats: ["png", "bmp", "jpg"],
   persistenceOptions: ["min", "0.1s", "0.2s", "0.5s", "1s", "5s", "10s", "infinite"],
 };
-const PRESET_CAP: InstrumentPresetCapability = { slots: 10 };
 
-const DECODER_CAP: OscilloscopeDecoderCapability = {
-  buses: 2,
-  protocols: ["i2c", "spi", "uart", "can", "lin"],
-  sources: ["CH1", "CH2", "CH3", "CH4"],
-};
+/**
+ * Channel source tokens derived from profile. Rigol always numbers from
+ * CH1 upwards, so a 2-channel variant advertises ["CH1", "CH2"].
+ */
+function channelSources(count: number): readonly string[] {
+  return Array.from({ length: count }, (_, i) => `CH${i + 1}`);
+}
 
 // ---- driver ----
 
 export class RigolDho800 implements IOscilloscope {
   readonly kind = "oscilloscope" as const;
-  readonly trigger = TRIGGER_CAP;
-  readonly acquisition = ACQUISITION_CAP;
-  readonly measurements = MEASUREMENT_CAP;
+  readonly profile: Dho800Profile;
+  readonly trigger: OscilloscopeTriggerCapability;
+  readonly acquisition: OscilloscopeAcquisitionCapability;
+  readonly measurements: OscilloscopeMeasurementCapability;
   readonly cursors = CURSOR_CAP;
-  readonly math = MATH_CAP;
-  readonly references = REF_CAP;
+  readonly math: OscilloscopeMathCapability;
+  readonly references: OscilloscopeReferenceCapability;
   readonly history = HISTORY_CAP;
   readonly display = DISPLAY_CAP;
-  readonly presets = PRESET_CAP;
-  readonly decoders = DECODER_CAP;
+  readonly presets: InstrumentPresetCapability;
+  readonly decoders: OscilloscopeDecoderCapability;
+
+  readonly #channelIds: readonly number[];
 
   // Selected measurements survive in-memory; Rigol lets you enable/disable
   // but we also cache the selection so get/set is idempotent per session.
@@ -184,10 +185,7 @@ export class RigolDho800 implements IOscilloscope {
     source1: "CH1",
     source2: "CH2",
   };
-  #refSlots: OscilloscopeReferenceSlotState[] = Array.from({ length: 10 }, (_, i) => ({
-    slot: i,
-    enabled: false,
-  }));
+  #refSlots: OscilloscopeReferenceSlotState[];
   #history: OscilloscopeHistoryState = {
     enabled: false,
     totalFrames: 0,
@@ -195,23 +193,68 @@ export class RigolDho800 implements IOscilloscope {
     playing: false,
   };
   #persistence: OscilloscopeDisplayPersistence = "min";
-  #presetOccupied: boolean[] = Array.from({ length: 10 }, () => false);
-  #decoderStates: OscilloscopeDecoderState[] = Array.from({ length: 2 }, (_, i) => ({
-    id: i + 1,
-    enabled: false,
-    config: null,
-  }));
+  #presetOccupied: boolean[];
+  #decoderStates: OscilloscopeDecoderState[];
   #decoderPackets: Map<number, OscilloscopeDecoderPacket[]> = new Map();
 
   constructor(
     private readonly port: ScpiPort,
     readonly identity: DeviceIdentity,
-  ) {}
+    profile: Dho800Profile = DHO800_DEFAULT,
+  ) {
+    this.profile = profile;
+    this.#channelIds = Array.from({ length: profile.channels }, (_, i) => i + 1);
+    const channelSrc = channelSources(profile.channels);
+
+    this.trigger = {
+      types: TRIGGER_TYPES,
+      sources: [...channelSrc, "EXT", "AC"],
+      couplings: TRIGGER_COUPLINGS,
+      sweepModes: TRIGGER_SWEEP_MODES,
+      holdoffRangeSec: { min: 8e-9, max: 10 },
+      supportsForce: true,
+    };
+    this.acquisition = {
+      modes: ACQ_MODES,
+      averagesRange: { min: 2, max: 65536 },
+      memoryDepths: profile.memoryDepths,
+      supportsAutoset: true,
+    };
+    this.measurements = {
+      items: MEASUREMENT_ITEMS,
+      sources: [...channelSrc, "MATH"],
+      maxSelections: 10,
+      supportsStatistics: true,
+    };
+    this.math = {
+      operators: MATH_OPERATORS,
+      fftWindows: FFT_WINDOWS,
+      sources: channelSrc,
+    };
+    this.references = { slots: profile.referenceSlots };
+    this.presets = { slots: 10 };
+    this.decoders = {
+      buses: profile.decoderBuses,
+      protocols: profile.decoderProtocols,
+      sources: channelSrc,
+    };
+
+    this.#refSlots = Array.from({ length: profile.referenceSlots }, (_, i) => ({
+      slot: i,
+      enabled: false,
+    }));
+    this.#presetOccupied = Array.from({ length: 10 }, () => false);
+    this.#decoderStates = Array.from({ length: profile.decoderBuses }, (_, i) => ({
+      id: i + 1,
+      enabled: false,
+      config: null,
+    }));
+  }
 
   // ---- core ----
 
   async getChannels(): Promise<OscilloscopeChannelState[]> {
-    return Promise.all(CHANNEL_IDS.map(async (id) => this.#readChannel(id)));
+    return Promise.all(this.#channelIds.map(async (id) => this.#readChannel(id)));
   }
 
   async setChannelEnabled(channel: number, enabled: boolean): Promise<void> {
@@ -309,6 +352,11 @@ export class RigolDho800 implements IOscilloscope {
     channel: number,
     limit: OscilloscopeChannelBandwidthLimit,
   ): Promise<void> {
+    if (!this.profile.bwLimits.includes(limit)) {
+      throw new Error(
+        `bandwidth limit '${limit}' not supported by ${this.profile.variant}`,
+      );
+    }
     const scpi = limit === "off" ? "OFF" : limit === "20M" ? "20M" : limit === "100M" ? "100M" : "200M";
     await this.port.write(`:CHANnel${channel}:BWLimit ${scpi}`);
   }
@@ -712,11 +760,6 @@ export class RigolDho800 implements IOscilloscope {
 
 export function encodeCoupling(coupling: OscilloscopeCoupling): string {
   return REV_COUPLINGS[coupling];
-}
-
-function parseBool(value: string): boolean {
-  const v = value.trim().toUpperCase();
-  return v === "1" || v === "ON" || v === "TRUE";
 }
 
 function parseBwLimit(raw: string): OscilloscopeChannelBandwidthLimit {

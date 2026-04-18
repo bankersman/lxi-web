@@ -19,6 +19,18 @@ export interface DriverEntry {
   readonly kind: Exclude<DeviceKind, "unknown">;
   readonly match: DriverMatcher;
   readonly create: (port: ScpiPort, identity: DeviceIdentity) => unknown;
+  /**
+   * Optional pre-construction probe. Called after `*IDN?` resolves this
+   * entry but before the driver is instantiated. Returns a (possibly
+   * different) `create` function that can be bound to a refined capability
+   * profile. When absent, callers use `create` directly. Refiners must be
+   * tolerant: a network hiccup or missing `*OPT?` support falls back to
+   * the base profile, never an error.
+   */
+  readonly refine?: (
+    port: ScpiPort,
+    identity: DeviceIdentity,
+  ) => Promise<(port: ScpiPort, identity: DeviceIdentity) => unknown>;
 }
 
 export class DriverRegistry {

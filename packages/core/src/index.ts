@@ -5,7 +5,22 @@ export * from "./dto/index.js";
 export {
   RigolDho800,
   RigolDp900,
+  RigolDm800,
   RigolDm858,
   registerRigolDrivers,
   createDefaultRegistry,
+  DHO800_VARIANTS,
+  DHO800_DEFAULT,
+  DP900_VARIANTS,
+  DP900_DEFAULT,
+  DM800_VARIANTS,
+  DM800_DEFAULT,
 } from "./drivers/rigol/index.js";
+export type {
+  Dho800Profile,
+  Dp900Profile,
+  Dm800Profile,
+} from "./drivers/rigol/index.js";
+export { refineDho800Profile } from "./drivers/rigol/dho800-profile.js";
+export { refineDp900Profile } from "./drivers/rigol/dp900-profile.js";
+export { refineDm800Profile } from "./drivers/rigol/dm800-profile.js";

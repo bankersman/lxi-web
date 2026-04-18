@@ -131,7 +131,7 @@ test("POST /api/sessions validates body and opens a session", async () => {
 
   const connected = await waitForStatus(app, body.session.id, "connected");
   assert.equal(connected.kind, "oscilloscope");
-  assert.equal(connected.driverId, "rigol-dho800");
+  assert.equal(connected.driverId, "rigol-dho804");
 
   const list = await app.inject({ method: "GET", url: "/api/sessions" });
   const listed = list.json() as { sessions: SessionSummary[] };

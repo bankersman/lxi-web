@@ -9,20 +9,31 @@ import {
 } from "../src/index.js";
 import { FakeScpiPort } from "./helpers/fake-port.js";
 
-test("default registry resolves DHO804 with firmware suffix", () => {
+test("default registry resolves known DHO variants to per-SKU ids", () => {
   const registry = createDefaultRegistry();
   const idn = parseIdn("RIGOL TECHNOLOGIES,DHO804,DHO8A1234567,00.01.03");
   const entry = registry.resolve(idn);
   assert.ok(entry);
-  assert.equal(entry!.id, "rigol-dho800");
+  assert.equal(entry!.id, "rigol-dho804");
   assert.equal(entry!.kind, "oscilloscope");
 });
 
-test("default registry resolves DP932E and DM858", () => {
+test("default registry resolves DP932E and DM858 to per-SKU ids", () => {
   const registry = createDefaultRegistry();
   const psu = registry.resolve(parseIdn("RIGOL TECHNOLOGIES,DP932E,SN,FW"));
   const dmm = registry.resolve(parseIdn("RIGOL TECHNOLOGIES,DM858,SN,FW"));
+  assert.equal(psu?.id, "rigol-dp932e");
+  assert.equal(dmm?.id, "rigol-dm858");
+});
+
+test("default registry falls back to catch-all for unknown family variants", () => {
+  const registry = createDefaultRegistry();
+  // A hypothetical new DHO variant still hits the catch-all by family regex.
+  const scope = registry.resolve(parseIdn("RIGOL TECHNOLOGIES,DHO888,SN,FW"));
+  assert.equal(scope?.id, "rigol-dho800");
+  const psu = registry.resolve(parseIdn("RIGOL TECHNOLOGIES,DP955,SN,FW"));
   assert.equal(psu?.id, "rigol-dp900");
+  const dmm = registry.resolve(parseIdn("RIGOL TECHNOLOGIES,DM899,SN,FW"));
   assert.equal(dmm?.id, "rigol-dm800");
 });
 

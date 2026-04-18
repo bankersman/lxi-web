@@ -212,7 +212,24 @@ export class SessionManager {
       if (driver) {
         session.driverId = driver.id;
         session.kind = driver.kind;
-        session.facade = driver.create(port, identity) as InstrumentFacade;
+        // Drivers can advertise a `refine()` hook that probes `*OPT?` and
+        // other per-unit details before we commit to a capability profile.
+        // Refiners are tolerant of failures; if one throws we fall back to
+        // the declared `create` so a slow or flaky instrument still
+        // connects, just with the base profile.
+        let create = driver.create;
+        if (driver.refine) {
+          try {
+            create = await driver.refine(port, identity);
+          } catch {
+            create = driver.create;
+          }
+        }
+        if (!this.#sessions.has(session.id)) {
+          await scpi.close();
+          return;
+        }
+        session.facade = create(port, identity) as InstrumentFacade;
       } else {
         session.driverId = null;
         session.kind = "unknown";

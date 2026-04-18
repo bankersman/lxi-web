@@ -95,7 +95,7 @@ test("open returns a connecting summary and transitions to connected on *IDN?", 
     (s) => s?.status === "connected",
   );
   assert.equal(final!.kind, "oscilloscope");
-  assert.equal(final!.driverId, "rigol-dho800");
+  assert.equal(final!.driverId, "rigol-dho804");
   assert.equal(final!.identity?.model, "DHO804");
   assert.ok(updates.length >= 2);
 });

@@ -13,60 +13,56 @@ import type {
   PsuProtectionState,
   PsuTrackingCapability,
 } from "../../facades/power-supply.js";
-
-const CHANNEL_IDS = [1, 2, 3] as const;
-
-// DP932E specifications: CH1/CH2 30V/3A, CH3 6V/3A. Treat as defaults; the
-// set-points we push can be clamped by the instrument itself.
-const CHANNEL_LIMITS: Readonly<Record<number, PsuChannelLimits>> = {
-  1: { voltageMax: 30, currentMax: 3 },
-  2: { voltageMax: 30, currentMax: 3 },
-  3: { voltageMax: 6, currentMax: 3 },
-};
-
-/**
- * DP900 pairing engages CH1 and CH2 as a combined virtual channel — `series`
- * doubles the available voltage, `parallel` doubles the available current, and
- * CH3 stays independent either way.
- */
-const PAIRING: PsuPairingCapability = {
-  modes: ["off", "series", "parallel"],
-  channels: [1, 2],
-};
-
-// OVP/OCP ranges per DP932E programming guide table 4.33. OVP/OCP can be set
-// slightly above the channel's rated output (≈10%) so operators can protect
-// at-or-above the nominal range without clamping their set-point.
-const PROTECTION: PsuProtectionCapability = {
-  channels: [1, 2, 3],
-  ranges: {
-    1: { ovp: { min: 0.001, max: 33 }, ocp: { min: 0.001, max: 3.3 } },
-    2: { ovp: { min: 0.001, max: 33 }, ocp: { min: 0.001, max: 3.3 } },
-    3: { ovp: { min: 0.001, max: 6.6 }, ocp: { min: 0.001, max: 3.3 } },
-  },
-};
-
-// DP900 :OUTPut:TRACk mirrors set-points between CH1 and CH2.
-const TRACKING: PsuTrackingCapability = { channels: [1, 2] };
-
-// *SAV / *RCL expose slots 0..9, stored internally as RIGOL<n>.RSF.
-const PRESETS: PsuPresetCapability = { slots: 10 };
+import { type Dp900Profile, DP900_DEFAULT } from "./dp900-profile.js";
+import { parseBool } from "./_shared/index.js";
 
 /** Rigol DP900-series PSU driver (DP932E tested). */
 export class RigolDp900 implements IPowerSupply {
   readonly kind = "powerSupply" as const;
-  readonly pairing = PAIRING;
-  readonly tracking = TRACKING;
-  readonly protection = PROTECTION;
-  readonly presets = PRESETS;
+  readonly profile: Dp900Profile;
+  readonly pairing: PsuPairingCapability;
+  readonly tracking: PsuTrackingCapability;
+  readonly protection: PsuProtectionCapability;
+  readonly presets: PsuPresetCapability;
+
+  readonly #channelIds: readonly number[];
+  readonly #channelLimits: Readonly<Record<number, PsuChannelLimits>>;
 
   constructor(
     private readonly port: ScpiPort,
     readonly identity: DeviceIdentity,
-  ) {}
+    profile: Dp900Profile = DP900_DEFAULT,
+  ) {
+    this.profile = profile;
+    this.#channelIds = profile.channels.map((c) => c.id);
+
+    const limits: Record<number, PsuChannelLimits> = {};
+    const protectionRanges: Record<
+      number,
+      { readonly ovp: { min: number; max: number }; readonly ocp: { min: number; max: number } }
+    > = {};
+    for (const ch of profile.channels) {
+      limits[ch.id] = { voltageMax: ch.voltageMax, currentMax: ch.currentMax };
+      protectionRanges[ch.id] = { ovp: ch.ovpRange, ocp: ch.ocpRange };
+    }
+    this.#channelLimits = limits;
+
+    // CH3 on DP932E is independent; pairing/tracking is always a subset
+    // constrained to CHs that can be electrically coupled.
+    this.pairing = {
+      modes: profile.pairingChannels.length > 0 ? ["off", "series", "parallel"] : ["off"],
+      channels: profile.pairingChannels,
+    };
+    this.tracking = { channels: profile.trackingChannels };
+    this.protection = {
+      channels: this.#channelIds,
+      ranges: protectionRanges,
+    };
+    this.presets = { slots: profile.presetSlots };
+  }
 
   async getChannels(): Promise<PsuChannelState[]> {
-    return Promise.all(CHANNEL_IDS.map((id) => this.#readChannel(id)));
+    return Promise.all(this.#channelIds.map((id) => this.#readChannel(id)));
   }
 
   async setChannelOutput(channel: number, enabled: boolean): Promise<void> {
@@ -111,7 +107,7 @@ export class RigolDp900 implements IPowerSupply {
       this.port.query(`${prefix}:QUES? ${tag}`),
     ]);
     const range =
-      PROTECTION.ranges[channel]?.[kind] ??
+      this.protection.ranges[channel]?.[kind] ??
       (kind === "ovp"
         ? { min: 0.001, max: 33 }
         : { min: 0.001, max: 3.3 });
@@ -151,7 +147,7 @@ export class RigolDp900 implements IPowerSupply {
 
   async getPresetCatalog(): Promise<readonly boolean[]> {
     const results = await Promise.all(
-      Array.from({ length: PRESETS.slots }, (_, slot) =>
+      Array.from({ length: this.presets.slots }, (_, slot) =>
         this.port.query(`:MEMory:VALid? RIGOL${slot}.RSF`),
       ),
     );
@@ -159,12 +155,12 @@ export class RigolDp900 implements IPowerSupply {
   }
 
   async savePreset(slot: number): Promise<void> {
-    assertSlot(slot);
+    this.#assertSlot(slot);
     await this.port.write(`*SAV ${slot}`);
   }
 
   async recallPreset(slot: number): Promise<void> {
-    assertSlot(slot);
+    this.#assertSlot(slot);
     await this.port.write(`*RCL ${slot}`);
   }
 
@@ -199,8 +195,16 @@ export class RigolDp900 implements IPowerSupply {
       measuredVoltage: measuredParts[0] ?? 0,
       measuredCurrent: measuredParts[1] ?? 0,
       output: parseOutputState(outState),
-      limits: CHANNEL_LIMITS[id] ?? { voltageMax: 30, currentMax: 3 },
+      limits: this.#channelLimits[id] ?? { voltageMax: 30, currentMax: 3 },
     };
+  }
+
+  #assertSlot(slot: number): void {
+    if (!Number.isInteger(slot) || slot < 0 || slot >= this.presets.slots) {
+      throw new RangeError(
+        `preset slot must be an integer between 0 and ${this.presets.slots - 1}`,
+      );
+    }
   }
 }
 
@@ -229,19 +233,4 @@ function encodePairingMode(mode: PsuPairingMode): string {
 
 function protectionPrefix(kind: PsuProtectionKind): string {
   return kind === "ovp" ? ":OUTPut:OVP" : ":OUTPut:OCP";
-}
-
-// DP900 query responses are inconsistent between `1/0` (state) and `YES/NO`
-// (:QUES?). Accept both so the same helper works for every protection query.
-function parseBool(raw: string): boolean {
-  const v = raw.trim().toUpperCase();
-  return v === "1" || v === "ON" || v === "YES" || v === "TRUE";
-}
-
-function assertSlot(slot: number): void {
-  if (!Number.isInteger(slot) || slot < 0 || slot >= PRESETS.slots) {
-    throw new RangeError(
-      `preset slot must be an integer between 0 and ${PRESETS.slots - 1}`,
-    );
-  }
 }

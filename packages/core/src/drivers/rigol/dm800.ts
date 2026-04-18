@@ -16,7 +16,6 @@ import {
   type MultimeterMathFunction,
   type MultimeterMathState,
   type MultimeterMode,
-  type MultimeterRange,
   type MultimeterRangeState,
   type MultimeterRangingCapability,
   type MultimeterReading,
@@ -29,90 +28,8 @@ import {
   type TemperatureTransducer,
   type TemperatureUnit,
 } from "../../facades/multimeter.js";
-
-const SUPPORTED_MODES: readonly MultimeterMode[] = [
-  "dcVoltage",
-  "acVoltage",
-  "dcCurrent",
-  "acCurrent",
-  "resistance",
-  "fourWireResistance",
-  "frequency",
-  "period",
-  "capacitance",
-  "continuity",
-  "diode",
-  "temperature",
-];
-
-// DM858 per-mode range lists (upper limits in base units) from the
-// programming guide. Capacitance / frequency use auto-ranging only.
-const RANGES: Partial<Record<MultimeterMode, readonly MultimeterRange[]>> = {
-  dcVoltage: [
-    { label: "200 mV", upper: 0.2 },
-    { label: "2 V", upper: 2 },
-    { label: "20 V", upper: 20 },
-    { label: "200 V", upper: 200 },
-    { label: "1000 V", upper: 1000 },
-  ],
-  acVoltage: [
-    { label: "200 mV", upper: 0.2 },
-    { label: "2 V", upper: 2 },
-    { label: "20 V", upper: 20 },
-    { label: "200 V", upper: 200 },
-    { label: "750 V", upper: 750 },
-  ],
-  dcCurrent: [
-    { label: "200 µA", upper: 0.0002 },
-    { label: "2 mA", upper: 0.002 },
-    { label: "20 mA", upper: 0.02 },
-    { label: "200 mA", upper: 0.2 },
-    { label: "2 A", upper: 2 },
-    { label: "10 A", upper: 10 },
-  ],
-  acCurrent: [
-    { label: "200 µA", upper: 0.0002 },
-    { label: "2 mA", upper: 0.002 },
-    { label: "20 mA", upper: 0.02 },
-    { label: "200 mA", upper: 0.2 },
-    { label: "2 A", upper: 2 },
-    { label: "10 A", upper: 10 },
-  ],
-  resistance: [
-    { label: "200 Ω", upper: 200 },
-    { label: "2 kΩ", upper: 2_000 },
-    { label: "20 kΩ", upper: 20_000 },
-    { label: "200 kΩ", upper: 200_000 },
-    { label: "1 MΩ", upper: 1_000_000 },
-    { label: "10 MΩ", upper: 10_000_000 },
-    { label: "100 MΩ", upper: 100_000_000 },
-  ],
-  fourWireResistance: [
-    { label: "200 Ω", upper: 200 },
-    { label: "2 kΩ", upper: 2_000 },
-    { label: "20 kΩ", upper: 20_000 },
-    { label: "200 kΩ", upper: 200_000 },
-    { label: "1 MΩ", upper: 1_000_000 },
-    { label: "10 MΩ", upper: 10_000_000 },
-    { label: "100 MΩ", upper: 100_000_000 },
-  ],
-  capacitance: [
-    { label: "2 nF", upper: 2e-9 },
-    { label: "20 nF", upper: 20e-9 },
-    { label: "200 nF", upper: 200e-9 },
-    { label: "2 µF", upper: 2e-6 },
-    { label: "20 µF", upper: 20e-6 },
-    { label: "200 µF", upper: 200e-6 },
-    { label: "10 mF", upper: 10e-3 },
-  ],
-};
-
-const RANGING: MultimeterRangingCapability = {
-  modes: SUPPORTED_MODES,
-  ranges: RANGES,
-  nplc: [0.02, 0.2, 1, 10, 100],
-  autoZero: true,
-};
+import { type Dm800Profile, DM800_DEFAULT } from "./dm800-profile.js";
+import { parseBool } from "./_shared/index.js";
 
 const TRIGGERING: MultimeterTriggerCapability = {
   sources: ["immediate", "external", "bus", "software"],
@@ -121,52 +38,10 @@ const TRIGGERING: MultimeterTriggerCapability = {
   delayRangeSec: { min: 0, max: 3600 },
 };
 
-const MATH: MultimeterMathCapability = {
-  functions: ["none", "null", "db", "dbm", "stats", "limit"],
-  allowedModes: {
-    none: SUPPORTED_MODES,
-    null: SUPPORTED_MODES,
-    stats: SUPPORTED_MODES,
-    limit: SUPPORTED_MODES,
-    db: ["dcVoltage", "acVoltage"],
-    dbm: ["dcVoltage", "acVoltage"],
-  },
-  dbmReferences: [50, 75, 93, 110, 124, 125, 135, 150, 250, 300, 500, 600, 800, 900, 1000, 1200, 8000],
-};
-
-const DUAL_DISPLAY: MultimeterDualDisplayCapability = {
-  pairs: {
-    dcVoltage: ["acVoltage", "frequency"],
-    acVoltage: ["dcVoltage", "frequency"],
-    dcCurrent: ["acCurrent", "frequency"],
-    acCurrent: ["dcCurrent", "frequency"],
-    resistance: ["continuity"],
-    fourWireResistance: ["continuity"],
-    frequency: ["period", "acVoltage"],
-    period: ["frequency"],
-    temperature: ["resistance"],
-  },
-};
-
 const LOGGING: MultimeterLoggingCapability = {
   maxSamples: 1_000_000,
   minIntervalMs: 50,
 };
-
-const TEMPERATURE: MultimeterTemperatureCapability = {
-  units: ["celsius", "fahrenheit", "kelvin"],
-  transducers: [
-    "pt100",
-    "pt1000",
-    "thermocouple-k",
-    "thermocouple-j",
-    "thermocouple-t",
-    "thermocouple-e",
-    "thermistor",
-  ],
-};
-
-const PRESETS: InstrumentPresetCapability = { slots: 10 };
 
 type DmmScpi = {
   readonly configure: string;
@@ -285,17 +160,18 @@ interface LoggingRun {
   inflight: boolean;
 }
 
-/** Rigol DM858 / DM800-family bench DMM driver. */
-export class RigolDm858 implements IMultimeter {
+/** Rigol DM800-family bench DMM driver (DM858 / DM858E). */
+export class RigolDm800 implements IMultimeter {
   readonly kind = "multimeter" as const;
-  readonly supportedModes = SUPPORTED_MODES;
-  readonly ranging = RANGING;
+  readonly profile: Dm800Profile;
+  readonly supportedModes: readonly MultimeterMode[];
+  readonly ranging: MultimeterRangingCapability;
   readonly triggering = TRIGGERING;
-  readonly math = MATH;
-  readonly dualDisplay = DUAL_DISPLAY;
+  readonly math: MultimeterMathCapability;
+  readonly dualDisplay: MultimeterDualDisplayCapability;
   readonly logging = LOGGING;
-  readonly temperature = TEMPERATURE;
-  readonly presets = PRESETS;
+  readonly temperature: MultimeterTemperatureCapability;
+  readonly presets: InstrumentPresetCapability;
 
   #mathConfig: MultimeterMathConfig = { function: "none" };
   #run: LoggingRun | null = null;
@@ -303,7 +179,40 @@ export class RigolDm858 implements IMultimeter {
   constructor(
     private readonly port: ScpiPort,
     readonly identity: DeviceIdentity,
-  ) {}
+    profile: Dm800Profile = DM800_DEFAULT,
+  ) {
+    this.profile = profile;
+    this.supportedModes = profile.modes;
+    this.ranging = {
+      modes: profile.modes,
+      ranges: profile.ranges,
+      nplc: profile.nplcOptions,
+      autoZero: true,
+    };
+    // db/dbm are only valid on AC/DC voltage; every other function gets the
+    // full mode list the profile advertises.
+    const voltageOnly = profile.modes.filter(
+      (m) => m === "dcVoltage" || m === "acVoltage",
+    );
+    this.math = {
+      functions: ["none", "null", "db", "dbm", "stats", "limit"],
+      allowedModes: {
+        none: profile.modes,
+        null: profile.modes,
+        stats: profile.modes,
+        limit: profile.modes,
+        db: voltageOnly,
+        dbm: voltageOnly,
+      },
+      dbmReferences: profile.dbmReferences,
+    };
+    this.dualDisplay = { pairs: profile.dualDisplayPairs };
+    this.temperature = {
+      units: ["celsius", "fahrenheit", "kelvin"],
+      transducers: profile.transducers,
+    };
+    this.presets = { slots: profile.presetSlots };
+  }
 
   /**
    * Query a command that some DM858 firmware revisions silently drop (the
@@ -673,7 +582,7 @@ export class RigolDm858 implements IMultimeter {
     // DM858 doesn't expose a slot-catalog query, so we return a conservative
     // list where we treat every slot as potentially occupied. Drivers that do
     // support a catalog (PSU) override this.
-    return Array.from({ length: PRESETS.slots }, () => true);
+    return Array.from({ length: this.presets.slots }, () => true);
   }
 
   async savePreset(slot: number): Promise<void> {
@@ -687,8 +596,8 @@ export class RigolDm858 implements IMultimeter {
   }
 
   #assertSlot(slot: number): void {
-    if (!Number.isInteger(slot) || slot < 0 || slot >= PRESETS.slots) {
-      throw new RangeError(`preset slot must be 0..${PRESETS.slots - 1}`);
+    if (!Number.isInteger(slot) || slot < 0 || slot >= this.presets.slots) {
+      throw new RangeError(`preset slot must be 0..${this.presets.slots - 1}`);
     }
   }
 
@@ -739,11 +648,6 @@ export function parseMode(raw: string): MultimeterMode {
   if (/^DIOD/.test(trimmed)) return "diode";
   if (/^TEMP/.test(trimmed)) return "temperature";
   return "dcVoltage";
-}
-
-function parseBool(raw: string): boolean {
-  const v = raw.trim().toUpperCase();
-  return v === "1" || v === "ON" || v === "TRUE" || v === "YES";
 }
 
 function num(raw: string): number {

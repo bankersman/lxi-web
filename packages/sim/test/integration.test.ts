@@ -43,7 +43,7 @@ test("pnpm test:sim — ScpiSession connects to DHO804 personality and *IDN?", a
     const registry = createDefaultRegistry();
     const entry = registry.resolve(parsed);
     assert.ok(entry);
-    assert.equal(entry!.id, "rigol-dho800");
+    assert.equal(entry!.id, "rigol-dho804");
     const scope = entry!.create(session, parsed) as RigolDho800;
     const timebase = await scope.getTimebase();
     assert.ok(Number.isFinite(timebase.scale));
@@ -56,7 +56,7 @@ test("pnpm test:sim — ScpiSession connects to DP932E personality + PSU driver"
     const parsed = parseIdn(idn);
     const registry = createDefaultRegistry();
     const entry = registry.resolve(parsed);
-    assert.equal(entry?.id, "rigol-dp900");
+    assert.equal(entry?.id, "rigol-dp932e");
     const psu = entry!.create(session, parsed) as RigolDp900;
     assert.equal(psu.kind, "powerSupply");
   });
@@ -68,8 +68,31 @@ test("pnpm test:sim — ScpiSession connects to DM858 personality + DMM driver",
     const parsed = parseIdn(idn);
     const registry = createDefaultRegistry();
     const entry = registry.resolve(parsed);
-    assert.equal(entry?.id, "rigol-dm800");
+    assert.equal(entry?.id, "rigol-dm858");
     const dmm = entry!.create(session, parsed) as RigolDm858;
     assert.equal(dmm.kind, "multimeter");
   });
+});
+
+// Hot-swap *IDN? across DHO800 variants against one running simulator
+// process to prove the registry + variant table resolve every SKU
+// correctly without needing physical hardware.
+test("pnpm test:sim — DHO800 family variants all resolve from one simulator", async () => {
+  const variants = ["DHO802", "DHO804", "DHO812", "DHO814"];
+  const registry = createDefaultRegistry();
+  for (const model of variants) {
+    const personality = {
+      ...rigolDho804Personality,
+      idn: `RIGOL TECHNOLOGIES,${model},SN,FW`,
+    };
+    await withSimulator(personality, async (session) => {
+      const parsed = parseIdn(await session.query("*IDN?"));
+      assert.equal(parsed.model, model);
+      const entry = registry.resolve(parsed);
+      assert.ok(entry, `registry must resolve ${model}`);
+      assert.equal(entry!.id, `rigol-${model.toLowerCase()}`);
+      const scope = entry!.create(session, parsed) as RigolDho800;
+      assert.equal(scope.profile.variant, model);
+    });
+  }
 });

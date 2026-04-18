@@ -26,6 +26,10 @@ import { owonXdm2041Personality } from "./owon/xdm2041.js";
 import { owonXdm1041Personality } from "./owon/xdm1041.js";
 import { owonSpe3103Personality } from "./owon/spe3103.js";
 import { owonXds3104aePersonality } from "./owon/xds3104ae.js";
+import { tektronixTbs2102bPersonality } from "./tektronix/tbs2102b.js";
+import { tektronixMso54Personality } from "./tektronix/mso54.js";
+import { tektronixAfg31102Personality } from "./tektronix/afg31102.js";
+import { tektronixPws4323Personality } from "./tektronix/pws4323.js";
 
 export { genericUnknownPersonality } from "./generic-unknown.js";
 export { rigolDho804Personality } from "./rigol/dho804.js";
@@ -54,6 +58,10 @@ export { owonXdm2041Personality } from "./owon/xdm2041.js";
 export { owonXdm1041Personality } from "./owon/xdm1041.js";
 export { owonSpe3103Personality } from "./owon/spe3103.js";
 export { owonXds3104aePersonality } from "./owon/xds3104ae.js";
+export { tektronixTbs2102bPersonality } from "./tektronix/tbs2102b.js";
+export { tektronixMso54Personality } from "./tektronix/mso54.js";
+export { tektronixAfg31102Personality } from "./tektronix/afg31102.js";
+export { tektronixPws4323Personality } from "./tektronix/pws4323.js";
 
 /**
  * Registry with every personality this package ships with. Consumers can
@@ -89,5 +97,9 @@ export function createDefaultPersonalityRegistry(): PersonalityRegistry {
   registry.register(owonXdm1041Personality);
   registry.register(owonSpe3103Personality);
   registry.register(owonXds3104aePersonality);
+  registry.register(tektronixTbs2102bPersonality);
+  registry.register(tektronixMso54Personality);
+  registry.register(tektronixAfg31102Personality);
+  registry.register(tektronixPws4323Personality);
   return registry;
 }

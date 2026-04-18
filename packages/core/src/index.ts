@@ -120,3 +120,28 @@ export type {
   SpeProfile,
   XdsProfile,
 } from "./drivers/owon/index.js";
+export {
+  TektronixTbs,
+  TektronixMso,
+  TektronixAfg,
+  TektronixPws,
+  registerTektronixDrivers,
+  TBS_VARIANTS,
+  TBS_DEFAULT,
+  MSO_VARIANTS,
+  MSO_DEFAULT,
+  AFG_VARIANTS,
+  AFG_DEFAULT,
+  PWS_VARIANTS,
+  PWS_DEFAULT,
+  refineTbsProfile,
+  refineMsoProfile,
+  refineAfgProfile,
+  refinePwsProfile,
+} from "./drivers/tektronix/index.js";
+export type {
+  TbsProfile,
+  MsoProfile,
+  AfgProfile,
+  PwsProfile,
+} from "./drivers/tektronix/index.js";

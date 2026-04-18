@@ -39,7 +39,8 @@ test("default registry falls back to catch-all for unknown family variants", () 
 
 test("default registry returns null for unsupported vendors", () => {
   const registry = createDefaultRegistry();
-  const idn = parseIdn("TEKTRONIX,MSO58,SN,FW");
+  // Pick a vendor that is genuinely not covered by any driver pack yet.
+  const idn = parseIdn("YOKOGAWA,DLM5058,SN,FW");
   assert.equal(registry.resolve(idn), null);
 });
 

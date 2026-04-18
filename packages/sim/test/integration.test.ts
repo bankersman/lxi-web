@@ -39,6 +39,10 @@ import { owonXdm2041Personality } from "../personalities/owon/xdm2041.js";
 import { owonXdm1041Personality } from "../personalities/owon/xdm1041.js";
 import { owonSpe3103Personality } from "../personalities/owon/spe3103.js";
 import { owonXds3104aePersonality } from "../personalities/owon/xds3104ae.js";
+import { tektronixTbs2102bPersonality } from "../personalities/tektronix/tbs2102b.js";
+import { tektronixMso54Personality } from "../personalities/tektronix/mso54.js";
+import { tektronixAfg31102Personality } from "../personalities/tektronix/afg31102.js";
+import { tektronixPws4323Personality } from "../personalities/tektronix/pws4323.js";
 import type {
   KeysightE36,
   KeysightTrueVolt,
@@ -48,6 +52,10 @@ import type {
   OwonXdm,
   OwonSpe,
   OwonXds,
+  TektronixTbs,
+  TektronixMso,
+  TektronixAfg,
+  TektronixPws,
 } from "@lxi-web/core";
 
 async function withSimulator<T>(
@@ -557,4 +565,87 @@ test("pnpm test:sim — DHO800 family variants all resolve from one simulator", 
       assert.equal(scope.profile.variant, model);
     });
   }
+});
+
+test("pnpm test:sim — Tektronix TBS2102B personality + TBS scope driver round-trips core commands", async () => {
+  await withSimulator(tektronixTbs2102bPersonality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "TBS2102B");
+    assert.match(parsed.manufacturer, /tektronix/i);
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "tektronix-tbs2102b");
+    assert.equal(entry?.kind, "oscilloscope");
+    const scope = entry!.create(session, parsed) as TektronixTbs;
+    const timebase = await scope.getTimebase();
+    assert.ok(Number.isFinite(timebase.scale));
+    await scope.setChannelEnabled(1, true);
+    const channels = await scope.getChannels();
+    assert.equal(channels.length, 2);
+    const waveform = await scope.readWaveform(1);
+    assert.ok(waveform.y.length > 0, "ASCII CURVE? path must decode samples");
+    assert.deepEqual(scope.trigger.types, ["edge"]);
+  });
+});
+
+test("pnpm test:sim — Tektronix MSO54 personality + MSO scope driver decodes binary waveform", async () => {
+  await withSimulator(tektronixMso54Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "MSO54");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "tektronix-mso54");
+    const scope = entry!.create(session, parsed) as TektronixMso;
+    await scope.setChannelEnabled(1, true);
+    const channels = await scope.getChannels();
+    assert.equal(channels.length, 4);
+    const waveform = await scope.readWaveform(1);
+    assert.ok(waveform.y.length > 0, "WFMOutpre? + CURVe? binary path must decode samples");
+    assert.equal(scope.profile.sampleWidth, 2);
+  });
+});
+
+test("pnpm test:sim — Tektronix AFG31102 personality + AFG driver round-trips waveform config", async () => {
+  await withSimulator(tektronixAfg31102Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "AFG31102");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "tektronix-afg31102");
+    assert.equal(entry?.kind, "signalGenerator");
+    const afg = entry!.create(session, parsed) as TektronixAfg;
+    await afg.setChannelEnabled(1, true);
+    await afg.setWaveform(1, {
+      type: "sine",
+      frequencyHz: 1_000_000,
+      amplitudeVpp: 2,
+      offsetV: 0,
+    });
+    const status = await afg.getChannelStatus(1);
+    assert.equal(status.frequencyHz, 1_000_000);
+    assert.equal(status.amplitudeVpp, 2);
+    const state = await afg.getChannelState(1);
+    assert.equal(state.enabled, true);
+    assert.equal(state.waveform.type, "sine");
+  });
+});
+
+test("pnpm test:sim — Tektronix PWS4323 personality + PWS driver drives 3 independent rails", async () => {
+  await withSimulator(tektronixPws4323Personality, async (session) => {
+    const parsed = parseIdn(await session.query("*IDN?"));
+    assert.equal(parsed.model, "PWS4323");
+    const registry = createDefaultRegistry();
+    const entry = registry.resolve(parsed);
+    assert.equal(entry?.id, "tektronix-pws4323");
+    assert.equal(entry?.kind, "powerSupply");
+    const psu = entry!.create(session, parsed) as TektronixPws;
+    const channels = await psu.getChannels();
+    assert.equal(channels.length, 3);
+    await psu.setChannelVoltage(1, 5);
+    await psu.setChannelCurrent(1, 0.5);
+    await psu.setChannelOutput(1, true);
+    const meas = await psu.measureChannel(1);
+    assert.ok(meas.voltage > 0, "PWS should report non-zero voltage when output is on");
+    assert.equal(meas.channel, 1);
+  });
 });

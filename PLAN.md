@@ -58,7 +58,7 @@ todos:
     status: pending
   - id: epic-3-1-lan-discovery
     content: Epic 3.1 — LAN discovery (mDNS/DNS-SD); REST browse + Add-device pick-list; manual host/port fallback; keyboard/a11y; progress + docs/steps/3-1-*.md; commit
-    status: pending
+    status: completed
   - id: epic-3-2-resilient-connectivity
     content: Epic 3.2 — Resilient connectivity (reconnect/backoff, connection-lost UX, optional retry); session semantics documented; progress + docs/steps/3-2-*.md; commit
     status: pending

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { X } from "lucide-vue-next";
+import { RadioTower, RefreshCcw, X } from "lucide-vue-next";
+import type { DiscoveryCandidate } from "@lxi-web/core/browser";
 import { DEFAULT_SCPI_PORT } from "@lxi-web/core/browser";
+import { api } from "@/api/client";
 import { useSessionsStore } from "@/stores/sessions";
 
 const props = defineProps<{ open: boolean }>();
@@ -16,6 +18,11 @@ const error = ref<string | null>(null);
 const dialog = ref<HTMLElement | null>(null);
 const firstField = ref<HTMLInputElement | null>(null);
 
+const scanBusy = ref(false);
+const scanError = ref<string | null>(null);
+const scanResults = ref<DiscoveryCandidate[]>([]);
+const scanRan = ref(false);
+
 watch(
   () => props.open,
   async (isOpen) => {
@@ -23,6 +30,9 @@ watch(
       error.value = null;
       host.value = "";
       port.value = DEFAULT_SCPI_PORT;
+      scanError.value = null;
+      scanResults.value = [];
+      scanRan.value = false;
       await nextTick();
       firstField.value?.focus();
       document.addEventListener("keydown", onKey);
@@ -54,6 +64,28 @@ function onKey(event: KeyboardEvent): void {
       first.focus();
     }
   }
+}
+
+async function scan(): Promise<void> {
+  if (scanBusy.value) return;
+  scanBusy.value = true;
+  scanError.value = null;
+  try {
+    const result = await api.browseDiscovery(3_000);
+    scanResults.value = [...result.candidates];
+    scanRan.value = true;
+  } catch (err) {
+    scanError.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    scanBusy.value = false;
+  }
+}
+
+function pick(candidate: DiscoveryCandidate): void {
+  host.value = candidate.host;
+  port.value = candidate.port || DEFAULT_SCPI_PORT;
+  error.value = null;
+  firstField.value?.focus();
 }
 
 async function submit(event: Event): Promise<void> {
@@ -94,7 +126,7 @@ async function submit(event: Event): Promise<void> {
       aria-labelledby="add-device-title"
       @click.self="emit('close')"
     >
-      <div class="w-full max-w-sm rounded-[var(--radius-card)] border border-border bg-surface shadow-xl">
+      <div class="w-full max-w-md rounded-[var(--radius-card)] border border-border bg-surface shadow-xl">
         <header class="flex items-center justify-between border-b border-border px-4 py-3">
           <h2 id="add-device-title" class="text-sm font-semibold">Add device</h2>
           <button
@@ -106,6 +138,85 @@ async function submit(event: Event): Promise<void> {
             <X class="h-4 w-4" aria-hidden="true" />
           </button>
         </header>
+
+        <section class="flex flex-col gap-2 border-b border-border px-4 py-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 text-sm font-medium">
+              <RadioTower class="h-4 w-4 text-fg-muted" aria-hidden="true" />
+              Scan the LAN
+            </div>
+            <button
+              type="button"
+              class="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="scanBusy"
+              aria-label="Scan for instruments on the local network"
+              @click="scan"
+            >
+              <RefreshCcw
+                class="h-3.5 w-3.5"
+                :class="scanBusy ? 'animate-spin' : ''"
+                aria-hidden="true"
+              />
+              {{ scanBusy ? "Scanning…" : scanRan ? "Rescan" : "Scan" }}
+            </button>
+          </div>
+          <p class="text-xs text-fg-muted">
+            Uses mDNS / DNS-SD to find instruments advertising
+            <code class="rounded bg-surface-2 px-1 py-0.5">_scpi-raw._tcp</code>,
+            <code class="rounded bg-surface-2 px-1 py-0.5">_lxi._tcp</code>, or
+            <code class="rounded bg-surface-2 px-1 py-0.5">_hislip._tcp</code>.
+            Different subnets, VPN, AP client isolation, and many firewalls
+            block mDNS — use the manual fields below if scanning comes back empty.
+          </p>
+          <p
+            v-if="scanError"
+            class="rounded-md border border-state-error/30 bg-state-error/10 px-2 py-1 text-xs text-state-error"
+            role="alert"
+          >
+            {{ scanError }}
+          </p>
+          <div
+            v-if="scanRan || scanBusy"
+            class="flex flex-col gap-1"
+            role="region"
+            aria-label="Discovery results"
+          >
+            <p class="text-xs text-fg-muted" aria-live="polite">
+              <template v-if="scanBusy">Listening for advertisements…</template>
+              <template v-else-if="scanResults.length === 0">
+                No instruments responded. Enter host / port manually below.
+              </template>
+              <template v-else>
+                Found {{ scanResults.length }}
+                {{ scanResults.length === 1 ? "instrument" : "instruments" }}:
+              </template>
+            </p>
+            <ul
+              v-if="scanResults.length > 0"
+              class="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-md border border-border"
+            >
+              <li v-for="c in scanResults" :key="c.key">
+                <button
+                  type="button"
+                  class="flex w-full flex-col items-start gap-0.5 border-b border-border px-3 py-2 text-left text-xs last:border-b-0 hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
+                  @click="pick(c)"
+                >
+                  <span class="font-medium text-fg">{{ c.name || c.host }}</span>
+                  <span class="font-mono text-fg-muted">
+                    {{ c.host }}:{{ c.port }}
+                  </span>
+                  <span
+                    v-if="c.serviceTypes.length > 0"
+                    class="text-fg-muted"
+                  >
+                    {{ c.serviceTypes.join(" · ") }}
+                  </span>
+                </button>
+              </li>
+            </ul>
+          </div>
+        </section>
+
         <form class="flex flex-col gap-3 px-4 py-4" @submit="submit">
           <label class="flex flex-col gap-1 text-sm">
             <span class="font-medium">Host</span>

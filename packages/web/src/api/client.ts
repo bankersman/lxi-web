@@ -1,4 +1,5 @@
 import type {
+  DiscoveryResponse,
   MultimeterAutoZero,
   MultimeterDualDisplayCapability,
   MultimeterDualReading,
@@ -132,6 +133,13 @@ export const api = {
       method: "DELETE",
     });
     await parse<{ ok: boolean }>(res);
+  },
+
+  async browseDiscovery(timeoutMs?: number): Promise<DiscoveryResponse> {
+    const url = new URL("/api/discovery", window.location.origin);
+    if (timeoutMs !== undefined) url.searchParams.set("timeoutMs", String(timeoutMs));
+    const res = await fetch(url.pathname + url.search);
+    return parse<DiscoveryResponse>(res);
   },
 
   async sendScpi(

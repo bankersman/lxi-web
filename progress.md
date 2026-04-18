@@ -33,7 +33,7 @@ Living checklist mirroring the subplans. Update when a step finishes (check the 
 
 ## Epic 3 — Usability and platform
 
-- [ ] **3.1 LAN discovery (mDNS)** — Backend DNS-SD browse + REST; Add-device scan + pick-list; manual host/port unchanged. See [docs/steps/3-1-lan-discovery-mdns.md](docs/steps/3-1-lan-discovery-mdns.md).
+- [x] **3.1 LAN discovery (mDNS)** — `DiscoveryService` backed by `bonjour-service` browses `_lxi._tcp` / `_scpi-raw._tcp` / `_hislip._tcp` / `_visa._tcp` on demand, dedupes per-host with a `scpi-raw`-first port preference, and teardown-per-scan so no UDP listener lingers. REST: `GET /api/discovery?timeoutMs=<ms>`. UI: Scan panel in Add-device dialog with keyboard-operable result list, `aria-live` count, graceful empty-scan state; manual host/port path unchanged. See [docs/steps/3-1-lan-discovery-mdns.md](docs/steps/3-1-lan-discovery-mdns.md).
 - [ ] **3.2 resilient connectivity** — Connection-lost UX, retry/backoff, documented `sessionId` vs reconnect. See [docs/steps/3-2-resilient-connectivity.md](docs/steps/3-2-resilient-connectivity.md).
 - [ ] **3.3 session persistence** — Saved connections + optional reopen last session on launch (no auth). See [docs/steps/3-3-session-persistence.md](docs/steps/3-3-session-persistence.md).
 - [ ] **3.4 device detail UX** — Per-kind section order + overview card improvements. See [docs/steps/3-4-device-detail-ux.md](docs/steps/3-4-device-detail-ux.md).

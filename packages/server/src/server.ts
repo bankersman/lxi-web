@@ -3,11 +3,17 @@ import websocket from "@fastify/websocket";
 import { SessionManager } from "./sessions/manager.js";
 import { registerSessionRoutes } from "./routes/sessions.js";
 import { registerDeviceRoutes } from "./routes/devices.js";
+import { registerDiscoveryRoutes } from "./routes/discovery.js";
 import { registerWebsocketRoute } from "./routes/ws.js";
+import {
+  DiscoveryService,
+  createBonjourFactoryBuilder,
+} from "./discovery/index.js";
 
 export interface BuildServerOptions {
   readonly logger?: boolean;
   readonly manager?: SessionManager;
+  readonly discovery?: DiscoveryService;
 }
 
 export async function buildServer(
@@ -22,11 +28,17 @@ export async function buildServer(
   await app.register(websocket);
 
   const manager = options.manager ?? new SessionManager();
+  const discovery =
+    options.discovery ??
+    new DiscoveryService({
+      factoryBuilder: createBonjourFactoryBuilder(),
+    });
 
   app.get("/api/health", async () => ({ ok: true }));
 
   await registerSessionRoutes(app, manager);
   await registerDeviceRoutes(app, manager);
+  await registerDiscoveryRoutes(app, discovery);
   await registerWebsocketRoute(app, manager);
 
   app.addHook("onClose", async () => {
@@ -34,6 +46,7 @@ export async function buildServer(
   });
 
   app.decorate("sessionManager", manager);
+  app.decorate("discovery", discovery);
 
   return app;
 }
@@ -41,5 +54,6 @@ export async function buildServer(
 declare module "fastify" {
   interface FastifyInstance {
     sessionManager: SessionManager;
+    discovery: DiscoveryService;
   }
 }

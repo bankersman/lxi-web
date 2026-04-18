@@ -67,7 +67,7 @@ todos:
     status: completed
   - id: epic-3-4-device-detail-ux
     content: Epic 3.4 — Device detail UX (per-kind section order, overview cards, quick actions within reason); progress + docs/steps/3-4-*.md; commit
-    status: pending
+    status: completed
   - id: epic-3-5-user-docs-and-landing
     content: Epic 3.5 — User documentation + landing page. README rewrite (two-path quick-start, supported-hardware table, screenshots, CTA), user manual under docs/user/ (installation, getting started, per-kind pages, raw SCPI, troubleshooting, hardware reports, roadmap), VitePress site under docs/site/ reusing docs/user/*.md, GH Pages workflow, .github/ISSUE_TEMPLATE/ (instrument-report.yml, bug.yml, feature.yml, config.yml), LICENSE (MIT). Progress + docs/steps/3-5-*.md; commit
     status: pending

@@ -1,7 +1,7 @@
 # Installation
 
-Two paths: a pre-built Docker image (recommended once Epic 3.6 ships) or
-a from-source development build.
+Two paths: a pre-built Docker image (recommended) or a from-source
+development build.
 
 ## Docker
 
@@ -69,9 +69,13 @@ from the LAN. To access it from another machine, pass `HOST=0.0.0.0`:
 HOST=0.0.0.0 PORT=8787 pnpm --filter @lxi-web/server dev
 ```
 
-**Do not expose the API to the open internet.** There is no auth layer.
-Treat the dashboard the same way you would treat an unauthenticated
-local admin UI.
+::: danger Do not expose the API to the open internet
+There is no auth layer. The LXI instruments behind it accept SCPI
+over raw TCP without authentication either, so a public dashboard is
+equivalent to an open SCPI port on every connected device. Treat the
+dashboard the same way you would treat an unauthenticated local
+admin UI — trusted LAN only.
+:::
 
 ## Reverse proxies
 

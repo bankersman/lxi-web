@@ -24,10 +24,13 @@
   `--network host` on Linux, or add the instrument manually.
 - The instrument may not advertise via DNS-SD at all. Use **Enter
   host & port** instead.
-- **Owon** instruments (XDM / SPE / XDS) frequently skip
-  `_lxi._tcp` advertisement entirely. They will never show up in
-  the Scan list even on the same subnet. Add them manually with the
-  instrument's static IP and port **3000** (not 5025).
+
+::: warning Owon instruments skip mDNS
+**Owon** XDM / SPE / XDS instruments frequently do not advertise
+`_lxi._tcp` at all. They will never show up in the Scan list, even
+on the same subnet. Add them manually with the instrument's static
+IP and port **3000** (not 5025).
+:::
 
 ## Auto-connect stops reopening saved devices
 

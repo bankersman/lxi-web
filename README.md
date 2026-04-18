@@ -7,9 +7,11 @@ drivers ship for the **Rigol DHO804** (scope), **DP932E** (PSU), and
 **DM858** (DMM); any other identifiable instrument falls back to a raw
 SCPI console.
 
-> A **local bench utility** — single operator, one backend process, run it
-> yourself on a trusted LAN. The LXI instruments themselves accept SCPI
-> without authentication, so never expose this to the open internet.
+> [!CAUTION]
+> **A local bench utility.** Single operator, one backend process, run
+> it yourself on a trusted LAN. The LXI instruments themselves accept
+> SCPI without authentication, so **never expose this to the open
+> internet.**
 
 ## At a glance
 
@@ -38,10 +40,8 @@ docker run --rm -p 8787:8787 ghcr.io/bankersman/lxi-web:latest
 
 The server binds to `0.0.0.0:8787` inside the container. Open
 `http://localhost:8787/`. See [docs/user/installation.md](docs/user/installation.md)
-for reverse-proxy and LAN-binding notes.
-
-> The container image ships in [Epic 3.6](docs/steps/3-6-docker-image-and-release.md);
-> until it lands, use the from-source path below.
+for reverse-proxy and LAN-binding notes. The image is also mirrored
+to Docker Hub as `bankersman/lxi-web:latest`.
 
 ### From source
 

@@ -143,6 +143,9 @@ todos:
   - id: epic-6-5-visual-polish
     content: Epic 6.5 — Visual polish (bounded). Per-DeviceKind accent tokens in @theme (category-only, never encode status), numeric-readout utility (tabular-nums) on hero readouts, empty/loading skeletons that respect prefers-reduced-motion, optional very subtle AppHeader gradient. Plus a quiet help strip in AppHeader with two muted text links — Manual → GitHub Pages URL, GitHub → repo root — both keyboard-focusable before the theme toggle, target=_blank + rel=noopener noreferrer, URLs from VITE_LXI_MANUAL_URL / VITE_LXI_REPO_URL with upstream defaults documented in packages/web/.env.example. No illustration library, no device imagery, no redesign. Progress + docs/steps/6-5-*.md; commit
     status: pending
+  - id: epic-6-6-vitepress-manual-polish
+    content: Epic 6.6 — VitePress / user-manual presentation polish. Docs-only pass on docs/user/*.md (canonical source; synced by docs/site/scripts/sync-manual.mjs into docs/site/manual/) — add VitePress default-theme custom containers (::: tip / ::: warning / ::: danger / ::: info, optional ::: details) to security + LAN-posture lines (README bench-utility blockquote, installation.md "Network posture", index.md "What it cannot do"), destructive-SCPI lines (raw-scpi.md "Safety defaults" for *RST gating / no implicit system writes), and high-friction troubleshooting entries (troubleshooting.md Owon port-3000 / empty scan). Plus a user-facing accuracy sweep: README Docker quick-start language ("until Epic 3.6 lands" → present tense; image is live), installation.md "once Epic 3.6 ships" → present tense, roadmap.md "In flight — Epic 4 vendor pack expansion" reconciled with shipped 4.10–4.13 (fold into Shipped, drop/retitle "In flight"). No translated manual, no new npm deps, no sync-manual.mjs changes. Verify with cd docs/site && npm run build. Progress + docs/steps/6-6-*.md; commit
+    status: pending
   - id: epic-x-1-event-bus
     content: Epic X.1 — Cross-device event bus + action catalog on @lxi-web/core; façade event sources for scope/PSU/DMM; REST for schema/catalog/invoke; WebSocket events channel with filters and ring-buffer backfill. Deferred from Epic 5; lower priority than bench-safety (Epic 5) and UX pass (Epic 6). Progress + docs/steps/x-1-*.md; commit
     status: deferred
@@ -273,7 +276,7 @@ Optional later: **Tauri/Electron** still reuses `packages/core`; not in v1 scope
 
 - **`git init` immediately** as the first implementation step (with a sensible root `.gitignore`). **Commit after every subplan/step** below completes — one focused commit per milestone (conventional prefixes welcome: `feat`, `fix`, `chore`, `docs`).
 - **`progress.md`** at the **repository root**: a living **checklist** that mirrors the subplan order (same items as the YAML todos in this plan). **Update it when starting a step** (optional “Started” date) and **when finishing** (check the box, add “Done” date and one-line summary if useful). This file is the human-facing source of truth for “where we are”; keep it in sync with reality before each commit that closes a step.
-- **One markdown file per subplan** under **`docs/steps/`** (filenames aligned with subplans, e.g. `1-1-transport-and-scpi-core.md`, `1-2-identity-and-routing.md`, … through `2-7-scope-advanced-features.md` for v1 + per-kind deep-dives, `5-1-…` through `5-3-…` for Epic 5 bench safety, `6-1-…` through `6-5-…` for Epic 6 UX pass, `x-1-…` through `x-5-…` for the deferred Epic X orchestration work). Each file holds: **goal**, **acceptance criteria** (checkboxes), **links** to the relevant plan section, and **notes** (decisions, model numbers tested). **Bootstrap** (second todo) may add **stub** files with headings and empty criteria to be filled when work begins, or create each file at the **start** of that subplan — either approach is fine; pick one and stay consistent.
+- **One markdown file per subplan** under **`docs/steps/`** (filenames aligned with subplans, e.g. `1-1-transport-and-scpi-core.md`, `1-2-identity-and-routing.md`, … through `2-7-scope-advanced-features.md` for v1 + per-kind deep-dives, `5-1-…` through `5-3-…` for Epic 5 bench safety, `6-1-…` through `6-6-…` for Epic 6 UX pass, `x-1-…` through `x-5-…` for the deferred Epic X orchestration work). Each file holds: **goal**, **acceptance criteria** (checkboxes), **links** to the relevant plan section, and **notes** (decisions, model numbers tested). **Bootstrap** (second todo) may add **stub** files with headings and empty criteria to be filled when work begins, or create each file at the **start** of that subplan — either approach is fine; pick one and stay consistent.
 - **Do not** bundle unrelated subplans into one commit; if a step is large, internal WIP commits on a branch are fine, but merge to `main` (or default branch) with a clear **final** commit message per subplan when possible.
 
 ---
@@ -832,8 +835,10 @@ exists. Make the app keyboard-first where it counts, audit every
 detail page's information architecture so the hero and most-used
 blocks surface first on every kind, and turn connected sessions into
 one-click hardware / bug reports with GitHub issue forms prefilled
-from live identity + SCPI observability data (after Epic 5.1), and
-ship **i18n + locale-aware formatting** for the dashboard SPA.
+from live identity + SCPI observability data (after Epic 5.1),
+ship **i18n + locale-aware formatting** for the dashboard SPA, and
+give the VitePress manual a small readability pass so the published
+docs match the polish of the app.
 
 ### Intent
 
@@ -941,6 +946,30 @@ ship **i18n + locale-aware formatting** for the dashboard SPA.
   changes.  
   See [docs/steps/6-5-visual-polish.md](docs/steps/6-5-visual-polish.md).
 
+- **6.6 — VitePress manual polish**  
+  Docs-only pass on `docs/user/*.md` (canonical source; the
+  `docs/site/` VitePress build reads them via
+  [docs/site/scripts/sync-manual.mjs](docs/site/scripts/sync-manual.mjs)).
+  Adopt VitePress default-theme **custom containers**
+  (`::: tip` / `::: warning` / `::: danger` / `::: info`, optional
+  `::: details`) for the lines that already carry weight in prose but
+  disappear into the body text: **security / LAN posture** (README
+  bench-utility blockquote, `installation.md` *Network posture*,
+  `index.md` *What it cannot do*); **destructive SCPI** (`raw-scpi.md`
+  *Safety defaults* — `*RST` gating, no implicit system writes);
+  **high-friction troubleshooting** (`troubleshooting.md` Owon
+  port-3000 / empty scan). Plus a small accuracy sweep: rewrite
+  stale *"until Epic 3.6 lands"* / *"once Epic 3.6 ships"* lines in
+  [README.md](README.md) + [docs/user/installation.md](docs/user/installation.md)
+  in present tense, and reconcile
+  [docs/user/roadmap.md](docs/user/roadmap.md) **In flight — Epic 4
+  vendor pack expansion** against `progress.md` (4.10–4.13 shipped —
+  fold into **Shipped**, retitle or drop the *In flight* block).
+  **No** translated manual, **no** new npm dependencies, **no**
+  changes to `sync-manual.mjs`. Verify with
+  `cd docs/site && npm run build`.  
+  See [docs/steps/6-6-vitepress-manual-polish.md](docs/steps/6-6-vitepress-manual-polish.md).
+
 ### Non-goals for Epic 6
 
 - No visual redesign in **6.1–6.4** — Tailwind utility reshuffles and
@@ -957,6 +986,11 @@ ship **i18n + locale-aware formatting** for the dashboard SPA.
   **client-only** — formatting, catalogs, tokens, and the header
   manual/repo URLs all live entirely in the browser bundle (URLs via
   `import.meta.env` defaults, overridable per-fork).
+- **6.6** is **docs-only** — `docs/user/*.md`, `README.md`, and the
+  `docs/site/` VitePress build. No `packages/web`, `packages/core`,
+  `packages/server`, or `packages/sim` edits; if a container edit
+  uncovers a genuine bug in `sync-manual.mjs`, capture it as backlog
+  rather than folding it into this sub-step.
 - No translated **user manual** or **VitePress** site in 6.4 — only the
   Vue SPA is internationalized.
 - No server-side GitHub proxy or stored tokens — 6.3 opens the browser
@@ -1163,7 +1197,7 @@ Follow the **optional capability** pattern from 2.5 / 2.6 / 2.7 rather than grow
 ## Suggested repository layout (when you start coding)
 
 - `progress.md`: root checklist mirroring subplans; updated when each step completes (see **Git, commits, and progress tracking**).
-- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-7-…` for Epic 3; `4-1-…` through `4-13-…` for Epic 4; `5-1-…` through `5-3-…` for Epic 5 bench safety; `6-1-…` through `6-5-…` for Epic 6 UX pass; `x-1-…` through `x-5-…` for the deferred Epic X orchestration work) with goals and acceptance criteria.
+- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-7-…` for Epic 3; `4-1-…` through `4-13-…` for Epic 4; `5-1-…` through `5-3-…` for Epic 5 bench safety; `6-1-…` through `6-6-…` for Epic 6 UX pass; `x-1-…` through `x-5-…` for the deferred Epic X orchestration work) with goals and acceptance criteria.
 - `docs/user/`: plain Markdown **user manual** (installation, getting-started, per-kind pages including electronic-load / signal-generator / spectrum-analyzer, raw SCPI fallback, troubleshooting, hardware reports, supported-hardware matrix, roadmap) — canonical source; authored in 3.5 and extended by Epic 4.
 - `docs/site/`: **VitePress** scaffolding for the GitHub Pages landing page — ingests `docs/user/*.md`; authored in 3.5.
 - `docs/assets/`: screenshots and static images referenced from the README, the user manual, and the Pages site.

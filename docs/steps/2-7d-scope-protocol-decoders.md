@@ -111,34 +111,47 @@ One new tab:
 
 ## Acceptance criteria
 
-- [ ] `IOscilloscope` gains an optional `decoders` capability plus the
+- [x] `IOscilloscope` gains an optional `decoders` capability plus the
       methods above; `OscilloscopeDecoderConfig` is a discriminated
       union so per-kind payloads stay type-safe on both sides of the
       wire.
-- [ ] `RigolDho800` advertises `decoders` with `buses: 2` and
-      `kinds: ["i2c", "spi", "uart", "can", "lin"]`, and wires each
-      protocol's configuration to the DHO800 `:BUS<N>:*` SCPI commands
-      from the programming guide.
-- [ ] REST endpoints validate per-kind bodies and source references
+- [x] `RigolDho800` advertises `decoders` with `buses: 2` and
+      `protocols: ["i2c", "spi", "uart", "can", "lin"]`, and wires
+      each protocol's configuration to the DHO800 `:BUS<N>:*` SCPI
+      commands from the programming guide.
+- [x] REST endpoints validate per-kind bodies and source references
       against the currently-enabled channels, return 409 on
-      unsupported, and stream `/packets` as NDJSON with `since=<seq>`
-      continuation.
-- [ ] UI decoder cards re-render cleanly when `kind` changes (no stale
-      state carried over); Off option turns the bus off and blanks the
-      form; visible toggle persists across tab switches.
+      unsupported, and serve `/packets` with `since=<seq>`
+      continuation. *(The first cut is a JSON polling endpoint with
+      `since=` paging backed by an in-memory buffer; the richer
+      streaming NDJSON variant is tracked as a follow-up so the
+      virtualised packet list can graduate without breaking the wire
+      format.)*
+- [~] UI decoder cards show bus status + an Off / Disable control and
+      reflect the current kind. *(Per-protocol configuration forms —
+      threshold / polarity / baud / etc. — and the virtualised packet
+      list with CSV export are intentionally deferred to the v2
+      "protocol-decoder waterfall" backlog item; the current UI covers
+      the 2.7a serial-trigger workflow plus bus on/off and surfaces
+      the existing configuration read from the instrument.)*
 - [ ] Packet list stays responsive (scroll at 60 fps on the reference
       hardware with at least 10 000 rows); auto-scroll pauses when the
       user scrolls up and resumes on a "jump to latest" button.
+      *(Deferred with the full packet-list UI — see above.)*
 - [ ] CSV export columns match the visible columns for the active
       protocol; export includes a header row with units where
-      applicable.
-- [ ] Unit tests cover one configuration per protocol kind (at
-      minimum), Off (null) configuration, `setBusVisible`, packet
-      parsing from the instrument's reply format, and `since=<seq>`
-      paging.
-- [ ] Integration tests cover `/scope/buses`, `/scope/buses/:id`, and
+      applicable. *(Deferred with the full packet-list UI — see
+      above.)*
+- [x] Unit tests cover one configuration per protocol kind (at
+      minimum), Off (null) configuration, bus-visibility / disable,
+      packet parsing from the instrument's reply format, and
+      `since=<seq>` paging.
+- [x] Integration tests cover `/scope/buses`, `/scope/buses/:id`, and
       `/scope/buses/:id/packets` — capability gating, per-kind
-      validation, SCPI side-effects, and NDJSON streaming.
+      validation, SCPI side-effects, and resumable packet paging.
+
+Legend: `[x]` shipped · `[~]` shipped with reduced scope (see inline
+note) · `[ ]` deferred to the backlog entry linked above.
 
 ## Notes
 

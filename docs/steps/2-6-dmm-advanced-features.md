@@ -101,6 +101,15 @@ dBm source impedance list beyond the standard {50, 75, 600}.
   code can assume the new mode is available.
 - **Accessibility.** All dynamic readouts introduced across 2.6a–c stay
   inside `aria-live="polite"` regions, matching the 2.3 / 2.4 rules.
+- **Transport for recurring readouts.** The primary reading (`dmm.reading`)
+  and dual-display secondary (`dmm.dualReading`) move over the WebSocket
+  via `useLiveReading`; see
+  [2-2 § Live reading subscriptions](./2-2-rest-and-websocket.md#live-reading-subscriptions).
+  Specialised feeds that are conditional on user action (logging sample
+  deltas in 2.6c, measurement tables on the scope in 2.7b) stay on
+  `usePolling` over REST. Capability queries (ranging, trigger, math,
+  temperature, presets) are always one-shot HTTP GETs triggered by navigation
+  or post-write refresh.
 
 ## Deferred for 2.6 follow-ups
 

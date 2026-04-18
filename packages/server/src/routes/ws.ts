@@ -1,18 +1,33 @@
 import type { FastifyInstance } from "fastify";
 import type { WebSocket } from "@fastify/websocket";
-import type { ServerMessage } from "@lxi-web/core";
+import type { ClientMessage, ServerMessage } from "@lxi-web/core";
 import type { SessionManager } from "../sessions/manager.js";
+import { ReadingScheduler } from "../ws/reading-scheduler.js";
 
 /**
- * Broadcast every lifecycle event to every connected WebSocket client. The
- * single-operator bench tool doesn't need fine-grained per-session
- * subscriptions — clients filter on the sessionId they care about.
+ * The `/ws` endpoint serves two purposes:
+ *
+ * 1. **Session registry fan-out** — every connected client receives
+ *    `sessions:init` on connect and then `sessions:update`/`sessions:removed`
+ *    as the manager emits lifecycle events. This feeds the dashboard's
+ *    live session list without any polling.
+ *
+ * 2. **Live reading subscriptions** — clients send
+ *    `{ type: "subscribe", sessionId, topic }` to opt in to a topic (e.g.
+ *    `"dmm.reading"`). The {@link ReadingScheduler} runs a single server-side
+ *    read loop per `(sessionId, topic)` regardless of how many panels have
+ *    subscribed, and pushes `reading:update` / `reading:error` frames to all
+ *    subscribers. Sockets are auto-unsubscribed on disconnect.
+ *
+ * See `docs/steps/2-8-websocket-live-readings.md` for the full protocol and
+ * how to add a new topic.
  */
 export async function registerWebsocketRoute(
   app: FastifyInstance,
   manager: SessionManager,
 ): Promise<void> {
   const clients = new Set<WebSocket>();
+  const scheduler = new ReadingScheduler(manager);
 
   const broadcast = (message: ServerMessage): void => {
     const payload = JSON.stringify(message);
@@ -22,16 +37,56 @@ export async function registerWebsocketRoute(
   };
 
   manager.on("update", (session) => broadcast({ type: "sessions:update", session }));
-  manager.on("removed", ({ id }) => broadcast({ type: "sessions:removed", id }));
+  manager.on("removed", ({ id }) => {
+    scheduler.removeSession(id);
+    broadcast({ type: "sessions:removed", id });
+  });
 
   app.get("/ws", { websocket: true }, (socket) => {
     clients.add(socket);
-    const hello: ServerMessage = {
-      type: "sessions:init",
-      sessions: manager.list(),
+
+    const subscriber = {
+      send(message: ServerMessage): void {
+        if (socket.readyState === 1 /* OPEN */) {
+          socket.send(JSON.stringify(message));
+        }
+      },
     };
-    socket.send(JSON.stringify(hello));
-    socket.on("close", () => clients.delete(socket));
-    socket.on("error", () => clients.delete(socket));
+
+    const subscriptions = new Set<string>();
+
+    socket.send(
+      JSON.stringify({
+        type: "sessions:init",
+        sessions: manager.list(),
+      } satisfies ServerMessage),
+    );
+
+    socket.on("message", (raw) => {
+      let parsed: ClientMessage;
+      try {
+        parsed = JSON.parse(raw.toString()) as ClientMessage;
+      } catch {
+        return;
+      }
+      if (parsed.type === "subscribe") {
+        const key = `${parsed.sessionId}::${parsed.topic}`;
+        if (subscriptions.has(key)) return;
+        subscriptions.add(key);
+        scheduler.subscribe(parsed.sessionId, parsed.topic, subscriber);
+      } else if (parsed.type === "unsubscribe") {
+        const key = `${parsed.sessionId}::${parsed.topic}`;
+        if (!subscriptions.delete(key)) return;
+        scheduler.unsubscribe(parsed.sessionId, parsed.topic, subscriber);
+      }
+    });
+
+    const cleanup = (): void => {
+      clients.delete(socket);
+      scheduler.removeSubscriber(subscriber);
+      subscriptions.clear();
+    };
+    socket.on("close", cleanup);
+    socket.on("error", cleanup);
   });
 }

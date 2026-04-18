@@ -201,15 +201,33 @@ const SCPI_MAP: Partial<Record<MultimeterMode, DmmScpi>> = {
   },
 };
 
-const TRANSDUCER_CODE: Record<TemperatureTransducer, string> = {
-  pt100: "RTD,PT100",
-  pt1000: "RTD,PT1000",
-  "thermocouple-k": "TCouple,K",
-  "thermocouple-j": "TCouple,J",
-  "thermocouple-t": "TCouple,T",
-  "thermocouple-e": "TCouple,E",
+/**
+ * DM858 uses a two-step transducer setter: first select the family via
+ * `:SENS:TEMP:TRAN:TYPE {RTD|TCouple|THERmistor}`, then the sub-type via
+ * the family-scoped command (e.g. `:SENS:TEMP:TRAN:RTD:TYPE PT100`).
+ * Joining them with a comma (as we used to) is silently rejected, which is
+ * why setting thermocouple K wasn't honored on the device.
+ */
+const TRANSDUCER_FAMILY: Record<TemperatureTransducer, string> = {
+  pt100: "RTD",
+  pt1000: "RTD",
+  "thermocouple-k": "TCouple",
+  "thermocouple-j": "TCouple",
+  "thermocouple-t": "TCouple",
+  "thermocouple-e": "TCouple",
   thermistor: "THERmistor",
 };
+
+const TRANSDUCER_SUBTYPE: Partial<Record<TemperatureTransducer, string>> = {
+  pt100: "PT100",
+  pt1000: "PT1000",
+  "thermocouple-k": "K",
+  "thermocouple-j": "J",
+  "thermocouple-t": "T",
+  "thermocouple-e": "E",
+};
+
+const OPTIONAL_TIMEOUT_MS = 800;
 
 const TRANSDUCER_FROM_SCPI: Array<{ match: RegExp; value: TemperatureTransducer }> = [
   { match: /^RTD.*PT1000/i, value: "pt1000" },
@@ -287,6 +305,20 @@ export class RigolDm858 implements IMultimeter {
     readonly identity: DeviceIdentity,
   ) {}
 
+  /**
+   * Query a command that some DM858 firmware revisions silently drop (the
+   * device never replies, the session times out). Uses a short timeout and
+   * falls back to the caller-supplied default so one unsupported node
+   * doesn't stall the whole capability sweep.
+   */
+  async #queryOpt(command: string, fallback: string): Promise<string> {
+    try {
+      return await this.port.query(command, { timeoutMs: OPTIONAL_TIMEOUT_MS });
+    } catch {
+      return fallback;
+    }
+  }
+
   async getMode(): Promise<MultimeterMode> {
     const raw = await this.port.query(":FUNCtion?");
     return parseMode(raw);
@@ -321,9 +353,11 @@ export class RigolDm858 implements IMultimeter {
     const mode = await this.getMode();
     const entry = SCPI_MAP[mode];
     if (!entry) return { mode, upper: 0, auto: true };
+    // Some modes (frequency, continuity, capacitance) don't expose a RANGe?
+    // node on this firmware — fast-fail and treat as auto.
     const [upperRaw, autoRaw] = await Promise.all([
-      this.port.query(`${entry.sense}:RANGe?`),
-      this.port.query(`${entry.sense}:RANGe:AUTO?`),
+      this.#queryOpt(`${entry.sense}:RANGe?`, "0"),
+      this.#queryOpt(`${entry.sense}:RANGe:AUTO?`, "1"),
     ]);
     const upper = Number.parseFloat(upperRaw) || 0;
     const auto = parseBool(autoRaw);
@@ -348,7 +382,8 @@ export class RigolDm858 implements IMultimeter {
     const mode = await this.getMode();
     const entry = SCPI_MAP[mode];
     if (!entry) return 1;
-    const raw = await this.port.query(`${entry.sense}:NPLC?`);
+    // Continuity / diode / frequency don't expose NPLC; fast-fail.
+    const raw = await this.#queryOpt(`${entry.sense}:NPLC?`, "1");
     return Number.parseFloat(raw) || 0;
   }
 
@@ -377,11 +412,14 @@ export class RigolDm858 implements IMultimeter {
   }
 
   async getTriggerConfig(): Promise<MultimeterTriggerConfig> {
+    // :TRIGger:SLOPe? and :TRIGger:DELay? never reply on this firmware
+    // (confirmed via runtime logs); fast-fail and use sane defaults rather
+    // than blocking the queue for 5 s per query.
     const [sourceRaw, slopeRaw, delayRaw, countRaw] = await Promise.all([
-      this.port.query(":TRIGger:SOURce?"),
-      this.port.query(":TRIGger:SLOPe?"),
-      this.port.query(":TRIGger:DELay?"),
-      this.port.query(":SAMPle:COUNt?"),
+      this.#queryOpt(":TRIGger:SOURce?", "IMM"),
+      this.#queryOpt(":TRIGger:SLOPe?", "POS"),
+      this.#queryOpt(":TRIGger:DELay?", "0"),
+      this.#queryOpt(":SAMPle:COUNt?", "1"),
     ]);
     return {
       source: parseTriggerSource(sourceRaw),
@@ -405,9 +443,12 @@ export class RigolDm858 implements IMultimeter {
   // ---- 2.6b ----
 
   async getMath(): Promise<MultimeterMathState> {
+    // :CALCulate:STATe? / :FUNCtion? never reply on this firmware — we
+    // can't know the device-side state, so optimistically treat it as
+    // disabled and let the UI drive it via setMath.
     const [stateRaw, fnRaw] = await Promise.all([
-      this.port.query(":CALCulate:STATe?"),
-      this.port.query(":CALCulate:FUNCtion?"),
+      this.#queryOpt(":CALCulate:STATe?", "0"),
+      this.#queryOpt(":CALCulate:FUNCtion?", "NONE"),
     ]);
     const enabled = parseBool(stateRaw);
     const fn = parseMathFunction(fnRaw);
@@ -494,13 +535,12 @@ export class RigolDm858 implements IMultimeter {
   }
 
   async getDualDisplay(): Promise<MultimeterMode | null> {
-    try {
-      const raw = await this.port.query(":DISPlay:WINDow2:FUNCtion?");
-      const mode = parseMode(raw);
-      return mode;
-    } catch {
-      return null;
-    }
+    // :DISPlay:WINDow2:FUNCtion? never replies on this firmware unless
+    // a secondary is actively configured; short-timeout instead of the
+    // 5 s default.
+    const raw = await this.#queryOpt(":DISPlay:WINDow2:FUNCtion?", "");
+    if (!raw) return null;
+    return parseMode(raw);
   }
 
   async setDualDisplay(secondary: MultimeterMode | null): Promise<void> {
@@ -517,11 +557,12 @@ export class RigolDm858 implements IMultimeter {
   async readDual(): Promise<MultimeterDualReading> {
     const [primary, secondaryRaw] = await Promise.all([
       this.read(),
-      this.port.query(":READ:SECondary?").catch(() => ""),
+      this.#queryOpt(":READ:SECondary?", ""),
     ]);
-    const secondaryModeRaw = await this.port
-      .query(":DISPlay:WINDow2:FUNCtion?")
-      .catch(() => "");
+    const secondaryModeRaw = await this.#queryOpt(
+      ":DISPlay:WINDow2:FUNCtion?",
+      "",
+    );
     const secondaryMode = parseMode(secondaryModeRaw);
     const value = Number.parseFloat(secondaryRaw.trim());
     return {
@@ -606,7 +647,7 @@ export class RigolDm858 implements IMultimeter {
   async getTemperatureConfig(): Promise<MultimeterTemperatureConfig> {
     const [unitRaw, transRaw] = await Promise.all([
       this.port.query(":UNIT:TEMPerature?"),
-      this.port.query(":SENSe:TEMPerature:TRANsducer:TYPE?").catch(() => "RTD,PT100"),
+      this.#queryOpt(":SENSe:TEMPerature:TRANsducer:TYPE?", "RTD"),
     ]);
     const unit = UNIT_FROM_SCPI[unitRaw.trim().toUpperCase()] ?? "celsius";
     const transducer =
@@ -616,9 +657,16 @@ export class RigolDm858 implements IMultimeter {
 
   async setTemperatureConfig(config: MultimeterTemperatureConfig): Promise<void> {
     await this.port.write(`:UNIT:TEMPerature ${UNIT_MAP[config.unit]}`);
-    await this.port.write(
-      `:SENSe:TEMPerature:TRANsducer:TYPE ${TRANSDUCER_CODE[config.transducer]}`,
-    );
+    const family = TRANSDUCER_FAMILY[config.transducer];
+    const subtype = TRANSDUCER_SUBTYPE[config.transducer];
+    await this.port.write(`:SENSe:TEMPerature:TRANsducer:TYPE ${family}`);
+    if (subtype) {
+      // DM858 sub-type setter: e.g. :SENS:TEMP:TRAN:RTD:TYPE PT100
+      //                       or :SENS:TEMP:TRAN:TCouple:TYPE K
+      await this.port.write(
+        `:SENSe:TEMPerature:TRANsducer:${family}:TYPE ${subtype}`,
+      );
+    }
   }
 
   async getPresetCatalog(): Promise<readonly boolean[]> {

@@ -597,7 +597,8 @@ test("DMM temperature endpoint validates unit/transducer", async () => {
   assert.equal(ok.statusCode, 200);
   const writes = session()?.writes ?? [];
   assert.ok(writes.includes(":UNIT:TEMPerature C"));
-  assert.ok(writes.some((w) => /TCouple,K/.test(w)));
+  assert.ok(writes.includes(":SENSe:TEMPerature:TRANsducer:TYPE TCouple"));
+  assert.ok(writes.includes(":SENSe:TEMPerature:TRANsducer:TCouple:TYPE K"));
   await app.close();
 });
 

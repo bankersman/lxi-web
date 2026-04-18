@@ -84,7 +84,21 @@ Level / slot validation returns `400` with an `error` string.
     and the card gets a red ring to draw attention.
 - Any external change that may invalidate channel/protection state (pairing
   toggle, preset recall, tracking change) bumps a `refreshKey` that forces
-  each protection panel to re-fetch without waiting for its 3 s poll tick.
+  each protection panel to re-fetch without waiting for its next tick.
+- Steady-state `PsuChannelState[]` updates flow through the WebSocket topic
+  `psu.channels` via `useLiveReading` — see
+  [2-2 § Live reading subscriptions](./2-2-rest-and-websocket.md#live-reading-subscriptions).
+  The REST `GET /api/sessions/:id/psu/channels` endpoint stays in place and
+  is used for the snappy post-write refresh after Apply / Output toggle /
+  preset recall.
+- Tracking state and per-channel OVP/OCP status are pushed the same way on
+  topics `psu.tracking` and `psu.protection`. The protection topic emits a
+  single snapshot containing every supported channel, so the per-channel
+  `<PsuProtectionControl>` cards all share one device poll regardless of
+  channel count. The REST endpoints (`GET /psu/tracking`,
+  `GET /psu/channels/:channel/protection`) are still used for the one-shot
+  refresh fired after a user write (toggle, Set, preset recall, pairing
+  change).
 
 ## Acceptance criteria
 

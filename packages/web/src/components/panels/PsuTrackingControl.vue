@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { Waves } from "lucide-vue-next";
 import { api, type PsuTrackingInfo } from "@/api/client";
+import { useLiveReading } from "@/composables/useLiveReading";
 
 const props = defineProps<{
   sessionId: string;
@@ -11,56 +12,45 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ change: [enabled: boolean] }>();
 
+/**
+ * `psu.tracking` is pushed over WebSocket (refcounted at the store so this
+ * panel and anything else interested share a single device poll). We only
+ * hit HTTP for explicit post-write refreshes so the toggle reflects reality
+ * without waiting for the next scheduler tick.
+ */
+const live = useLiveReading<PsuTrackingInfo>(
+  () => props.sessionId,
+  "psu.tracking",
+  { enabled: computed(() => props.enabled) },
+);
+
 const info = ref<PsuTrackingInfo | null>(null);
 const busy = ref(false);
-const loadError = ref<string | null>(null);
 const actionError = ref<string | null>(null);
 
-const supported = computed(() => info.value?.supported === true);
-
-async function load(): Promise<void> {
-  try {
-    info.value = await api.getPsuTracking(props.sessionId);
-    loadError.value = null;
-  } catch (err) {
-    loadError.value = err instanceof Error ? err.message : String(err);
-  }
-}
-
-// Poll periodically so the toggle reflects the instrument's actual state
-// (tracking can be toggled from the front panel or changed by *RCL too).
-let pollTimer: ReturnType<typeof setInterval> | null = null;
-function startPolling(): void {
-  stopPolling();
-  pollTimer = setInterval(() => {
-    if (!busy.value) void load();
-  }, 3000);
-}
-function stopPolling(): void {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-}
-onBeforeUnmount(stopPolling);
-
 watch(
-  () => props.enabled,
-  (on) => {
-    if (on) {
-      void load();
-      startPolling();
-    } else {
-      stopPolling();
-    }
+  live.data,
+  (next) => {
+    if (next) info.value = next;
   },
   { immediate: true },
 );
 
+const supported = computed(() => info.value?.supported === true);
+const loadError = computed(() => live.error.value);
+
+async function refresh(): Promise<void> {
+  try {
+    info.value = await api.getPsuTracking(props.sessionId);
+  } catch {
+    /* next WS frame will surface the error */
+  }
+}
+
 watch(
   () => props.refreshKey,
   () => {
-    if (props.enabled) void load();
+    if (props.enabled) void refresh();
   },
 );
 
@@ -71,14 +61,11 @@ async function toggle(): Promise<void> {
   actionError.value = null;
   try {
     await api.setPsuTracking(props.sessionId, next);
-    // Re-query the device so the UI reflects the *actual* state, not our
-    // optimistic guess — catches silent rejections and keeps CH1/CH2 and
-    // the toggle in lockstep.
-    await load();
+    await refresh();
     emit("change", info.value?.enabled ?? next);
   } catch (err) {
     actionError.value = err instanceof Error ? err.message : String(err);
-    await load();
+    await refresh();
   } finally {
     busy.value = false;
   }

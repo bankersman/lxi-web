@@ -68,6 +68,15 @@ todos:
   - id: epic-3-4-device-detail-ux
     content: Epic 3.4 — Device detail UX (per-kind section order, overview cards, quick actions within reason); progress + docs/steps/3-4-*.md; commit
     status: pending
+  - id: epic-3-5-user-docs-and-landing
+    content: Epic 3.5 — User documentation + landing page. README rewrite (two-path quick-start, supported-hardware table, screenshots, CTA), user manual under docs/user/ (installation, getting started, per-kind pages, raw SCPI, troubleshooting, hardware reports, roadmap), VitePress site under docs/site/ reusing docs/user/*.md, GH Pages workflow, .github/ISSUE_TEMPLATE/ (instrument-report.yml, bug.yml, feature.yml, config.yml), LICENSE (MIT). Progress + docs/steps/3-5-*.md; commit
+    status: pending
+  - id: epic-3-6-docker-image-and-release
+    content: Epic 3.6 — Docker image + release workflow. Fastify serves built web dist in production (+ /healthz), multi-stage Dockerfile (distroless Node 24, nonroot, multi-arch amd64/arm64), docker-compose.yml, .github/workflows/release.yml on v*.*.* tags with shared sanity gate, GHCR + Docker Hub mirror via docker/metadata-action semver tags, build provenance attestation, auto-generated GitHub Release. Secrets (Docker Hub only) — DOCKERHUB_USERNAME + DOCKERHUB_TOKEN. Progress + docs/steps/3-6-*.md; commit
+    status: pending
+  - id: epic-3-7-npm-publish-core
+    content: Epic 3.7 — @lxi-web/core npm publishing on v*.*.* tags (parallel to 3.6). Package audit (exports map for ., ./scpi, ./drivers/rigol; files allowlist; publishConfig.access public + provenance; sideEffects false; engines node >= 24), server and web pinned private, test:exports guard, packages/core/README.md, npm job on release workflow with version/tag match guard + provenance via OIDC, pre-releases under next dist-tag, docs/user/embed-core.md + Pages card. Secrets — NPM_TOKEN (automation token on @lxi-web scope). Progress + docs/steps/3-7-*.md; commit
+    status: pending
   - id: epic-4-1-scpi-mock
     content: Epic 4.1 — SCPI TCP mock instrument(s) for dev/CI; configurable *IDN?, minimal typed SCPI per kind + unknown; progress + docs/steps/4-1-*.md; commit
     status: pending
@@ -132,6 +141,14 @@ Use this section as the single checklist of defaults; **no need to re-ask** thes
 - **WebSocket:** **`@fastify/websocket`** (official plugin; no separate `ws`-only server unless you hit a blocker).
 - **API listen:** default **`127.0.0.1`**; **`HOST`** env overrides bind (e.g. `0.0.0.0` for LAN). Document trusted-network caveat in `README`.
 - **API port:** default **`8787`**; override with **`PORT`** env. Vite dev **proxies** `/api` and `/ws` (or equivalent) to this port.
+
+### HTTP vs WebSocket (transport rules of thumb)
+
+The same Fastify process exposes both; pick per use case:
+
+- **WebSocket (`/ws`)** — one long-lived connection per browser tab. Used for anything that updates continuously: session lifecycle (`sessions:init/update/removed`) **and** recurring instrument readings via `subscribe` / `unsubscribe` + `reading:update` / `reading:error` frames. The server runs **one scheduler loop per `(sessionId, topic)`** regardless of how many panels are subscribed, so the dashboard mini tile and detail page share a single device poll. Reading topics live in `@lxi-web/core` (`ReadingTopic`); v1 covers `dmm.reading`, `dmm.dualReading`, `psu.channels`, `scope.channels`, `scope.timebase`. New recurring feeds are added by extending the topic union and the server-side scheduler map; the browser uses the `useLiveReading` composable. See [docs/steps/2-2-rest-and-websocket.md § Live reading subscriptions](docs/steps/2-2-rest-and-websocket.md#live-reading-subscriptions).
+- **REST (`/api/...`)** — one-shot reads and writes. Capability descriptors (ranging, trigger, math, temperature, presets…), user-initiated commands (mode change, Apply, preset save/recall), post-write snappy refreshes of the WS-backed state, binary downloads (scope screenshot / CSV), and the raw-SCPI escape hatch all stay on HTTP. REST endpoints for WS-backed topics are **retained** as a fallback for scripting, curl-testing, and post-write refresh.
+- **Rule of thumb:** if multiple panels want the same value at a fixed cadence, it belongs on WebSocket. If a query is driven by navigation or user action and returns once, it stays on REST.
 
 ### Instrument TCP (lab side)
 
@@ -335,8 +352,12 @@ These are the “typed extensions”: **not** primarily inheritance from one meg
 **Goal:** Reduce friction for daily use on a trusted LAN: find instruments
 without typing IPs, survive brief network glitches, restore the last bench
 layout, and make **`/device/:sessionId`** scannable (most important information
-and actions first). **Out of scope:** accounts, roles, and multi-tenant
-security — see **Epic 6 (deferred)** in `progress.md`.
+and actions first). **Also** make the project **installable** and
+**discoverable** by someone who has never touched the code: a clear README,
+a user manual, a public landing page, a one-line Docker install, and an
+optional `@lxi-web/core` npm publish for people who only want the drivers.
+**Out of scope:** accounts, roles, and multi-tenant security — see
+**Epic 6 (deferred)** in `progress.md`.
 
 ### Subplans (Epic 3)
 
@@ -371,6 +392,63 @@ security — see **Epic 6 (deferred)** in `progress.md`.
   large new backend features unless cheap. Align with existing accessibility
   rules (`aria-live`, focus order).  
   See [docs/steps/3-4-device-detail-ux.md](docs/steps/3-4-device-detail-ux.md).
+
+- **3.5 — User documentation and landing page**  
+  Make the project **immediately understandable** and **runnable within
+  minutes** by someone who has never touched the code. README rewritten
+  with a two-path quick-start (Docker recommended, pnpm from source),
+  screenshots under `docs/assets/screenshots/`, supported-hardware table,
+  and a "report your hardware" CTA. **User manual** authored as plain
+  Markdown under `docs/user/` (installation, getting-started, one page
+  per device kind that mirrors 2.5 / 2.6 / 2.7, raw SCPI fallback,
+  troubleshooting, hardware reports, roadmap). **Landing page** built
+  with **VitePress** under `docs/site/` that reuses the same Markdown so
+  GitHub and Pages stay in sync, deployed by `.github/workflows/pages.yml`
+  on push to `main`. Structured **GitHub issue templates** under
+  `.github/ISSUE_TEMPLATE/` (instrument-report, bug, feature, config)
+  so users with other LXI gear can share `*IDN?` strings and SCPI
+  notes. **LICENSE = MIT** at the repo root. No secrets required
+  (Pages uses the auto `GITHUB_TOKEN`).  
+  See [docs/steps/3-5-user-documentation-and-landing.md](docs/steps/3-5-user-documentation-and-landing.md).
+
+- **3.6 — Docker image and release workflow**  
+  Turn installation into a one-liner. `@lxi-web/server` serves the built
+  `@lxi-web/web` bundle in production (with SPA fallback and a
+  `/healthz` endpoint), wrapped in a multi-stage **Dockerfile** on
+  `gcr.io/distroless/nodejs24-debian12:nonroot`, built for
+  `linux/amd64` + `linux/arm64`. A committed `docker-compose.yml` gives
+  users a recommended recipe. **`.github/workflows/release.yml`** fires
+  on `v*.*.*` tag pushes, runs a shared sanity gate
+  (`pnpm -r typecheck && test && build`), then publishes the multi-arch
+  image to **GHCR** (`ghcr.io/${{ github.repository }}`) and **Docker
+  Hub** in parallel with semver tag fan-out (`:latest`, `:1.2.3`,
+  `:1.2`, `:1`) via `docker/metadata-action`, attaches SLSA build
+  provenance to both digests, and creates a GitHub Release with
+  auto-generated notes. Versioning driven by `pnpm version <bump>` at
+  the root; workflow fails fast if tag and `package.json#version`
+  disagree. Secrets: **`DOCKERHUB_USERNAME`** + **`DOCKERHUB_TOKEN`**
+  (GHCR reuses the auto-provided `GITHUB_TOKEN`).  
+  See [docs/steps/3-6-docker-image-and-release.md](docs/steps/3-6-docker-image-and-release.md).
+
+- **3.7 — `@lxi-web/core` npm publishing**  
+  Let others reuse the typed drivers without the dashboard. Audit
+  `packages/core/package.json` as a library — `exports` map for `.`,
+  `./scpi`, and `./drivers/rigol`; `files: ["dist", "README.md",
+  "LICENSE"]`; `publishConfig.access: public`;
+  `publishConfig.provenance: true`; `sideEffects: false`; matching
+  `engines.node >= 24` — and pin `@lxi-web/server` + `@lxi-web/web`
+  as `"private": true`. Add a `pnpm --filter @lxi-web/core test:exports`
+  guard that imports every declared subpath from a clean tmp dir. A
+  parallel **`npm` job** on the release workflow from 3.6 verifies the
+  tag matches `packages/core/package.json#version`, then runs
+  `pnpm --filter @lxi-web/core publish --access public --provenance`
+  (OIDC-signed provenance linked to the Actions run). Stable releases
+  publish under `latest`; pre-releases (`-rc.N`, `-beta.N`) publish
+  under `next`. A short `packages/core/README.md` covers install +
+  minimal usage, and `docs/user/embed-core.md` (ingested into the
+  Pages site from 3.5) is the consumer-facing page. Secret:
+  **`NPM_TOKEN`** (automation token scoped to the `@lxi-web` scope).  
+  See [docs/steps/3-7-npm-publish-core.md](docs/steps/3-7-npm-publish-core.md).
 
 ---
 
@@ -583,7 +661,14 @@ Follow the **optional capability** pattern from 2.5 / 2.6 / 2.7 rather than grow
 ## Suggested repository layout (when you start coding)
 
 - `progress.md`: root checklist mirroring subplans; updated when each step completes (see **Git, commits, and progress tracking**).
-- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-4-…` for Epic 3; `4-1-…` through `4-2-…` for Epic 4; `5-1-…` through `5-5-…` for Epic 5) with goals and acceptance criteria.
+- `docs/steps/`: one markdown file per subplan (`1-1-…` through `2-7-…` for v1 + per-kind deep-dives; `3-1-…` through `3-7-…` for Epic 3; `4-1-…` through `4-2-…` for Epic 4; `5-1-…` through `5-5-…` for Epic 5) with goals and acceptance criteria.
+- `docs/user/`: plain Markdown **user manual** (installation, getting-started, per-kind pages, raw SCPI fallback, troubleshooting, hardware reports, roadmap) — canonical source; authored in 3.5.
+- `docs/site/`: **VitePress** scaffolding for the GitHub Pages landing page — ingests `docs/user/*.md`; authored in 3.5.
+- `docs/assets/`: screenshots and static images referenced from the README, the user manual, and the Pages site.
+- `.github/workflows/`: CI/CD. `pages.yml` deploys the Pages site (3.5); `release.yml` fires on `v*.*.*` tags and publishes the Docker image to GHCR + Docker Hub (3.6) and `@lxi-web/core` to npm with provenance (3.7).
+- `.github/ISSUE_TEMPLATE/`: structured `instrument-report`, `bug`, `feature` templates for hardware feedback (3.5).
+- `Dockerfile` + `docker-compose.yml`: at the repo root, authored in 3.6.
+- `LICENSE`: MIT, at the repo root (3.5).
 - `packages/core` (**`@lxi-web/core`**): `ScpiSession`, transports, `*IDN?` router, facades, Rigol drivers for **DHO804 / DP932E / DM858** (pure TS, no Vue)
 - `packages/server` (**`@lxi-web/server`**): Fastify + `@fastify/websocket`, **session manager**, depends on `@lxi-web/core`
 - `packages/web` (**`@lxi-web/web`**): **Vue 3 + Vite + Vue Router + Tailwind + Pinia + Lucide + uPlot** SPA; depends on `@lxi-web/core` for shared DTOs/types only (no server imports in bundle)

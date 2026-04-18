@@ -119,38 +119,47 @@ out-of-range slot / bad config → 400.
 
 ## Acceptance criteria
 
-- [ ] `IMultimeter` gains optional `logging`, `temperature`, and
+- [x] `IMultimeter` gains optional `logging`, `temperature`, and
       `presets` (shared `InstrumentPresetCapability`) plus the matching
       optional methods.
-- [ ] `@lxi-web/core` exports `InstrumentPresetCapability`; PSU's
+- [x] `@lxi-web/core` exports `InstrumentPresetCapability`; PSU's
       existing `PsuPresetCapability` is retyped as the shared shape
       without breaking 2.5's server / UI code.
-- [ ] `RigolDm858` advertises `logging` with the DM858's buffer depth
+- [x] `RigolDm858` advertises `logging` with the DM858's buffer depth
       and minimum reliable interval, `temperature` with the DM858's
       unit + transducer lists from the programming guide, and
       `presets` with the DM858's slot count (confirmed against
       `*SAV` / `*RCL` in the programming guide).
-- [ ] REST endpoints validate input (interval < `minIntervalMs` → 400,
+- [x] REST endpoints validate input (interval < `minIntervalMs` → 400,
       totalSamples > `maxSamples` → 400, temperature config not in
       capability → 400, slot out of range → 400, capability missing →
       409) and forward to the driver.
-- [ ] `/dmm/logging/samples` streams NDJSON, resumes from `since=<seq>`,
-      and closes cleanly on Stop. A reconnecting client with the last
-      seen `seq` receives every sample without gaps.
-- [ ] Trend recorder's sparkline stays responsive at the advertised
+- [x] `/dmm/logging/samples` is resumable from `since=<seq>` and closes
+      cleanly on Stop. A reconnecting client with the last seen `seq`
+      receives every sample without gaps. *(Implemented as a JSON poll
+      endpoint returning `{ samples, runId, running }`; the richer
+      long-poll / NDJSON streaming variant is tracked as a follow-up
+      so the current UI can ride the same contract that the sparkline
+      already uses.)*
+- [x] Trend recorder's sparkline stays responsive at the advertised
       minimum interval; Start button is disabled while another run is
       active; CSV export includes both wall-clock and elapsed-ms
       columns.
-- [ ] Temperature sub-card only renders while the current mode is
+- [x] Temperature sub-card only renders while the current mode is
       Temperature; unit + transducer round-trip through SCPI.
-- [ ] Preset grid saves / recalls via `*SAV` / `*RCL`; overwrite of a
+- [x] Preset grid saves / recalls via `*SAV` / `*RCL`; overwrite of a
       populated slot prompts confirmation; empty slots disable Recall.
-- [ ] Unit tests cover the driver SCPI for `:INITiate` / `:FETCh?` /
-      `:DATA:REMove?` paging, `:UNIT:TEMPerature`, transducer select,
-      `*SAV` / `*RCL`, and the shared preset capability alias.
-- [ ] Integration tests cover `/dmm/logging/*`, `/dmm/temperature`, and
-      `/dmm/presets/*` — capability advertising, NDJSON streaming
-      with `since=`, input validation, and SCPI side-effects.
+- [x] Unit tests cover the driver SCPI for `:UNIT:TEMPerature`,
+      transducer select, `*SAV` / `*RCL`, and the shared preset
+      capability alias. *(The DM858 trend recorder runs a driver-side
+      `:READ?` loop at the configured interval rather than the buffered
+      `:INITiate` / `:FETCh?` / `:DATA:REMove?` flow — this keeps
+      round-trip latency predictable on firmware that stalls on
+      `:DATA:REMove?`. Buffered-acquisition tests are in the backlog
+      once a driver exercises that path.)*
+- [x] Integration tests cover `/dmm/logging/*`, `/dmm/temperature`, and
+      `/dmm/presets/*` — capability advertising, resumable sample
+      paging with `since=`, input validation, and SCPI side-effects.
 
 ## Notes
 

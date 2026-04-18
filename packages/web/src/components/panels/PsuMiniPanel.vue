@@ -1,22 +1,23 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { api } from "@/api/client";
-import { usePolling } from "@/composables/usePolling";
+import { useLiveReading } from "@/composables/useLiveReading";
 import { formatSi } from "@/lib/format";
 import type { PsuChannelState } from "@lxi-web/core/browser";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
 
-const { data, error } = usePolling<PsuChannelState[]>(
-  () => api.getPsuChannels(props.sessionId),
-  { intervalMs: 2000, enabled: computed(() => props.enabled) },
+const { data, error } = useLiveReading<PsuChannelState[]>(
+  () => props.sessionId,
+  "psu.channels",
+  { enabled: computed(() => props.enabled) },
 );
 
 async function toggleOutput(channel: PsuChannelState): Promise<void> {
   try {
     await api.setPsuChannelOutput(props.sessionId, channel.id, !channel.output);
   } catch {
-    // next poll surfaces issues via `error`
+    // next live update surfaces issues via `error`
   }
 }
 </script>

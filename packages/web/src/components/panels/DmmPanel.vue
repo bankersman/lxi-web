@@ -10,6 +10,7 @@ import type {
   DmmTriggerInfo,
   PresetsInfo,
 } from "@/api/client";
+import { useLiveReading } from "@/composables/useLiveReading";
 import { usePolling } from "@/composables/usePolling";
 import { formatSi, formatTime } from "@/lib/format";
 import { multimeterModeLabel } from "@/lib/labels";
@@ -68,9 +69,10 @@ async function loadCapabilities(): Promise<void> {
 
 void loadCapabilities();
 
-const reading = usePolling<MultimeterReading>(
-  () => api.getDmmReading(props.sessionId),
-  { intervalMs: 750, enabled: computed(() => props.enabled) },
+const reading = useLiveReading<MultimeterReading>(
+  () => props.sessionId,
+  "dmm.reading",
+  { enabled: computed(() => props.enabled) },
 );
 
 watch(reading.data, (r) => {
@@ -84,7 +86,6 @@ async function changeMode(event: Event): Promise<void> {
   selectedMode.value = value;
   await api.setDmmMode(props.sessionId, value);
   history.value = [];
-  await reading.refresh();
   await loadCapabilities();
 }
 
@@ -225,10 +226,10 @@ async function applyDual(event: Event): Promise<void> {
   }
 }
 
-const dualPoll = usePolling<MultimeterDualReading>(
-  () => api.getDmmDualReading(props.sessionId),
+const dualPoll = useLiveReading<MultimeterDualReading>(
+  () => props.sessionId,
+  "dmm.dualReading",
   {
-    intervalMs: 1000,
     enabled: computed(() => props.enabled && Boolean(dual.value?.secondary)),
   },
 );

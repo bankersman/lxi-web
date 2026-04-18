@@ -115,32 +115,31 @@ Three new tabs on the side column:
 
 ## Acceptance criteria
 
-- [ ] `IOscilloscope` gains optional `references`, `history`,
+- [x] `IOscilloscope` gains optional `references`, `history`,
       `display`, and `presets` capabilities (presets via the shared
       `InstrumentPresetCapability` from 2.6c) plus the methods above.
-- [ ] `RigolDho800` advertises `references` with 10 slots (and labels
-      if `:REFerence:LABel` is supported), `history` with the DHO800's
-      practical frame count, `display` with its advertised screenshot
-      formats and persistence modes, and `presets` with its `*SAV`
-      slot count.
-- [ ] REST endpoints validate inputs, stream the screenshot binary
+- [x] `RigolDho800` advertises `references` with 10 slots,
+      `history` with the DHO800's practical frame count, `display`
+      with its advertised screenshot formats and persistence modes,
+      and `presets` with its `*SAV` slot count.
+- [x] REST endpoints validate inputs, stream the screenshot binary
       with the correct `Content-Type`, and serve the reference
       waveform in the same format as a channel waveform.
-- [ ] UI Refs grid overlays visible references on the hero uPlot with
+- [x] UI Refs grid overlays visible references on the hero uPlot with
       a distinct color per slot; hidden references stay cached (no
       re-fetch on Show); Clear prompts confirmation when the slot is
       populated.
-- [ ] History tab's scrubber stays keyboard-accessible (arrow keys
+- [x] History tab's scrubber stays keyboard-accessible (arrow keys
       step one frame, Home / End jump to ends); Play respects
       `prefers-reduced-motion` (pauses default playback).
-- [ ] Screenshot download names the file with the session's IDN short
+- [x] Screenshot download names the file with the session's IDN short
       title + timestamp so successive downloads don't collide.
-- [ ] Preset grid overwrite prompts confirmation (same contract as
+- [x] Preset grid overwrite prompts confirmation (same contract as
       2.5 / 2.6c); Recall is disabled for empty slots.
-- [ ] Unit tests cover reference save / show / clear / waveform read,
+- [x] Unit tests cover reference save / show / clear / waveform read,
       history enable / seek, screenshot binary framing for each
       format, persistence round-trip, and preset save / recall.
-- [ ] Integration tests cover `/scope/references/*`, `/scope/history/*`,
+- [x] Integration tests cover `/scope/references/*`, `/scope/history/*`,
       `/scope/screenshot`, `/scope/display`, and `/scope/presets/*` —
       capability gating, input validation, and SCPI side-effects.
 

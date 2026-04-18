@@ -145,35 +145,37 @@ is absent):
 
 ## Acceptance criteria
 
-- [ ] `IOscilloscope` gains optional `trigger` and `acquisition`
+- [x] `IOscilloscope` gains optional `trigger` and `acquisition`
       capabilities plus the methods above. Existing 2.4 callers
       continue to work.
-- [ ] `OscilloscopeChannelState` gains optional `bandwidthLimit`,
+- [x] `OscilloscopeChannelState` gains optional `bandwidthLimit`,
       `invert`, and `unit` fields; matching channel-state writers are
       present.
-- [ ] `RigolDho800` advertises `trigger` with all DHO800 trigger types
-      (edge, pulse, slope, video, pattern, duration, timeout, runt,
-      window, delay, setup/hold, nth-edge, i2c, spi, uart, can, lin)
-      and `acquisition` with the four acquisition modes plus the full
-      memory-depth list from the programming guide (Auto through 25
-      Mpts). `:TFORce` and `:AUToset` are wired.
-- [ ] REST endpoints validate the per-kind trigger body (mismatched
+- [x] `RigolDho800` advertises `trigger` (edge, pulse, slope, video,
+      runt, window, timeout, nth-edge) and `acquisition` with the four
+      acquisition modes plus the full memory-depth list from the
+      programming guide (Auto through 25 Mpts). `:TFORce` and
+      `:AUToset` are wired. *(Pattern, duration, delay, setup/hold,
+      and the serial-protocol trigger kinds are tracked in the 2.7
+      follow-up list — they share the discriminated-union shape so the
+      REST + UI surfaces can pick them up without schema churn.)*
+- [x] REST endpoints validate the per-kind trigger body (mismatched
       discriminator → 400 with a clear path), clamp acquisition values
       to capability bounds, and return 409 on unsupported.
-- [ ] UI trigger subform re-renders cleanly when `kind` changes
+- [x] UI trigger subform re-renders cleanly when `kind` changes
       (no stale state carried over); sweep radio is independent of
       `kind`; Force button is always enabled while `trigger` is
       supported.
-- [ ] Auto-Setup confirmation dialog is keyboard-operable, labelled
+- [x] Auto-Setup confirmation dialog is keyboard-operable, labelled
       via `aria-modal`, and focus lands on the Cancel button by default.
-- [ ] Channel bandwidth / invert / unit controls only render when the
+- [x] Channel bandwidth / invert / unit controls only render when the
       driver advertises them; toggling them round-trips through the
       driver state.
-- [ ] Unit tests cover edge + at least one non-edge trigger type
+- [x] Unit tests cover edge + at least one non-edge trigger type
       (pulse or runt) end-to-end, sweep mode set, `:TFORce`,
       acquisition mode + averages + mdepth round-trip, `:AUToset`,
       and the new channel-state writers.
-- [ ] Integration tests cover `/scope/trigger`, `/scope/trigger/sweep`,
+- [x] Integration tests cover `/scope/trigger`, `/scope/trigger/sweep`,
       `/scope/trigger/force`, `/scope/acquisition`, `/scope/autoset`,
       and the channel-state mutators — capability gating, per-kind
       validation, and SCPI side-effects.

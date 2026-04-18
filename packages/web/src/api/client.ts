@@ -72,6 +72,12 @@ export interface PsuChannelProtectionInfo {
   readonly ocp: PsuProtectionState;
 }
 
+/** Wire shape of the `psu.protection` live topic — one snapshot per session. */
+export interface PsuProtectionSnapshot {
+  readonly supported: boolean;
+  readonly channels: readonly PsuChannelProtectionInfo[];
+}
+
 export interface PsuPresetsInfo {
   readonly supported: boolean;
   readonly slots: number;

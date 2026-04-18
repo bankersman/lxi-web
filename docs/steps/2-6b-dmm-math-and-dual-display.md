@@ -101,26 +101,26 @@ to which bound failed.
 
 ## Acceptance criteria
 
-- [ ] `IMultimeter` gains optional `math` and `dualDisplay` capabilities
+- [x] `IMultimeter` gains optional `math` and `dualDisplay` capabilities
       plus the methods above.
-- [ ] `RigolDm858` advertises `math` with the DM858 function list (NULL,
+- [x] `RigolDm858` advertises `math` with the DM858 function list (NULL,
       DB, DBM, STATS via AVERage, LIMit) and `dualDisplay` with the
       DM858's actual compatibility matrix drawn from the programming
       guide. `dbmReferences` covers at least {50, 75, 600}.
-- [ ] REST endpoints advertise capability descriptor on GET, validate
+- [x] REST endpoints advertise capability descriptor on GET, validate
       body (function not in capability → 400; mode not in
       `allowedModes[function]` → 400; secondary not in `pairs[primary]`
       → 400; missing capability → 409), and forward to the driver.
-- [ ] UI hides each card cleanly when unsupported; the pass/fail badge
+- [x] UI hides each card cleanly when unsupported; the pass/fail badge
       updates within one polling tick of a new reading; Snap-current
       button drives `:CALCulate:NULL:ACQuire` and leaves the offset
       visible in the input; secondary drop-down re-filters when the
       primary mode changes.
-- [ ] Unit tests cover the driver SCPI for each math function (enable
+- [x] Unit tests cover the driver SCPI for each math function (enable
       state, function select, null offset write, null snap, dBm
       reference write, statistics query parsing, limit write, limit
       result parsing) and dual-display set/read.
-- [ ] Integration tests cover `/dmm/math`, `/dmm/math/reset`, and
+- [x] Integration tests cover `/dmm/math`, `/dmm/math/reset`, and
       `/dmm/dual` — capability gating, input validation, and SCPI side-
       effects.
 

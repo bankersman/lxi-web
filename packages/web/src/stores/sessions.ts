@@ -1,13 +1,34 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import type { ServerMessage, SessionSummary } from "@lxi-web/core/browser";
+import type {
+  ClientMessage,
+  ReadingTopic,
+  ServerMessage,
+  SessionSummary,
+} from "@lxi-web/core/browser";
 import { api } from "@/api/client";
+
+type TopicKey = `${string}::${ReadingTopic}`;
+
+interface TopicListener {
+  onUpdate(payload: unknown, measuredAt: number): void;
+  onError(message: string, at: number): void;
+}
 
 /**
  * Live source of truth for all connected (and connecting / errored) instrument
- * sessions. Populated from a single WebSocket that emits `sessions:init` on
- * connect and `sessions:update` / `sessions:removed` on every lifecycle
- * change.
+ * sessions, and the single WebSocket used for both:
+ *
+ * - **session registry** — emits `sessions:init` on connect and
+ *   `sessions:update` / `sessions:removed` on every lifecycle change.
+ * - **live readings** — panels call {@link subscribeTopic} to receive
+ *   `reading:update` / `reading:error` frames for a topic (e.g.
+ *   `"dmm.reading"`). The store reference-counts local subscribers so the
+ *   server only sees one `subscribe` / `unsubscribe` per session+topic and
+ *   multiple mounted panels (detail + dashboard tile) share the same feed.
+ *
+ * On reconnect the store re-sends every `subscribe` so live readings resume
+ * without any panel-side retry logic.
  */
 export const useSessionsStore = defineStore("sessions", () => {
   const byId = ref<Map<string, SessionSummary>>(new Map());
@@ -15,6 +36,8 @@ export const useSessionsStore = defineStore("sessions", () => {
   const wsError = ref<string | null>(null);
   let socket: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  const listeners = new Map<TopicKey, Set<TopicListener>>();
+  const subscribedOnServer = new Set<TopicKey>();
 
   const list = computed<readonly SessionSummary[]>(() =>
     Array.from(byId.value.values()).sort((a, b) => a.openedAt - b.openedAt),
@@ -23,6 +46,10 @@ export const useSessionsStore = defineStore("sessions", () => {
 
   function get(id: string): SessionSummary | undefined {
     return byId.value.get(id);
+  }
+
+  function keyOf(sessionId: string, topic: ReadingTopic): TopicKey {
+    return `${sessionId}::${topic}` as TopicKey;
   }
 
   function apply(message: ServerMessage): void {
@@ -38,7 +65,30 @@ export const useSessionsStore = defineStore("sessions", () => {
       const next = new Map(byId.value);
       next.delete(message.id);
       byId.value = next;
+      for (const [key, set] of listeners) {
+        if (key.startsWith(`${message.id}::`)) {
+          listeners.delete(key);
+          subscribedOnServer.delete(key);
+          for (const l of set) {
+            l.onError("session closed", Date.now());
+          }
+        }
+      }
+    } else if (message.type === "reading:update") {
+      const set = listeners.get(keyOf(message.sessionId, message.topic));
+      if (!set) return;
+      for (const l of set) l.onUpdate(message.payload, message.measuredAt);
+    } else if (message.type === "reading:error") {
+      const set = listeners.get(keyOf(message.sessionId, message.topic));
+      if (!set) return;
+      for (const l of set) l.onError(message.message, message.at);
     }
+  }
+
+  function send(message: ClientMessage): boolean {
+    if (!socket || socket.readyState !== 1) return false;
+    socket.send(JSON.stringify(message));
+    return true;
   }
 
   function connect(): void {
@@ -50,6 +100,13 @@ export const useSessionsStore = defineStore("sessions", () => {
     ws.addEventListener("open", () => {
       wsConnected.value = true;
       wsError.value = null;
+      // Re-send every active subscription so live readings resume after a
+      // server restart or network blip without any component-side state.
+      for (const key of listeners.keys()) {
+        const [sessionId, topic] = key.split("::") as [string, ReadingTopic];
+        send({ type: "subscribe", sessionId, topic });
+        subscribedOnServer.add(key);
+      }
     });
     ws.addEventListener("message", (event) => {
       try {
@@ -62,6 +119,7 @@ export const useSessionsStore = defineStore("sessions", () => {
     ws.addEventListener("close", () => {
       wsConnected.value = false;
       socket = null;
+      subscribedOnServer.clear();
       scheduleReconnect();
     });
     ws.addEventListener("error", () => {
@@ -75,6 +133,41 @@ export const useSessionsStore = defineStore("sessions", () => {
       reconnectTimer = null;
       connect();
     }, 1500);
+  }
+
+  /**
+   * Register `listener` for live frames on `(sessionId, topic)`. Returns an
+   * `unsubscribe` function — call it on component unmount. The store only
+   * sends `subscribe` to the server on the first listener and `unsubscribe`
+   * on the last, so opening the detail page while a dashboard mini panel is
+   * already mounted does not double the device traffic.
+   */
+  function subscribeTopic(
+    sessionId: string,
+    topic: ReadingTopic,
+    listener: TopicListener,
+  ): () => void {
+    const key = keyOf(sessionId, topic);
+    let set = listeners.get(key);
+    if (!set) {
+      set = new Set();
+      listeners.set(key, set);
+    }
+    set.add(listener);
+    if (!subscribedOnServer.has(key) && send({ type: "subscribe", sessionId, topic })) {
+      subscribedOnServer.add(key);
+    }
+    return () => {
+      const existing = listeners.get(key);
+      if (!existing) return;
+      existing.delete(listener);
+      if (existing.size === 0) {
+        listeners.delete(key);
+        if (subscribedOnServer.delete(key)) {
+          send({ type: "unsubscribe", sessionId, topic });
+        }
+      }
+    };
   }
 
   async function refresh(): Promise<void> {
@@ -99,5 +192,16 @@ export const useSessionsStore = defineStore("sessions", () => {
     byId.value = next;
   }
 
-  return { list, count, get, connect, refresh, open, remove, wsConnected, wsError };
+  return {
+    list,
+    count,
+    get,
+    connect,
+    refresh,
+    open,
+    remove,
+    subscribeTopic,
+    wsConnected,
+    wsError,
+  };
 });

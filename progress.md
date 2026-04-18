@@ -17,7 +17,7 @@ Living checklist mirroring the subplans. Update when a step finishes (check the 
 ## Epic 2 — Dashboard
 
 - [x] **2.1 multi-session backend** — session manager keyed by `sessionId`. See [docs/steps/2-1-multi-session-backend.md](docs/steps/2-1-multi-session-backend.md).
-- [x] **2.2 REST + WebSocket API** — connect/list/disconnect + WS broadcast of session updates, raw SCPI route, and typed routes per device kind. See [docs/steps/2-2-rest-and-websocket.md](docs/steps/2-2-rest-and-websocket.md).
+- [x] **2.2 REST + WebSocket API** — connect/list/disconnect + WS broadcast of session updates, raw SCPI route, typed routes per device kind, and WS `subscribe`/`unsubscribe` reading-topic fan-out (server runs one scheduler loop per `(sessionId, topic)` shared across panels). See [docs/steps/2-2-rest-and-websocket.md](docs/steps/2-2-rest-and-websocket.md).
 - [x] **2.3 Vue shell** — card grid, status, light/dark toggle, Add-device dialog. See [docs/steps/2-3-vue-dashboard-shell.md](docs/steps/2-3-vue-dashboard-shell.md).
 - [x] **2.4 session panels** — card mini-controls + expanded panels; scope uPlot; raw SCPI fallback. See [docs/steps/2-4-per-session-detail-views.md](docs/steps/2-4-per-session-detail-views.md).
 - [x] **2.5 PSU advanced features** — channel coupling (series / parallel), OVP/OCP per channel (enable / threshold / trip / clear), CH1↔CH2 tracking, and 10-slot `*SAV`/`*RCL` preset memory — all exposed as optional capabilities on `IPowerSupply`, implemented on the Rigol DP900 driver, and surfaced in the detail page. See [docs/steps/2-5-psu-advanced-features.md](docs/steps/2-5-psu-advanced-features.md).
@@ -29,7 +29,7 @@ Living checklist mirroring the subplans. Update when a step finishes (check the 
   - [x] **2.7a capture control** — `trigger` (edge / pulse / slope / video / runt / window / timeout / nth-edge configs) + `acquisition` (Normal / Average / Peak-Detect / High-Res, memory depth up to 25 Mpts, `:AUToset`, run/stop, sweep Auto/Normal/Single + force) + channel bandwidth / invert / unit setters on DHO800. REST: `/scope/trigger`, `/scope/trigger/sweep`, `/scope/trigger/force`, `/scope/acquisition`, `/scope/autoset`, `/scope/run|stop`, `/scope/channels/:ch`. UI: trigger form with sweep buttons + force; acquisition form with mode/averages/memory depth + autoset/run/stop. See [docs/steps/2-7a-scope-capture-control.md](docs/steps/2-7a-scope-capture-control.md).
   - [x] **2.7b analysis** — `measurements` (22-item catalog with Vmax/Vpp/rms/freq/period/duty/…, stats support) + `cursors` (Off / Manual / Track / Auto with Δ + 1/Δ readout) + `math` (arithmetic + FFT with window / span / center) capabilities on DHO800. REST: `/scope/measurements`, `/scope/measurements/clear-stats`, `/scope/cursors`, `/scope/math`, `/scope/math/waveform`. UI: dynamic measurement selector list with live polling, cursor mode/axis form with Δ / 1/Δ panel, math operator / source / FFT form. See [docs/steps/2-7b-scope-analysis.md](docs/steps/2-7b-scope-analysis.md).
   - [x] **2.7c save and replay** — `references` (10 slots with save / show / hide), `history` (frame count + scrubber + play/pause), `display` (PNG/BMP/JPG screenshot via `:DISPlay:DATA?` + persistence modes), shared `presets` on DHO800. REST: `/scope/references/*`, `/scope/history`, `/scope/display`, `/scope/screenshot?format=`, `/scope/presets/*`. UI: ref slot grid, history scrubber, persistence selector + screenshot download links, 10-slot preset grid. See [docs/steps/2-7c-scope-save-and-replay.md](docs/steps/2-7c-scope-save-and-replay.md).
-  - [x] **2.7d protocol decoders** — `decoders` capability with I²C / SPI / UART / CAN / LIN discriminated configs, 2 buses on DHO800, `:BUS:MODE` + protocol-specific source/baud commands. REST: `/scope/buses`, `/scope/buses/:id`, `/scope/buses/:id/packets` (polling endpoint; NDJSON stream wired behind in-memory buffer). UI: compact bus status + disable (full bus configuration form is intentionally thin — richer decoder UI is backlog). See [docs/steps/2-7d-scope-protocol-decoders.md](docs/steps/2-7d-scope-protocol-decoders.md).
+  - [~] **2.7d protocol decoders** — `decoders` capability with I²C / SPI / UART / CAN / LIN discriminated configs, 2 buses on DHO800, `:BUS:MODE` + protocol-specific source/baud commands. REST: `/scope/buses`, `/scope/buses/:id`, `/scope/buses/:id/packets` (polling endpoint with `since=<seq>` paging over an in-memory buffer; NDJSON streaming variant tracked as backlog). UI: compact bus status + on/off (per-protocol configuration forms and the virtualised packet list with CSV export are tracked under "Protocol-decoder waterfall" in the backlog). See [docs/steps/2-7d-scope-protocol-decoders.md](docs/steps/2-7d-scope-protocol-decoders.md).
 
 ## Epic 3 — Usability and platform
 
@@ -37,6 +37,9 @@ Living checklist mirroring the subplans. Update when a step finishes (check the 
 - [ ] **3.2 resilient connectivity** — Connection-lost UX, retry/backoff, documented `sessionId` vs reconnect. See [docs/steps/3-2-resilient-connectivity.md](docs/steps/3-2-resilient-connectivity.md).
 - [ ] **3.3 session persistence** — Saved connections + optional reopen last session on launch (no auth). See [docs/steps/3-3-session-persistence.md](docs/steps/3-3-session-persistence.md).
 - [ ] **3.4 device detail UX** — Per-kind section order + overview card improvements. See [docs/steps/3-4-device-detail-ux.md](docs/steps/3-4-device-detail-ux.md).
+- [ ] **3.5 user documentation + landing page** — Rewritten README (two-path quick-start, supported-hardware table, screenshots, hardware-report CTA), user manual under `docs/user/` (installation, getting started, per-kind pages mirroring 2.5/2.6/2.7, raw SCPI, troubleshooting, hardware reports, roadmap), VitePress site under `docs/site/` reusing the same Markdown, `.github/workflows/pages.yml` deploying to GitHub Pages on push to `main`, issue templates under `.github/ISSUE_TEMPLATE/` (`instrument-report.yml`, `bug.yml`, `feature.yml`, `config.yml`), `LICENSE` (MIT). No secrets required. See [docs/steps/3-5-user-documentation-and-landing.md](docs/steps/3-5-user-documentation-and-landing.md).
+- [ ] **3.6 Docker image + release workflow** — `@lxi-web/server` serves the built web dist in production with SPA fallback + `/healthz`, multi-stage Dockerfile on distroless Node 24 nonroot built for `amd64` + `arm64`, committed `docker-compose.yml`, `.github/workflows/release.yml` on `v*.*.*` tags with shared sanity gate, multi-registry publish (GHCR + Docker Hub) with semver tag fan-out via `docker/metadata-action`, SLSA build provenance, auto-generated GitHub Release. Versioning driven by `pnpm version <bump>` with tag/`package.json` match guard. **Secrets required:** `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` (GHCR uses auto-provided `GITHUB_TOKEN`). See [docs/steps/3-6-docker-image-and-release.md](docs/steps/3-6-docker-image-and-release.md).
+- [ ] **3.7 `@lxi-web/core` npm publishing** — Library audit on `packages/core/package.json` (explicit `exports` map for `.`, `./scpi`, `./drivers/rigol`; `files` allowlist; `publishConfig.access: public` + `provenance: true`; `sideEffects: false`), `server` + `web` pinned `"private": true`, `test:exports` guard, `packages/core/README.md`, parallel `npm` job on the 3.6 release workflow verifying tag matches `package.json#version` and running `pnpm publish --access public --provenance` via OIDC (stable → `latest`, pre-releases `-rc.N` / `-beta.N` → `next` dist-tag), `docs/user/embed-core.md` ingested into the Pages site. **Secret required:** `NPM_TOKEN` (automation token on `@lxi-web` scope). See [docs/steps/3-7-npm-publish-core.md](docs/steps/3-7-npm-publish-core.md).
 
 ## Epic 4 — Mock + additional device kinds
 
@@ -85,8 +88,22 @@ Items explicitly deferred from v1 or beyond Epic 4. Not committed to an order; p
       plumbing for Rigol DHO800.
 - [ ] **Digital / logic channels** — expose the MSO option on DHO804 as
       digital channels in `getChannels`.
-- [ ] **Protocol-decoder waterfall** — richer bus-aware visualization on
-      top of the plain packet list from 2.7.
+- [ ] **Extended trigger kinds on 2.7a** — pattern, duration, delay,
+      setup/hold plus the serial-protocol trigger kinds (i2c, spi, uart,
+      can, lin). The discriminated-union plumbing is already in place;
+      this is a driver + UI subform fan-out.
+- [ ] **Full 41-item DHO800 measurement catalog (2.7b)** — expand the
+      22-item catalog in `RigolDho800` to the full DHO800 set from the
+      programming guide.
+- [ ] **Protocol-decoder waterfall (2.7d UI)** — per-protocol
+      configuration forms (I²C thresholds, SPI CS polarity / bit order,
+      UART baud / parity, CAN sample point, LIN version), virtualised
+      packet list with auto-scroll + CSV export, and a waterfall view
+      synchronised with the hero uPlot.
+- [ ] **NDJSON streaming for `/dmm/logging/samples` and
+      `/scope/buses/:id/packets`** — upgrade the current resumable
+      `since=<seq>` JSON polls to true chunked NDJSON so very high
+      sample/packet rates don't pile up in poll batches.
 
 ### Platform
 

@@ -446,12 +446,20 @@ test("DM858 getTemperatureConfig decodes unit + transducer", async () => {
   assert.equal(cfg.transducer, "thermocouple-k");
 });
 
-test("DM858 setTemperatureConfig emits unit + transducer SCPI", async () => {
+test("DM858 setTemperatureConfig emits unit + two-step transducer SCPI", async () => {
   const port = new FakeScpiPort();
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
   await dmm.setTemperatureConfig!({ unit: "celsius", transducer: "pt1000" });
   assert.ok(port.writes.includes(":UNIT:TEMPerature C"));
-  assert.ok(port.writes.includes(":SENSe:TEMPerature:TRANsducer:TYPE RTD,PT1000"));
+  // DM858 accepts family + sub-type as two writes, not comma-joined.
+  assert.ok(port.writes.includes(":SENSe:TEMPerature:TRANsducer:TYPE RTD"));
+  assert.ok(port.writes.includes(":SENSe:TEMPerature:TRANsducer:RTD:TYPE PT1000"));
+
+  const tcPort = new FakeScpiPort();
+  const tcDmm = new RigolDm858(tcPort, parseIdn("RIGOL,DM858,SN,FW"));
+  await tcDmm.setTemperatureConfig!({ unit: "celsius", transducer: "thermocouple-k" });
+  assert.ok(tcPort.writes.includes(":SENSe:TEMPerature:TRANsducer:TYPE TCouple"));
+  assert.ok(tcPort.writes.includes(":SENSe:TEMPerature:TRANsducer:TCouple:TYPE K"));
 });
 
 test("DM858 preset save/recall emit *SAV / *RCL and validate slot range", async () => {

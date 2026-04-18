@@ -81,27 +81,27 @@ mutating POSTs, matching 2.5's convention.
 
 ## Acceptance criteria
 
-- [ ] `MultimeterMode` includes `"fourWireResistance"`; drivers that
+- [x] `MultimeterMode` includes `"fourWireResistance"`; drivers that
       don't advertise it in `supportedModes` continue to type-check.
-- [ ] `IMultimeter` gains optional `ranging` and `triggering` capabilities
+- [x] `IMultimeter` gains optional `ranging` and `triggering` capabilities
       plus the methods above. Non-supporting drivers keep working
       unchanged.
-- [ ] `RigolDm858` advertises `ranging` with the DM858's per-mode range
+- [x] `RigolDm858` advertises `ranging` with the DM858's per-mode range
       list and NPLC options drawn from the programming guide, and
       `triggering` with the DM858's source / slope / delay / sample-count
       ranges. 4-wire resistance is wired to `:CONFigure:FRESistance AUTO`
       (or the DM858 equivalent) and round-trips through `getMode` /
       `setMode`.
-- [ ] REST endpoints validate input (400 on range below/above capability
+- [x] REST endpoints validate input (400 on range below/above capability
       bounds, 400 on NPLC not in `capability.nplc`, 409 on unsupported)
       and forward to the driver.
-- [ ] UI hides each card cleanly when unsupported; AutoZero ONCE does
+- [x] UI hides each card cleanly when unsupported; AutoZero ONCE does
       not leave the button stuck in the Once state; software-trigger
       button is disabled unless source is Software.
-- [ ] Unit tests cover range clamping, NPLC round-trip, AutoZero
+- [x] Unit tests cover range clamping, NPLC round-trip, AutoZero
       pulse semantics, software-trigger fire, and the new mode's
       `:CONFigure:FRESistance` wiring.
-- [ ] Integration tests cover `/dmm/ranging`, `/dmm/trigger`, and
+- [x] Integration tests cover `/dmm/ranging`, `/dmm/trigger`, and
       `/dmm/trigger/fire` — capability advertising, input validation,
       and SCPI side-effects against a fake port.
 

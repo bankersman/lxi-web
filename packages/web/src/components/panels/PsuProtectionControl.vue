@@ -5,7 +5,12 @@ import type {
   PsuProtectionKind,
   PsuProtectionState,
 } from "@lxi-web/core/browser";
-import { api, type PsuChannelProtectionInfo } from "@/api/client";
+import {
+  api,
+  type PsuChannelProtectionInfo,
+  type PsuProtectionSnapshot,
+} from "@/api/client";
+import { useLiveReading } from "@/composables/useLiveReading";
 
 const props = defineProps<{
   sessionId: string;
@@ -20,8 +25,20 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ change: [] }>();
 
+/**
+ * Every channel card mounts its own `<PsuProtectionControl>` but the server
+ * emits a single `psu.protection` snapshot per session containing all
+ * channels; the sessions store refcounts local subscribers so we still
+ * have exactly one device poll regardless of channel count. Each card
+ * picks its own entry out of the snapshot by `props.channel`.
+ */
+const live = useLiveReading<PsuProtectionSnapshot>(
+  () => props.sessionId,
+  "psu.protection",
+  { enabled: computed(() => props.enabled) },
+);
+
 const info = ref<PsuChannelProtectionInfo | null>(null);
-const loadError = ref<string | null>(null);
 const actionError = ref<string | null>(null);
 const busy = reactive<Record<PsuProtectionKind, boolean>>({ ovp: false, ocp: false });
 /** Editable level drafts keyed by kind (sync from remote). */
@@ -33,49 +50,36 @@ const KIND_LABEL: Record<PsuProtectionKind, string> = {
 };
 const KIND_UNIT: Record<PsuProtectionKind, string> = { ovp: "V", ocp: "A" };
 
-let pollTimer: ReturnType<typeof setInterval> | null = null;
-
-async function load(): Promise<void> {
-  try {
-    const next = await api.getPsuProtection(props.sessionId, props.channel);
-    info.value = next;
-    // Only sync draft from remote when the user is not mid-edit.
-    if (!busy.ovp) draft.ovp = next.ovp.level;
-    if (!busy.ocp) draft.ocp = next.ocp.level;
-    loadError.value = null;
-  } catch (err) {
-    loadError.value = err instanceof Error ? err.message : String(err);
-  }
-}
-
-function startPolling(): void {
-  stopPolling();
-  pollTimer = setInterval(() => void load(), 3000);
-}
-function stopPolling(): void {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
+function applySnapshot(next: PsuChannelProtectionInfo): void {
+  info.value = next;
+  if (!busy.ovp) draft.ovp = next.ovp.level;
+  if (!busy.ocp) draft.ocp = next.ocp.level;
 }
 
 watch(
-  () => props.enabled,
-  (on) => {
-    if (on) {
-      void load();
-      startPolling();
-    } else {
-      stopPolling();
-    }
+  live.data,
+  (snapshot) => {
+    if (!snapshot?.supported) return;
+    const mine = snapshot.channels.find((c) => c.channel === props.channel);
+    if (mine) applySnapshot(mine);
   },
   { immediate: true },
 );
 
+const loadError = computed(() => live.error.value);
+
+async function refresh(): Promise<void> {
+  try {
+    applySnapshot(await api.getPsuProtection(props.sessionId, props.channel));
+  } catch {
+    /* next WS frame will surface the error */
+  }
+}
+
 watch(
   () => props.refreshKey,
   () => {
-    if (props.enabled) void load();
+    if (props.enabled) void refresh();
   },
 );
 
@@ -88,7 +92,7 @@ async function toggle(kind: PsuProtectionKind): Promise<void> {
     await api.setPsuProtection(props.sessionId, props.channel, kind, {
       enabled: !current.enabled,
     });
-    await load();
+    await refresh();
     emit("change");
   } catch (err) {
     actionError.value = err instanceof Error ? err.message : String(err);
@@ -106,7 +110,7 @@ async function applyLevel(kind: PsuProtectionKind): Promise<void> {
     await api.setPsuProtection(props.sessionId, props.channel, kind, {
       level: value,
     });
-    await load();
+    await refresh();
     emit("change");
   } catch (err) {
     actionError.value = err instanceof Error ? err.message : String(err);
@@ -120,7 +124,7 @@ async function clear(kind: PsuProtectionKind): Promise<void> {
   actionError.value = null;
   try {
     await api.clearPsuProtectionTrip(props.sessionId, props.channel, kind);
-    await load();
+    await refresh();
     emit("change");
   } catch (err) {
     actionError.value = err instanceof Error ? err.message : String(err);

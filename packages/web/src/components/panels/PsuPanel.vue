@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from "vue";
 import { Link2 } from "lucide-vue-next";
 import { api, type PsuPairingInfo } from "@/api/client";
-import { usePolling } from "@/composables/usePolling";
+import { useLiveReading } from "@/composables/useLiveReading";
 import { formatSi } from "@/lib/format";
 import type { PsuChannelState, PsuPairingMode } from "@lxi-web/core/browser";
 import PsuPairingControl from "./PsuPairingControl.vue";
@@ -12,10 +12,24 @@ import PsuProtectionControl from "./PsuProtectionControl.vue";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
 
-const { data, error, refresh } = usePolling<PsuChannelState[]>(
-  () => api.getPsuChannels(props.sessionId),
-  { intervalMs: 1500, enabled: computed(() => props.enabled) },
+const { data, error } = useLiveReading<PsuChannelState[]>(
+  () => props.sessionId,
+  "psu.channels",
+  { enabled: computed(() => props.enabled) },
 );
+
+/**
+ * WS drives the steady-state updates, but after an explicit user action
+ * (Apply, Output toggle, preset recall, …) we hit the HTTP endpoint once
+ * for immediate feedback instead of waiting up to one scheduler tick.
+ */
+async function refresh(): Promise<void> {
+  try {
+    data.value = await api.getPsuChannels(props.sessionId);
+  } catch {
+    /* the live feed will surface the next error */
+  }
+}
 
 const pairing = ref<PsuPairingInfo | null>(null);
 const enabledRef = computed(() => props.enabled);

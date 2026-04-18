@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { api } from "@/api/client";
-import { usePolling } from "@/composables/usePolling";
+import { useLiveReading } from "@/composables/useLiveReading";
 import { formatSi } from "@/lib/format";
 import { multimeterModeLabel } from "@/lib/labels";
 import type { MultimeterReading } from "@lxi-web/core/browser";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
 
-const { data, error } = usePolling<MultimeterReading>(
-  () => api.getDmmReading(props.sessionId),
-  { intervalMs: 1000, enabled: computed(() => props.enabled) },
+const { data, error } = useLiveReading<MultimeterReading>(
+  () => props.sessionId,
+  "dmm.reading",
+  { enabled: computed(() => props.enabled) },
 );
 
 const display = computed(() => {

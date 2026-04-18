@@ -16,6 +16,7 @@ import {
   type ScopeTriggerInfo,
   type WaveformDto,
 } from "@/api/client";
+import { useLiveReading } from "@/composables/useLiveReading";
 import { usePolling } from "@/composables/usePolling";
 import { useThemeStore } from "@/stores/theme";
 import { formatSi, formatTime } from "@/lib/format";
@@ -35,14 +36,37 @@ const props = defineProps<{ sessionId: string; enabled: boolean }>();
 
 const theme = useThemeStore();
 
-const channels = usePolling<OscilloscopeChannelState[]>(
-  () => api.getScopeChannels(props.sessionId),
-  { intervalMs: 3000, enabled: computed(() => props.enabled) },
+const channels = useLiveReading<OscilloscopeChannelState[]>(
+  () => props.sessionId,
+  "scope.channels",
+  { enabled: computed(() => props.enabled) },
 );
-const timebase = usePolling<TimebaseState>(
-  () => api.getScopeTimebase(props.sessionId),
-  { intervalMs: 3000, enabled: computed(() => props.enabled) },
+const timebase = useLiveReading<TimebaseState>(
+  () => props.sessionId,
+  "scope.timebase",
+  { enabled: computed(() => props.enabled) },
 );
+
+/**
+ * One-shot HTTP fetches wired to user actions (toggle channel, change
+ * timebase). The WS feed covers the steady-state refresh; these just
+ * give immediate feedback after an explicit write instead of waiting for
+ * the next scheduler tick.
+ */
+async function refreshChannels(): Promise<void> {
+  try {
+    channels.data.value = await api.getScopeChannels(props.sessionId);
+  } catch {
+    /* live feed will surface the next error */
+  }
+}
+async function refreshTimebase(): Promise<void> {
+  try {
+    timebase.data.value = await api.getScopeTimebase(props.sessionId);
+  } catch {
+    /* live feed will surface the next error */
+  }
+}
 
 const waveform = ref<WaveformDto | null>(null);
 const waveformChannel = ref(1);
@@ -148,7 +172,7 @@ async function capture(): Promise<void> {
 
 async function toggleChannel(channel: OscilloscopeChannelState): Promise<void> {
   await api.setScopeChannelEnabled(props.sessionId, channel.id, !channel.enabled);
-  await channels.refresh();
+  await refreshChannels();
 }
 
 async function applyTimebase(event: Event): Promise<void> {
@@ -159,7 +183,7 @@ async function applyTimebase(event: Event): Promise<void> {
   );
   event.preventDefault();
   await api.setScopeTimebase(props.sessionId, { scale, position });
-  await timebase.refresh();
+  await refreshTimebase();
 }
 
 function exportCsv(): void {

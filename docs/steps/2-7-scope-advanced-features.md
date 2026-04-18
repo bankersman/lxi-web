@@ -154,6 +154,16 @@ surfaced there.
 - **Accessibility.** Tab strip uses roving tab-index; all dynamic
   numeric readouts stay inside `aria-live="polite"` regions; any
   animated transitions respect `prefers-reduced-motion`.
+- **Transport for recurring readouts.** The persistent panels above the
+  waveform — channel list (`scope.channels`) and timebase
+  (`scope.timebase`) — move over the WebSocket via `useLiveReading`;
+  see [2-2 § Live reading subscriptions](./2-2-rest-and-websocket.md#live-reading-subscriptions).
+  One-shot and event-driven queries stay on REST: `readWaveform` after
+  Single-capture, the entire `loadAdvanced()` capability sweep,
+  measurement polling while the measurements tab is active (2.7b), and
+  screenshot downloads (2.7c). REST endpoints for the WS-backed state
+  are retained for post-write snappy refreshes (e.g. after toggling a
+  channel or applying a new timebase).
 
 ## Deferred for 2.7 follow-ups
 

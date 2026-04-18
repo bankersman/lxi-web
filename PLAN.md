@@ -76,7 +76,7 @@ todos:
     status: completed
   - id: epic-3-7-npm-publish-core
     content: Epic 3.7 — @lxi-web/core npm publishing on v*.*.* tags (parallel to 3.6). Package audit (exports map for ., ./scpi, ./drivers/rigol; files allowlist; publishConfig.access public + provenance; sideEffects false; engines node >= 24), server and web pinned private, test:exports guard, packages/core/README.md, npm job on release workflow with version/tag match guard + provenance via OIDC, pre-releases under next dist-tag, docs/user/embed-core.md + Pages card. Secrets — NPM_TOKEN (automation token on @lxi-web scope). Progress + docs/steps/3-7-*.md; commit
-    status: pending
+    status: completed
   - id: epic-4-1-scpi-mock
     content: Epic 4.1 — SCPI TCP mock instrument(s) for dev/CI; configurable *IDN?, minimal typed SCPI per kind + unknown; progress + docs/steps/4-1-*.md; commit
     status: pending

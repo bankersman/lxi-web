@@ -24,4 +24,8 @@ features:
     details: Save instruments and optionally auto-connect on launch. All storage lives in your browser.
   - title: Built for solo engineers
     details: One Docker container, trusted LAN, no multi-user auth. What you would deploy on your own workbench.
+  - title: Drivers without the dashboard
+    details: "`@lxi-web/core` publishes the SCPI transport, façades, and Rigol drivers to npm so you can script instruments straight from Node."
+    link: /manual/embed-core
+    linkText: Read the embed guide
 ---

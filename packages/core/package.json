@@ -1,11 +1,33 @@
 {
   "name": "@lxi-web/core",
   "version": "0.0.0",
-  "private": true,
+  "description": "Typed SCPI drivers and façades for LXI instruments — the portable core of lxi-web.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=24"
+  },
+  "keywords": [
+    "lxi",
+    "scpi",
+    "instrumentation",
+    "rigol",
+    "oscilloscope",
+    "power-supply",
+    "multimeter"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lxi-web/lxi-web.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/lxi-web/lxi-web#readme",
+  "bugs": {
+    "url": "https://github.com/lxi-web/lxi-web/issues"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -14,14 +36,33 @@
     "./browser": {
       "types": "./dist/browser.d.ts",
       "import": "./dist/browser.js"
-    }
+    },
+    "./scpi": {
+      "types": "./dist/scpi/index.d.ts",
+      "import": "./dist/scpi/index.js"
+    },
+    "./drivers/rigol": {
+      "types": "./dist/drivers/rigol/index.d.ts",
+      "import": "./dist/drivers/rigol/index.js"
+    },
+    "./package.json": "./package.json"
   },
-  "files": ["dist"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test --import tsx/esm ./test/*.test.ts"
+    "test": "node --test --import tsx/esm ./test/*.test.ts",
+    "test:exports": "node --test --import tsx/esm ./test/exports.test.ts",
+    "prepack": "cp ../../LICENSE ./LICENSE"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

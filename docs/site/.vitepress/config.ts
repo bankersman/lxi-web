@@ -38,6 +38,12 @@ export default defineConfig({
           ],
         },
         {
+          text: "For developers",
+          items: [
+            { text: "Embed the core drivers", link: "/manual/embed-core" },
+          ],
+        },
+        {
           text: "Reference",
           items: [
             { text: "Troubleshooting", link: "/manual/troubleshooting" },

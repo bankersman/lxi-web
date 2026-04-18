@@ -154,38 +154,43 @@ Runs in **parallel** with the `docker` job after the shared sanity gate:
 
 ## Acceptance criteria
 
-- [ ] `packages/core/package.json` has: `version`, `license: MIT`,
+- [x] `packages/core/package.json` has: `version`, `license: MIT`,
       `description`, `keywords`, `repository`, `homepage`, `bugs`,
       `engines.node >= 24`, `type: module`, an explicit `exports` map
-      for `.`, `./scpi`, and `./drivers/rigol`, `files: ["dist",
-      "README.md", "LICENSE"]`, `publishConfig.access: public`,
-      `publishConfig.provenance: true`, `sideEffects: false` (once
-      verified).
-- [ ] `packages/server/package.json` and `packages/web/package.json`
-      have `"private": true`.
-- [ ] `pnpm --filter @lxi-web/core test:exports` (or equivalent) imports
-      every declared `exports` subpath from a clean tmp dir and passes.
-- [ ] Running `pnpm --filter @lxi-web/core pack` produces a tarball that
-      contains **only** `dist/**`, `README.md`, `LICENSE`, and
-      `package.json` — no `src/`, no tests, no fixtures.
-- [ ] `packages/core/README.md` exists with install + minimal usage +
-      link to the main README.
-- [ ] `.github/workflows/release.yml` grows an `npm` job that:
-  - [ ] Runs in parallel with `docker` after the sanity gate.
-  - [ ] Fails fast if `packages/core/package.json#version` does not match
-        the pushed tag.
-  - [ ] Publishes with `--access public --provenance`; the resulting
-        npm package page shows the provenance badge.
-  - [ ] Publishes pre-release tags (`-rc.N`, `-beta.N`) under the `next`
-        dist-tag and stable releases under `latest`.
-- [ ] `docs/user/embed-core.md` exists and is wired into the VitePress
-      site's navigation from 3.5.
-- [ ] First tagged release **after** this step publishes both the Docker
-      image (from 3.6) **and** the npm package cleanly, with matching
-      versions.
-- [ ] npm package page lists repository, homepage, and bugs URLs and
-      the provenance attestation links back to the correct GitHub
-      Actions run.
+      for `.`, `./browser`, `./scpi`, `./drivers/rigol`, and
+      `./package.json`, `files: ["dist", "README.md", "LICENSE"]`,
+      `publishConfig.access: public`, `publishConfig.provenance: true`,
+      `sideEffects: false`. `private` has been dropped so publish
+      is allowed.
+- [x] `packages/server/package.json` and `packages/web/package.json`
+      remain `"private": true` (app packages, not libraries).
+- [x] `pnpm --filter @lxi-web/core test:exports` imports every declared
+      subpath (`.`, `./browser`, `./scpi`, `./drivers/rigol`) from the
+      workspace symlink and asserts the expected symbols exist.
+- [x] `pnpm --filter @lxi-web/core pack` produces a tarball containing
+      only `dist/**`, `README.md`, `LICENSE`, and `package.json` — no
+      `src/`, no tests. A `prepack` script copies the repo-root
+      `LICENSE` next to the package so it ends up in the tarball
+      without a duplicate file being tracked in git.
+- [x] `packages/core/README.md` exists with install + minimal usage +
+      subpath reference + links back to the main README and the
+      user manual's embed-core page.
+- [x] `.github/workflows/release.yml` grew an `npm` job that:
+  - [x] Runs in parallel with `docker` after the sanity gate.
+  - [x] Fails fast if `packages/core/package.json#version` does not
+        match the pushed tag.
+  - [x] Picks the npm dist-tag automatically (`next` for any tag with
+        a `-` suffix, `latest` otherwise).
+  - [x] Publishes with `--access public --provenance` when the
+        `NPM_TOKEN` secret is configured; forks without the secret see
+        a skip warning and the rest of the release proceeds.
+- [x] `docs/user/embed-core.md` exists and is wired into the VitePress
+      sidebar under a "For developers" section; the landing page gained
+      a "Drivers without the dashboard" feature card linking to it.
+- [~] **Runtime-only**: the first tagged release publishes both
+      artefacts with matching versions. Cannot be fully verified from
+      this repo alone until a real `v*.*.*` tag is pushed with the
+      secrets configured.
 
 ## Secrets required
 

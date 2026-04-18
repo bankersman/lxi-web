@@ -127,9 +127,72 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
+  npm:
+    name: Publish @lxi-web/core to npm
+    needs: sanity
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify core package version matches tag
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(node -p "require('./packages/core/package.json').version")
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::git tag v$TAG does not match packages/core/package.json version $PKG"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @lxi-web/core build
+      - run: pnpm --filter @lxi-web/core test:exports
+
+      - name: Pick dist-tag
+        id: disttag
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            echo "tag=next" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check NPM token
+        id: npmcheck
+        env:
+          TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::NPM_TOKEN secret is not set; skipping npm publish."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish
+        if: steps.npmcheck.outputs.enabled == 'true'
+        working-directory: packages/core
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+        run: |
+          pnpm publish --access public --no-git-checks --provenance --tag ${{ steps.disttag.outputs.tag }}
+
   github-release:
     name: Create GitHub Release
-    needs: docker
+    needs: [docker, npm]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -63,6 +63,7 @@ import type {
   PsuProtectionKind,
   PsuProtectionState,
   DeviceErrorEntry,
+  DeviceIdentity,
   SessionSummary,
   PanicResult,
   TranscriptEntry,
@@ -129,12 +130,6 @@ export interface PsuChannelProtectionInfo {
 export interface PsuProtectionSnapshot {
   readonly supported: boolean;
   readonly channels: readonly PsuChannelProtectionInfo[];
-}
-
-export interface PsuPresetsInfo {
-  readonly supported: boolean;
-  readonly slots: number;
-  readonly occupied: readonly boolean[];
 }
 
 export interface WaveformDto {
@@ -452,6 +447,11 @@ export const api = {
     const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/dmm/reading`);
     const body = await parse<{ reading: MultimeterReading }>(res);
     return body.reading;
+  },
+
+  async getDmmSnapshot(id: string): Promise<DmmSnapshot> {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(id)}/dmm`);
+    return parse<DmmSnapshot>(res);
   },
 
   async getDmmMode(
@@ -1405,6 +1405,19 @@ export const api = {
 
 // ---- DTO helper types for responses ----
 
+/** Single GET `/dmm` bootstrap for the multimeter detail page. */
+export interface DmmSnapshot {
+  readonly identity: DeviceIdentity | null;
+  readonly mode: { readonly mode: MultimeterMode; readonly supported: readonly MultimeterMode[] };
+  readonly ranging: DmmRangingInfo;
+  readonly trigger: DmmTriggerInfo;
+  readonly math: DmmMathInfo;
+  readonly dual: DmmDualInfo;
+  readonly logging: DmmLoggingInfo;
+  readonly temperature: DmmTemperatureInfo;
+  readonly presets: PresetsInfo;
+}
+
 export interface DmmRangingInfo {
   readonly supported: boolean;
   readonly capability?: MultimeterRangingCapability;
@@ -1447,6 +1460,9 @@ export interface PresetsInfo {
   readonly slots: number;
   readonly occupied: readonly boolean[];
 }
+
+/** Alias: PSU preset list endpoint returns the same shape as {@link PresetsInfo}. */
+export type PsuPresetsInfo = PresetsInfo;
 
 export interface ScopeTriggerInfo {
   readonly supported: boolean;

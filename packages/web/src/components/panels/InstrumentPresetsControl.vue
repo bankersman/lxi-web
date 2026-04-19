@@ -1,21 +1,40 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref, useId, watch } from "vue";
 import { Save, Upload, Slash } from "lucide-vue-next";
-import { api, type PsuPresetsInfo } from "@/api/client";
+import type { PresetsInfo } from "@/api/client";
 import { useSafeModeGate } from "@/composables/useSafeModeGate";
 import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 
-const props = defineProps<{
-  sessionId: string;
-  enabled: boolean;
-  /** Bump to force a reload of the slot catalog. */
-  refreshKey?: number;
+const props = withDefaults(
+  defineProps<{
+    enabled: boolean;
+    /** Bump to force a reload of the slot catalog. */
+    refreshKey?: number;
+    /**
+     * Shown under the "Presets" title. Use `{slots}` where the slot count should appear.
+     */
+    description: string;
+    loadCatalog: () => Promise<PresetsInfo>;
+    saveSlot: (slot: number) => Promise<void>;
+    recallSlot: (slot: number) => Promise<void>;
+    /** Omit outer card chrome (e.g. nested inside another card). */
+    embedded?: boolean;
+  }>(),
+  { embedded: false },
+);
+
+const emit = defineEmits<{
+  recalled: [slot: number];
+  saved: [slot: number];
 }>();
-const emit = defineEmits<{ recalled: [slot: number] }>();
+
+const baseId = useId();
+const headingId = `${baseId}-heading`;
+const overwriteId = `${baseId}-overwrite`;
 
 const gate = useSafeModeGate();
 
-const info = ref<PsuPresetsInfo | null>(null);
+const info = ref<PresetsInfo | null>(null);
 const loadError = ref<string | null>(null);
 const actionError = ref<string | null>(null);
 const busySlot = ref<number | null>(null);
@@ -24,9 +43,13 @@ const confirmingSave = ref<number | null>(null);
 
 const supported = computed(() => info.value?.supported === true);
 
+const descriptionHtml = computed(() =>
+  props.description.replace(/\{slots\}/g, String(info.value?.slots ?? "—")),
+);
+
 async function load(): Promise<void> {
   try {
-    info.value = await api.getPsuPresets(props.sessionId);
+    info.value = await props.loadCatalog();
     loadError.value = null;
   } catch (err) {
     loadError.value = err instanceof Error ? err.message : String(err);
@@ -62,8 +85,9 @@ async function doSave(slot: number): Promise<void> {
   actionError.value = null;
   confirmingSave.value = null;
   try {
-    await api.savePsuPreset(props.sessionId, slot);
+    await props.saveSlot(slot);
     await load();
+    emit("saved", slot);
   } catch (err) {
     actionError.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -75,7 +99,7 @@ async function doRecall(slot: number): Promise<void> {
   busySlot.value = slot;
   actionError.value = null;
   try {
-    await api.recallPsuPreset(props.sessionId, slot);
+    await props.recallSlot(slot);
     emit("recalled", slot);
   } catch (err) {
     actionError.value = err instanceof Error ? err.message : String(err);
@@ -88,21 +112,24 @@ async function doRecall(slot: number): Promise<void> {
 <template>
   <section
     v-if="supported"
-    class="rounded-[var(--radius-card)] border border-border bg-surface-2 p-4"
-    aria-labelledby="psu-presets-heading"
+    :class="
+      embedded
+        ? 'flex flex-col gap-3'
+        : 'rounded-[var(--radius-card)] border border-border bg-surface-2 p-4'
+    "
+    :aria-labelledby="headingId"
   >
-    <header class="mb-3 flex items-center gap-2">
+    <header class="flex items-center gap-2" :class="embedded ? 'mb-0' : 'mb-3'">
       <span
-        class="inline-flex h-7 w-7 items-center justify-center rounded-md bg-surface-3 text-accent"
+        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-3 text-accent"
         aria-hidden="true"
       >
         <Save class="h-4 w-4" />
       </span>
-      <div>
-        <h3 id="psu-presets-heading" class="text-sm font-semibold">Presets</h3>
+      <div class="min-w-0">
+        <h3 :id="headingId" class="text-sm font-semibold">Presets</h3>
         <p class="text-xs text-fg-muted">
-          Save and recall the full PSU state (all channels, OVP/OCP, pairing)
-          to one of {{ info!.slots }} internal memory slots.
+          {{ descriptionHtml }}
         </p>
       </div>
     </header>
@@ -171,10 +198,10 @@ async function doRecall(slot: number): Promise<void> {
     <div
       v-if="confirmingSave !== null"
       role="alertdialog"
-      aria-labelledby="psu-preset-overwrite"
+      :aria-labelledby="overwriteId"
       class="mt-3 flex items-center justify-between gap-2 rounded-md border border-state-connecting/40 bg-state-connecting/10 p-3 text-xs"
     >
-      <p id="psu-preset-overwrite" class="text-fg-muted">
+      <p :id="overwriteId" class="text-fg-muted">
         Overwrite slot {{ confirmingSave }}?
       </p>
       <div class="flex items-center gap-2">

@@ -5,17 +5,19 @@ import type {
   MultimeterRange,
   TemperatureTransducer,
 } from "../../facades/multimeter.js";
-import { queryOptList } from "./_shared/index.js";
 
 /**
- * Variant-specific capability profile for the Rigol DM800 DMM family. The
- * DM858 and DM858E share the same command tree; the E-variant adds a few
- * function licences we express via `modes` and `transducers`.
+ * Variant-specific capability profile for the Rigol DM800 DMM family (DM858 /
+ * DM858E). **Sourced from** `docs/vendor/rigol/DM858_SCPI_API_Reference.md`
+ * — secondary pairings follow §3.17 `[SENSe]:…:SECondary` tables (only
+ * measurement secondaries that map to `MultimeterMode` are listed; `CALC:DATA`
+ * is not a separate mode in our facade).
  */
 export interface Dm800Profile {
   readonly variant: string;
   readonly modes: readonly MultimeterMode[];
   readonly ranges: Partial<Record<MultimeterMode, readonly MultimeterRange[]>>;
+  /** Doc §3.17 — NPLC for DC V, DC I, 2 Ω, 4 Ω (0.4 | 5 | 20 PLC); AC modes have no NPLC command. */
   readonly nplcOptions: readonly number[];
   readonly dbmReferences: readonly number[];
   readonly transducers: readonly TemperatureTransducer[];
@@ -23,8 +25,6 @@ export interface Dm800Profile {
   readonly presetSlots: number;
 }
 
-// Full mode list available on the flagship DM858/DM858E. A catch-all profile
-// uses this set; leaner SKUs in the future can prune it.
 const FULL_MODES: readonly MultimeterMode[] = [
   "dcVoltage",
   "acVoltage",
@@ -110,19 +110,20 @@ const FULL_TRANSDUCERS: readonly TemperatureTransducer[] = [
   "thermistor",
 ];
 
+/**
+ * §3.17 SECondary: only entries that map to another `MultimeterMode`.
+ * (Many primaries only allow `CALC:DATA` as secondary — omitted here.)
+ */
 const FULL_DUAL_DISPLAY: MultimeterDualDisplayCapability["pairs"] = {
-  dcVoltage: ["acVoltage", "frequency"],
-  acVoltage: ["dcVoltage", "frequency"],
-  dcCurrent: ["acCurrent", "frequency"],
-  acCurrent: ["dcCurrent", "frequency"],
-  resistance: ["continuity"],
-  fourWireResistance: ["continuity"],
-  frequency: ["period", "acVoltage"],
-  period: ["frequency"],
-  temperature: ["resistance"],
+  acVoltage: ["frequency", "period"],
+  acCurrent: ["frequency", "period"],
+  frequency: ["acVoltage"],
+  period: ["acVoltage"],
 };
 
-const STANDARD_NPLC: readonly number[] = [0.02, 0.2, 1, 10, 100];
+/** Doc §3.17.63 / §3.17.18 / resistance & FRES NPLC tables: 0.4, 5, 20 PLC. */
+const STANDARD_NPLC: readonly number[] = [0.4, 5, 20];
+
 const STANDARD_DBM_REF: readonly number[] = [
   50, 75, 93, 110, 124, 125, 135, 150, 250, 300, 500, 600, 800, 900, 1000, 1200, 8000,
 ];
@@ -139,8 +140,6 @@ export const DM800_VARIANTS: readonly Dm800Profile[] = [
     presetSlots: 10,
   },
   {
-    // DM858E drops the fourWireResistance option until the premium license
-    // is installed; the refiner re-adds it when *OPT? reports DM-4W.
     variant: "DM858E",
     modes: FULL_MODES.filter((m) => m !== "fourWireResistance"),
     ranges: { ...FULL_RANGES, fourWireResistance: undefined },
@@ -164,22 +163,15 @@ export const DM800_DEFAULT: Dm800Profile = {
 };
 
 /**
- * Runtime refinement: `*OPT?` can tell us whether the DM858E has the
- * 4-wire-resistance license installed. Any token that matches `DM-4W`
- * re-enables the fourWireResistance mode on the active profile.
+ * DM858 / DM858E firmware does not implement `*OPT?` reliably; querying it can
+ * return SCPI error -295 (invalid memory access). We therefore skip option
+ * probing. DM858E without the 4-wire license must use the conservative
+ * DM858E variant profile (no `fourWireResistance`); licensed units are not
+ * auto-detected.
  */
 export async function refineDm800Profile(
   base: Dm800Profile,
-  port: ScpiPort,
+  _port: ScpiPort,
 ): Promise<Dm800Profile> {
-  const options = await queryOptList(port);
-  if (options.length === 0) return base;
-  const has4W = options.some((o) => /DM-4W/i.test(o));
-  if (!has4W) return base;
-  if (base.modes.includes("fourWireResistance")) return base;
-  return {
-    ...base,
-    modes: [...base.modes, "fourWireResistance"],
-    ranges: { ...base.ranges, fourWireResistance: FULL_RANGES.fourWireResistance },
-  };
+  return base;
 }

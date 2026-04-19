@@ -164,6 +164,8 @@ SAMPle:COUNt?
 
 Sets or queries the number of samples per trigger in Single trigger mode. Total measurements = `SAMPle:COUNt` × `TRIGger:COUNt`.
 
+> **Restriction:** Only valid when `TRIGger:SOURce` is set to Single trigger (`BUS`). Has no effect in `IMMediate` or `EXTernal` trigger mode.
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<value>` | Integer | 1–2000 | 1 |
@@ -208,7 +210,9 @@ UNIT:TEMPerature?    → F
 CALCulate:AVERage:ALL?
 ```
 
-Queries average, standard deviation, minimum, and maximum for the Statistics operation (requires `CALCulate:AVERage[:STATe]` enabled).
+Queries average, standard deviation, minimum, and maximum for the Statistics operation.
+
+> **Restriction:** Valid only when the Statistics operation is enabled (`CALCulate:AVERage[:STATe] ON`).
 
 - **Parameters:** None
 - **Returns:** `avg,sdev,min,max` in scientific notation, e.g. `-6.60019915E+01,3.12397977E-04,-6.60040000E+01,-6.60010000E+01`
@@ -225,7 +229,9 @@ CALCulate:AVERage:ALL?
 CALCulate:AVERage:AVERage?
 ```
 
-Queries the average value from the Statistics operation (requires Statistics enabled).
+Queries the average value from the Statistics operation.
+
+> **Restriction:** Valid only when the Statistics operation is enabled (`CALCulate:AVERage[:STATe] ON`).
 
 - **Parameters:** None
 - **Returns:** Average value in scientific notation, e.g. `1.23450000E+01`
@@ -255,7 +261,9 @@ Clears all calculated statistics (min, max, average, count, standard deviation).
 CALCulate:AVERage:COUNt?
 ```
 
-Queries the number of readings accumulated for the Statistics operation (requires Statistics enabled).
+Queries the number of readings accumulated for the Statistics operation.
+
+> **Restriction:** Valid only when the Statistics operation is enabled (`CALCulate:AVERage[:STATe] ON`).
 
 - **Parameters:** None
 - **Returns:** Integer, e.g. `11986`
@@ -272,7 +280,9 @@ CALCulate:AVERage:COUNt?    → 11986
 CALCulate:AVERage:MAXimum?
 ```
 
-Queries the maximum value from the Statistics operation (requires Statistics enabled).
+Queries the maximum value from the Statistics operation.
+
+> **Restriction:** Valid only when the Statistics operation is enabled (`CALCulate:AVERage[:STATe] ON`).
 
 - **Parameters:** None
 - **Returns:** Maximum value in scientific notation
@@ -289,7 +299,9 @@ CALCulate:AVERage:MAXimum?    → -2.40000000E+01
 CALCulate:AVERage:MINimum?
 ```
 
-Queries the minimum value from the Statistics operation (requires Statistics enabled).
+Queries the minimum value from the Statistics operation.
+
+> **Restriction:** Valid only when the Statistics operation is enabled (`CALCulate:AVERage[:STATe] ON`).
 
 - **Parameters:** None
 - **Returns:** Minimum value in scientific notation
@@ -306,7 +318,9 @@ CALCulate:AVERage:MINimum?    → -2.70000000E+01
 CALCulate:AVERage:SDEViation?
 ```
 
-Queries the standard deviation from the Statistics operation (requires Statistics enabled).
+Queries the standard deviation from the Statistics operation.
+
+> **Restriction:** Valid only when the Statistics operation is enabled (`CALCulate:AVERage[:STATe] ON`).
 
 - **Parameters:** None
 - **Returns:** Standard deviation in scientific notation
@@ -325,6 +339,8 @@ CALCulate:AVERage[:STATe]?
 ```
 
 Enables or disables the Statistics operation. Not available when range is set to auto.
+
+> **Restrictions:** Only available for measurement functions that support Statistics (DCV, ACV, DCI, ACI, 2WR, 4WR, CAP, SENSOR, FREQ, PERIOD — see math operation table above). Not available when the range is set to auto range.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -396,6 +412,8 @@ CALCulate:LIMit[:STATe]?
 ```
 
 Enables or disables the limit operation. Not available when range is auto.
+
+> **Restrictions:** Only available for measurement functions that support limit operation (DCV, ACV, DCI, ACI, 2WR, 4WR, CAP, SENSOR, FREQ, PERIOD — see math operation table above). Not available when the range is set to auto range.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -488,6 +506,8 @@ CALCulate:SCALe:FUNCtion?
 
 Selects which scaling operation to apply (dB or dBm). Must be called before enabling scaling with `CALCulate:SCALe[:STATe]`. Applies to ACV and DCV only.
 
+> **Restrictions:** dB and dBm scaling both apply **only to ACV and DCV measurements**. For dB: result = measurement (dBm) − reference value (dBm). For dBm: result = 10 × log₁₀(V² / R_ref / 1 mW).
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<type>` | Discrete | `DB`\|`DBM` | — |
@@ -509,6 +529,12 @@ CALCulate:SCALe[:STATe]?
 ```
 
 Enables or disables the scaling function. `CALCulate:SCALe:FUNCtion` must be set first. Scaling is reset when switching measurement functions. Not available in auto range.
+
+> **Restrictions:**
+> - Valid **only for dB/dBm-capable measurement functions** (ACV and DCV only — see math operation table above).
+> - Scaling is automatically disabled when the measurement function changes (e.g. DCV → ACV); **you must re-enable scaling** after each function switch.
+> - Cannot be enabled when the range is set to auto range.
+> - `CALCulate:SCALe:FUNCtion` must be executed **before** enabling scaling with this command.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -1076,7 +1102,9 @@ Queries and clears the Status Byte Register event register. Bits 0 and 1 are unu
 *TRG
 ```
 
-Generates a software trigger event. Only valid when trigger source is `BUS` (`TRIGger:SOURce BUS`) and the instrument is in the wait-for-trigger state.
+Generates a software trigger event.
+
+> **Restriction:** Only valid when trigger source is `BUS` (`TRIGger:SOURce BUS`) **and** the instrument is in the wait-for-trigger state. Has no effect otherwise.
 
 - **Parameters:** None
 - **Returns:** Nothing
@@ -1673,7 +1701,10 @@ MMEMory:STATe:RECall:AUTO <bool>
 MMEMory:STATe:RECall:AUTO?
 ```
 
-Sets or queries whether the instrument restores its last-used state on power-up. When OFF, factory defaults are used.
+Sets or queries whether the instrument restores its last-used state on power-up.
+
+> - `1|ON` — instrument recalls the state from the last power-off on next startup.
+> - `0|OFF` — instrument uses factory default values on startup (except parameters excluded from factory reset).
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -1699,7 +1730,9 @@ MMEMory:STATe:RECall:AUTO?    → 1
 [SENSe]:CAPacitance:NULL[:STATe]?
 ```
 
-Enables or disables the relative operation for capacitance. Result = actual − relative value.
+Enables or disables the relative operation for capacitance.
+
+> When enabled: reading = actual measurement − relative value. Set the relative value with `[SENSe]:CAPacitance:NULL:VALue`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -1721,7 +1754,9 @@ SENSe:CAPacitance:NULL:STATe?    → 1
 [SENSe]:CAPacitance:NULL:VALue?
 ```
 
-Sets or queries the relative value for capacitance measurements. Range: −120% to +120% of current range.
+Sets or queries the relative value for capacitance measurements.
+
+> Range: −120% to +120% of the current capacitance measurement range (`[SENSe]:CAPacitance:RANGe`).
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -1744,7 +1779,9 @@ SENSe:CAPacitance:NULL:VALue?    → 1.00000000E-08
 [SENSe]:CAPacitance:NULL:VALue:AUTO?
 ```
 
-When enabled, the relative value is automatically set to the first measurement reading. Disabled when a manual value is set via `NULL:VALue`.
+When enabled, the relative value is automatically set to the **first** capacitance measurement reading.
+
+> Auto relative is automatically disabled when a value is set manually via `[SENSe]:CAPacitance:NULL:VALue`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -1788,7 +1825,9 @@ SENSe:CAPacitance:RANGe?    → 1.00000000E-03
 [SENSe]:CAPacitance:RANGe:AUTO?
 ```
 
-Enables or disables auto range for capacitance. Automatically disabled when a fixed range is set.
+Enables or disables auto range for capacitance.
+
+> Auto range is automatically disabled when a fixed range is selected via `[SENSe]:CAPacitance:RANGe`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -1834,6 +1873,8 @@ SENSe:CAPacitance:SECondary?    → "CALC:DATA"
 
 Enables or disables the relative operation for AC current measurements.
 
+> When enabled: reading = actual measurement − relative value. Set the relative value with `[SENSe]:CURRent:AC:NULL:VALue`.
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<bool>` | Bool | `0`\|`1`\|`OFF`\|`ON` | `0`\|`OFF` |
@@ -1849,7 +1890,9 @@ Enables or disables the relative operation for AC current measurements.
 [SENSe]:CURRent:AC:NULL:VALue?
 ```
 
-Sets or queries the relative value for AC current. Range: −120% to +120% of current range.
+Sets or queries the relative value for AC current measurements.
+
+> Range: −120% to +120% of the current AC current measurement range (`[SENSe]:CURRent:AC:RANGe`).
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -1872,7 +1915,9 @@ SENSe:CURRent:AC:NULL:VALue?    → 1.00000000E-03
 [SENSe]:CURRent:AC:NULL:VALue:AUTO?
 ```
 
-Enables or disables auto relative for AC current. Disabled when a manual value is set.
+Enables or disables auto relative for AC current. When enabled, the relative value is set to the **first** AC current measurement reading.
+
+> Auto relative is automatically disabled when a value is set manually via `[SENSe]:CURRent:AC:NULL:VALue`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -1914,7 +1959,9 @@ SENSe:CURRent:AC:RANGe?    → 1.00000000E+00
 [SENSe]:CURRent:AC:RANGe:AUTO?
 ```
 
-Enables or disables auto range for AC current. Disabled when a fixed range is set.
+Enables or disables auto range for AC current.
+
+> Auto range is automatically disabled when a fixed range is selected via `[SENSe]:CURRent:AC:RANGe`. Disabled when a fixed range is set.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -1955,6 +2002,8 @@ SENSe:CURRent:AC:SECondary?    → "FREQ"
 
 Enables or disables the relative operation for DC current measurements.
 
+> When enabled: reading = actual measurement − relative value. Set the relative value with `[SENSe]:CURRent:DC:NULL:VALue`.
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<bool>` | Bool | `0`\|`1`\|`OFF`\|`ON` | `0`\|`OFF` |
@@ -1970,7 +2019,9 @@ Enables or disables the relative operation for DC current measurements.
 [SENSe]:CURRent:DC:NULL:VALue?
 ```
 
-Sets or queries the relative value for DC current. Range: −120% to +120% of current range.
+Sets or queries the relative value for DC current measurements.
+
+> Range: −120% to +120% of the current DC current measurement range (`[SENSe]:CURRent:DC:RANGe`).
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -1993,7 +2044,9 @@ SENSe:CURRent:DC:NULL:VALue?    → 1.00000000E-03
 [SENSe]:CURRent:DC:NULL:VALue:AUTO?
 ```
 
-Enables or disables auto relative for DC current. Disabled when a manual value is set.
+Enables or disables auto relative for DC current. When enabled, the relative value is set to the **first** DC current measurement reading.
+
+> Auto relative is automatically disabled when a value is set manually via `[SENSe]:CURRent:DC:NULL:VALue`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2035,6 +2088,8 @@ SENSe:CURRent:DC:RANGe?    → 1.00000000E+00
 
 Enables or disables auto range for DC current.
 
+> Auto range is automatically disabled when a fixed range is selected via `[SENSe]:CURRent:DC:RANGe`.
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<bool>` | Bool | `0`\|`1`\|`OFF`\|`ON` | `1`\|`ON` |
@@ -2050,7 +2105,9 @@ Enables or disables auto range for DC current.
 [SENSe]:CURRent[:DC]:NPLC?
 ```
 
-Sets or queries the integration time (in PLCs) for DC current. Longer integration = higher resolution, slower measurement.
+Sets or queries the integration time in power-line cycles (PLCs) for DC current. The A/D converter samples the input for the full integration period — longer integration gives higher resolution but slower measurement.
+
+> 1 PLC = 0.02 s. Setting NPLC also affects resolution — see resolution/integration time table.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2140,6 +2197,8 @@ Clears secondary measurement results and disables the secondary measurement func
 
 Enables or disables the relative operation for frequency measurements.
 
+> When enabled: reading = actual measurement − relative value. Set the relative value with `[SENSe]:FREQuency:NULL:VALue`.
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<bool>` | Bool | `0`\|`1`\|`OFF`\|`ON` | `0`\|`OFF` |
@@ -2178,7 +2237,9 @@ SENSe:FREQuency:NULL:VALue?    → 1.00000000E+03
 [SENSe]:FREQuency:NULL:VALue:AUTO?
 ```
 
-Enables or disables auto relative for frequency. Disabled when a manual value is set.
+Enables or disables auto relative for frequency. When enabled, the relative value is set to the **first** frequency measurement reading.
+
+> Auto relative is automatically disabled when a value is set manually via `[SENSe]:FREQuency:NULL:VALue`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2196,6 +2257,8 @@ Enables or disables auto relative for frequency. Disabled when a manual value is
 ```
 
 Sets or queries the input voltage range for frequency measurements.
+
+> Use `[SENSe]:FREQuency:VOLTage:RANGe:AUTO` to re-enable auto ranging after setting a fixed range.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2219,6 +2282,8 @@ SENSe:FREQuency:VOLTage:RANGe?    → 1.00000000E+00
 ```
 
 Enables or disables voltage auto range for frequency measurements.
+
+> Auto range is automatically disabled when a fixed range is selected via `[SENSe]:FREQuency:VOLTage:RANGe`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2259,6 +2324,8 @@ SENSe:FREQuency:SECondary?    → "VOLT:AC"
 
 Enables or disables the relative operation for 4-wire resistance measurements.
 
+> When enabled: reading = actual measurement − relative value. Set the relative value with `[SENSe]:FRESistance:NULL:VALue`.
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<bool>` | Bool | `0`\|`1`\|`OFF`\|`ON` | `0`\|`OFF` |
@@ -2274,7 +2341,9 @@ Enables or disables the relative operation for 4-wire resistance measurements.
 [SENSe]:FRESistance:NULL:VALue?
 ```
 
-Sets or queries the relative value for 4-wire resistance. Range: −120% to +120% of current range.
+Sets or queries the relative value for 4-wire resistance measurements.
+
+> Range: −120% to +120% of the current 4-wire resistance measurement range (`[SENSe]:FRESistance:RANGe`).
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2297,7 +2366,9 @@ SENSe:FRESistance:NULL:VALue?    → 1.00000000E+01
 [SENSe]:FRESistance:NULL:VALue:AUTO?
 ```
 
-Enables or disables auto relative for 4-wire resistance. Disabled when a manual value is set.
+Enables or disables auto relative for 4-wire resistance. When enabled, the relative value is set to the **first** 4-wire resistance measurement reading.
+
+> Auto relative is automatically disabled when a value is set manually via `[SENSe]:FRESistance:NULL:VALue`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2314,7 +2385,9 @@ Enables or disables auto relative for 4-wire resistance. Disabled when a manual 
 [SENSe]:FRESistance:NPLC?
 ```
 
-Sets or queries the integration time (PLCs) for 4-wire resistance.
+Sets or queries the integration time in power-line cycles (PLCs) for 4-wire resistance. Longer integration gives higher resolution but slower measurement.
+
+> 1 PLC = 0.02 s. Setting NPLC also affects resolution — see resolution/integration time table.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2337,7 +2410,7 @@ SENSe:FRESistance:DC:NPLC?    → 5.00000000E+00
 [SENSe]:FRESistance:RANGe?
 ```
 
-Sets or queries the range for 4-wire resistance measurements.
+Sets or queries the range for 4-wire resistance measurements. Scientific notation accepted, e.g. `1E+3` = 1 kΩ.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2361,6 +2434,8 @@ SENSe:FRESistance:RANGe?    → 1.00000000E+02
 ```
 
 Enables or disables auto range for 4-wire resistance.
+
+> Auto range is automatically disabled when a fixed range is selected via `[SENSe]:FRESistance:RANGe`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2452,6 +2527,8 @@ SENSe:FUNCtion?    → "CURR:AC"
 
 Enables or disables the relative operation for period measurements.
 
+> When enabled: reading = actual measurement − relative value. Set the relative value with `[SENSe]:PERiod:NULL:VALue`.
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<bool>` | Bool | `0`\|`1`\|`OFF`\|`ON` | `0`\|`OFF` |
@@ -2490,7 +2567,9 @@ SENSe:PERiod:NULL:VALue?    → 1.00000000E-03
 [SENSe]:PERiod:NULL:VALue:AUTO?
 ```
 
-Enables or disables auto relative for period measurements. Disabled when a manual value is set.
+Enables or disables auto relative for period measurements. When enabled, the relative value is set to the **first** period measurement reading.
+
+> Auto relative is automatically disabled when a value is set manually via `[SENSe]:PERiod:NULL:VALue`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2508,6 +2587,8 @@ Enables or disables auto relative for period measurements. Disabled when a manua
 ```
 
 Sets or queries the input voltage range for period measurements.
+
+> Use `[SENSe]:PERiod:VOLTage:RANGe:AUTO` to re-enable auto ranging after setting a fixed range.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2531,6 +2612,8 @@ SENSe:PERiod:VOLTage:RANGe?    → 1.00000000E+00
 ```
 
 Enables or disables voltage auto range for period measurements.
+
+> Auto range is automatically disabled when a fixed range is selected via `[SENSe]:PERiod:VOLTage:RANGe`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2564,7 +2647,9 @@ Sets or queries the secondary measurement function for period.
 [SENSe]:RESistance:NPLC?
 ```
 
-Sets or queries the integration time (PLCs) for 2-wire resistance.
+Sets or queries the integration time in power-line cycles (PLCs) for 2-wire resistance. Longer integration gives higher resolution but slower measurement.
+
+> 1 PLC = 0.02 s. Setting NPLC also affects resolution — see resolution/integration time table.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2589,6 +2674,8 @@ SENSe:RESistance:NPLC?    → 5.00000000E+00
 
 Enables or disables the relative operation for 2-wire resistance measurements.
 
+> When enabled: reading = actual measurement − relative value. Set the relative value with `[SENSe]:RESistance:NULL:VALue`.
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<bool>` | Bool | `0`\|`1`\|`OFF`\|`ON` | `0`\|`OFF` |
@@ -2604,7 +2691,9 @@ Enables or disables the relative operation for 2-wire resistance measurements.
 [SENSe]:RESistance:NULL:VALue?
 ```
 
-Sets or queries the relative value for 2-wire resistance. Range: −120% to +120% of current range.
+Sets or queries the relative value for 2-wire resistance measurements.
+
+> Range: −120% to +120% of the current 2-wire resistance measurement range (`[SENSe]:RESistance:RANGe`).
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2627,7 +2716,9 @@ SENSe:RESistance:NULL:VALue?    → 1.00000000E+02
 [SENSe]:RESistance:NULL:VALue:AUTO?
 ```
 
-Enables or disables auto relative for 2-wire resistance. Disabled when a manual value is set.
+Enables or disables auto relative for 2-wire resistance. When enabled, the relative value is set to the **first** 2-wire resistance measurement reading.
+
+> Auto relative is automatically disabled when a value is set manually via `[SENSe]:RESistance:NULL:VALue`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2668,6 +2759,8 @@ SENSe:RESistance:RANGe?    → 1.00000000E+02
 ```
 
 Enables or disables auto range for 2-wire resistance.
+
+> Auto range is automatically disabled when a fixed range is selected via `[SENSe]:RESistance:RANGe`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2726,6 +2819,8 @@ Sets or queries the secondary measurement function for 2-wire resistance.
 
 Enables or disables the relative operation for AC voltage measurements.
 
+> When enabled: reading = actual measurement − relative value. Set the relative value with `[SENSe]:VOLTage:AC:NULL:VALue`.
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<bool>` | Bool | `0`\|`1`\|`OFF`\|`ON` | `0`\|`OFF` |
@@ -2741,7 +2836,9 @@ Enables or disables the relative operation for AC voltage measurements.
 [SENSe]:VOLTage:AC:NULL:VALue?
 ```
 
-Sets or queries the relative value for AC voltage. Range: −120% to +120% of current range.
+Sets or queries the relative value for AC voltage measurements.
+
+> Range: −120% to +120% of the current AC voltage measurement range (`[SENSe]:VOLTage:AC:RANGe`).
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2764,7 +2861,9 @@ SENSe:VOLTage:AC:NULL:VALue?    → 1.00000000E+01
 [SENSe]:VOLTage:AC:NULL:VALue:AUTO?
 ```
 
-Enables or disables auto relative for AC voltage. Disabled when a manual value is set.
+Enables or disables auto relative for AC voltage. When enabled, the relative value is set to the **first** AC voltage measurement reading.
+
+> Auto relative is automatically disabled when a value is set manually via `[SENSe]:VOLTage:AC:NULL:VALue`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2806,6 +2905,8 @@ SENSe:VOLTage:AC:RANGe?    → 1.00000000E+00
 
 Enables or disables auto range for AC voltage.
 
+> Auto range is automatically disabled when a fixed range is selected via `[SENSe]:VOLTage:AC:RANGe`.
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<bool>` | Bool | `0`\|`1`\|`OFF`\|`ON` | `1`\|`ON` |
@@ -2845,6 +2946,8 @@ SENSe:VOLTage:AC:SECondary?    → "FREQ"
 
 Enables or disables the relative operation for DC voltage measurements.
 
+> When enabled: reading = actual measurement − relative value. Set the relative value with `[SENSe]:VOLTage:DC:NULL:VALue`.
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<bool>` | Bool | `0`\|`1`\|`OFF`\|`ON` | `0`\|`OFF` |
@@ -2860,7 +2963,9 @@ Enables or disables the relative operation for DC voltage measurements.
 [SENSe]:VOLTage:DC:NULL:VALue?
 ```
 
-Sets or queries the relative value for DC voltage. Range: −120% to +120% of current range.
+Sets or queries the relative value for DC voltage measurements.
+
+> Range: −120% to +120% of the current DC voltage measurement range (`[SENSe]:VOLTage:DC:RANGe`).
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2883,7 +2988,9 @@ SENSe:VOLTage:DC:NULL:VALue?    → 1.00000000E-03
 [SENSe]:VOLTage:DC:NULL:VALue:AUTO?
 ```
 
-Enables or disables auto relative for DC voltage. Disabled when a manual value is set.
+Enables or disables auto relative for DC voltage. When enabled, the relative value is set to the **first** DC voltage measurement reading.
+
+> Auto relative is automatically disabled when a value is set manually via `[SENSe]:VOLTage:DC:NULL:VALue`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -2925,6 +3032,8 @@ SENSe:VOLTage:DC:RANGe?    → 1.00000000E+00
 
 Enables or disables auto range for DC voltage.
 
+> Auto range is automatically disabled when a fixed range is selected via `[SENSe]:VOLTage:DC:RANGe`.
+
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
 | `<bool>` | Bool | `0`\|`1`\|`OFF`\|`ON` | `1`\|`ON` |
@@ -2940,7 +3049,9 @@ Enables or disables auto range for DC voltage.
 [SENSe]:VOLTage[:DC]:NPLC?
 ```
 
-Sets or queries the integration time (PLCs) for DC voltage.
+Sets or queries the integration time in power-line cycles (PLCs) for DC voltage. Longer integration gives higher resolution but slower measurement.
+
+> 1 PLC = 0.02 s. Setting NPLC also affects resolution — see resolution/integration time table.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -3041,7 +3152,9 @@ SENSe:VOLTage:DC:SECondary?    → "CALC:DATA"
 STATus:OPERation:CONDition?
 ```
 
-Queries the condition register of the Operation Status register (read-only; bits are not cleared on read).
+Queries the condition register of the Operation Status register.
+
+> Read-only. Bits are **not cleared** when the register is read.
 
 - **Parameters:** None
 - **Returns:** Decimal sum of all set bits, e.g. `+32` (bit 5 = waiting for trigger)
@@ -3059,7 +3172,9 @@ STATus:OPERation:ENABle <value>
 STATus:OPERation:ENABle?
 ```
 
-Sets or queries the enable register for the Operation Status register. Bits enabled here propagate to the Status Byte register. Cleared by `STATus:PRESet`.
+Sets or queries the enable register for the Operation Status register. Enabled bits propagate to the Status Byte register.
+
+> `<value>` is the decimal-weighted sum of all bits to enable (e.g. bit 5 = 32, bit 9 = 512 → set 544). The enable register is cleared by `STATus:PRESet`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -3081,6 +3196,8 @@ STATus:OPERation[:EVENt]?
 ```
 
 Queries **and clears** the event register of the Operation Status register.
+
+> Reading this register clears all bits in it.
 
 - **Parameters:** None
 - **Returns:** Decimal sum of set bits, e.g. `+32`
@@ -3110,7 +3227,9 @@ Clears all bits in both the Operation Status enable register and the Questionabl
 STATus:QUEStionable:CONDition?
 ```
 
-Queries the condition register of the Questionable Data register (read-only; bits not cleared on read).
+Queries the condition register of the Questionable Data register.
+
+> Read-only. Bits are **not cleared** when the register is read.
 
 - **Parameters:** None
 - **Returns:** Decimal sum of set bits, e.g. `+4096` (bit 12 = upper limit failed)
@@ -3128,7 +3247,9 @@ STATus:QUEStionable:ENABle <value>
 STATus:QUEStionable:ENABle?
 ```
 
-Sets or queries the enable register for the Questionable Data register. Cleared by `STATus:PRESet`.
+Sets or queries the enable register for the Questionable Data register. Enabled bits propagate to the Status Byte register.
+
+> `<value>` is the decimal-weighted sum of all bits to enable (e.g. bits 0+1+12 = 1+2+4096 = 4099). The enable register is cleared by `STATus:PRESet`.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -3150,6 +3271,8 @@ STATus:QUEStionable[:EVENt]?
 ```
 
 Queries **and clears** the event register of the Questionable Data register.
+
+> Reading this register clears all bits in it.
 
 - **Parameters:** None
 - **Returns:** Decimal sum of set bits, e.g. `+1024`
@@ -3208,7 +3331,9 @@ SYSTem:COMMunicate:LAN:AUToip <bool>
 SYSTem:COMMunicate:LAN:AUToip?
 ```
 
-Enables or disables Auto IP mode (self-assigned address in the 169.254.0.0/16 range). Priority: DHCP > Auto IP > Static IP. Must call `SYSTem:COMMunicate:LAN:UPDate` to apply.
+Enables or disables Auto IP mode. In Auto IP mode, the instrument self-assigns an address in the 169.254.0.0/16 range.
+
+> IP configuration priority: **DHCP > Auto IP > Static IP**. To use Auto IP, DHCP must be disabled first. All three modes cannot be turned off simultaneously. Must call `SYSTem:COMMunicate:LAN:UPDate` to apply changes.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -3238,7 +3363,9 @@ SYSTem:COMMunicate:LAN:DHCP <bool>
 SYSTem:COMMunicate:LAN:DHCP?
 ```
 
-Enables or disables DHCP mode. When active, IP, subnet mask, and gateway are assigned automatically. Must call `UPDate` to apply.
+Enables or disables DHCP mode. When active, the DHCP server assigns IP address, subnet mask, and default gateway automatically.
+
+> IP configuration priority: **DHCP > Auto IP > Static IP**. All three modes cannot be turned off simultaneously. Must call `SYSTem:COMMunicate:LAN:UPDate` to apply changes.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -3360,7 +3487,9 @@ SYSTem:COMMunicate:LAN:MANuip <bool>
 SYSTem:COMMunicate:LAN:MANuip?
 ```
 
-Enables or disables Static IP mode. To activate, both DHCP and Auto IP must be disabled first. Must call `UPDate` to apply.
+Enables or disables Static IP mode. In Static IP mode, all network parameters (IP, subnet, gateway) are set manually.
+
+> IP configuration priority: **DHCP > Auto IP > Static IP**. To use Static IP, both DHCP and Auto IP must be disabled first. All three modes cannot be turned off simultaneously. Must call `SYSTem:COMMunicate:LAN:UPDate` to apply changes.
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|
@@ -3400,6 +3529,8 @@ SYSTem:COMMunicate:LAN:UPDate
 
 Commits all pending LAN configuration changes to non-volatile memory and restarts the LAN driver. Must be called after any LAN setting change (DHCP, DNS, gateway, IP, subnet mask).
 
+> **Important:** Complete **all** LAN configuration changes before sending this command. The LAN interface restarts immediately on receipt.
+
 - **Parameters:** None
 - **Returns:** Nothing
 
@@ -3435,7 +3566,11 @@ SYSTem:DATE?    → +2023,+07,+26
 SYSTem:ERRor?
 ```
 
-Retrieves and removes the oldest error from the error queue (FIFO). Up to 20 errors are queued; beyond that, `-350,"Error queue overflow"` is returned as the last entry. Queue is cleared by `*CLS` or power cycle. `*RST` does **not** clear the queue.
+Retrieves and removes the oldest error from the error queue.
+
+> - Errors are retrieved in **FIFO order** (oldest first).
+> - Up to 20 errors are queued. If more than 20 occur, the last queue slot is replaced with `-350,"Error queue overflow"`; no further errors are stored until the queue is drained.
+> - The queue is cleared by `*CLS` or a power cycle. **`*RST` does not clear the error queue.**
 
 - **Parameters:** None
 - **Returns:** `<code>,"<message>"`, e.g. `-224,"Illegal parameter value"` or `+0,"No error"`
@@ -3492,7 +3627,11 @@ TRIGger:COUNt {<count>|<lim>}
 TRIGger:COUNt?
 ```
 
-Sets or queries the number of triggers accepted in Single (Bus) trigger mode. Total readings = `TRIGger:COUNt` × `SAMPle:COUNt`. Only settable in remote mode.
+Sets or queries the number of triggers accepted in Single (Bus) trigger mode. Total readings = `TRIGger:COUNt` × `SAMPle:COUNt`.
+
+> **Restrictions:**
+> - Only valid when `TRIGger:SOURce` is set to Single (`BUS`) trigger. Ignored in `IMMediate` and `EXTernal` modes.
+> - Can only be set in **remote mode** (not from the front panel).
 
 | Parameter | Type | Range | Default |
 |-----------|------|-------|---------|

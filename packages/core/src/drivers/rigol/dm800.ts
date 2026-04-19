@@ -1,10 +1,13 @@
+/**
+ * Rigol DM858 / DM858E driver. SCPI must match `docs/vendor/rigol/DM858_SCPI_API_Reference.md`;
+ * undefined headers cause execution errors and audible beeps on the instrument.
+ */
 import type { ScpiPort } from "../../scpi/port.js";
 import type { DeviceIdentity } from "../../identity/idn.js";
 import {
   DEFAULT_MULTIMETER_UNITS,
   type IMultimeter,
   type InstrumentPresetCapability,
-  type MultimeterAutoZero,
   type MultimeterDualDisplayCapability,
   type MultimeterDualReading,
   type MultimeterLoggingCapability,
@@ -13,7 +16,6 @@ import {
   type MultimeterLoggingStatus,
   type MultimeterMathCapability,
   type MultimeterMathConfig,
-  type MultimeterMathFunction,
   type MultimeterMathState,
   type MultimeterMode,
   type MultimeterRangeState,
@@ -23,7 +25,6 @@ import {
   type MultimeterTemperatureConfig,
   type MultimeterTriggerCapability,
   type MultimeterTriggerConfig,
-  type MultimeterTriggerSlope,
   type MultimeterTriggerSource,
   type TemperatureTransducer,
   type TemperatureUnit,
@@ -31,11 +32,15 @@ import {
 import { type Dm800Profile, DM800_DEFAULT } from "./dm800-profile.js";
 import { parseBool } from "./_shared/index.js";
 
+/**
+ * §3.20 — only `TRIGger:SOURce` and `TRIGger:COUNt` are documented; `TRIGger:SLOPe`
+ * / `TRIGger:DELay` are not in the DM858 reference (do not emit).
+ */
 const TRIGGERING: MultimeterTriggerCapability = {
   sources: ["immediate", "external", "bus", "software"],
   slopes: ["positive", "negative"],
-  sampleCountRange: { min: 1, max: 1_000_000 },
-  delayRangeSec: { min: 0, max: 3600 },
+  sampleCountRange: { min: 1, max: 2000 },
+  delayRangeSec: { min: 0, max: 0 },
 };
 
 const LOGGING: MultimeterLoggingCapability = {
@@ -43,76 +48,132 @@ const LOGGING: MultimeterLoggingCapability = {
   minIntervalMs: 50,
 };
 
+const OPTIONAL_TIMEOUT_MS = 800;
+
 type DmmScpi = {
   readonly configure: string;
-  readonly sense: string; // :SENSe:<fn>
-  readonly queryPrefix: string; // matches "VOLT", "RES", etc.
+  /**
+   * `[SENSe]:…` subtree when documented in §3.17. Omit for CONTinuity / DIODe / TEMPerature
+   * (those use `CONFigure` / `MEASure` / `UNIT` only on DM858).
+   */
+  readonly sense?: string;
+  /**
+   * Subtree for `RANGe` / `RANGe:AUTO`. Frequency and period use `…:VOLTage:RANGe`
+   * (doc §3.17.26–27 / §3.17.41–42), not `FREQuency:RANGe` / `PERiod:RANGe`.
+   */
+  readonly rangeSense?: string;
 };
 
+function rangeScpiPrefix(entry: DmmScpi): string {
+  return entry.rangeSense ?? entry.sense!;
+}
+
 const SCPI_MAP: Partial<Record<MultimeterMode, DmmScpi>> = {
-  dcVoltage: { configure: ":CONFigure:VOLTage:DC AUTO", sense: ":SENSe:VOLTage:DC", queryPrefix: "VOLT" },
-  acVoltage: { configure: ":CONFigure:VOLTage:AC AUTO", sense: ":SENSe:VOLTage:AC", queryPrefix: "VOLT:AC" },
-  dcCurrent: { configure: ":CONFigure:CURRent:DC AUTO", sense: ":SENSe:CURRent:DC", queryPrefix: "CURR" },
-  acCurrent: { configure: ":CONFigure:CURRent:AC AUTO", sense: ":SENSe:CURRent:AC", queryPrefix: "CURR:AC" },
-  resistance: { configure: ":CONFigure:RESistance AUTO", sense: ":SENSe:RESistance", queryPrefix: "RES" },
+  dcVoltage: { configure: ":CONFigure:VOLTage:DC AUTO", sense: ":SENSe:VOLTage:DC" },
+  acVoltage: { configure: ":CONFigure:VOLTage:AC AUTO", sense: ":SENSe:VOLTage:AC" },
+  dcCurrent: { configure: ":CONFigure:CURRent:DC AUTO", sense: ":SENSe:CURRent:DC" },
+  acCurrent: { configure: ":CONFigure:CURRent:AC AUTO", sense: ":SENSe:CURRent:AC" },
+  resistance: { configure: ":CONFigure:RESistance AUTO", sense: ":SENSe:RESistance" },
   fourWireResistance: {
     configure: ":CONFigure:FRESistance AUTO",
     sense: ":SENSe:FRESistance",
-    queryPrefix: "FRES",
   },
-  frequency: { configure: ":CONFigure:FREQuency", sense: ":SENSe:FREQuency", queryPrefix: "FREQ" },
-  period: { configure: ":CONFigure:PERiod", sense: ":SENSe:PERiod", queryPrefix: "PER" },
+  frequency: {
+    configure: ":CONFigure:FREQuency",
+    sense: ":SENSe:FREQuency",
+    rangeSense: ":SENSe:FREQuency:VOLTage",
+  },
+  period: {
+    configure: ":CONFigure:PERiod",
+    sense: ":SENSe:PERiod",
+    rangeSense: ":SENSe:PERiod:VOLTage",
+  },
   capacitance: {
     configure: ":CONFigure:CAPacitance AUTO",
     sense: ":SENSe:CAPacitance",
-    queryPrefix: "CAP",
   },
-  continuity: { configure: ":CONFigure:CONTinuity", sense: ":SENSe:CONTinuity", queryPrefix: "CONT" },
-  diode: { configure: ":CONFigure:DIODe", sense: ":SENSe:DIODe", queryPrefix: "DIOD" },
-  temperature: {
-    configure: ":CONFigure:TEMPerature",
-    sense: ":SENSe:TEMPerature",
-    queryPrefix: "TEMP",
-  },
+  continuity: { configure: ":CONFigure:CONTinuity" },
+  diode: { configure: ":CONFigure:DIODe" },
+  temperature: { configure: ":CONFigure:TEMPerature" },
 };
+
+/** Doc §3.17 — only `VOLTage:DC`, `CURRent:DC`, `RESistance`, `FRESistance` define `[SENSe]:…:NPLC` (no AC V/I). */
+const MODES_WITH_NPLC: ReadonlySet<MultimeterMode> = new Set([
+  "dcVoltage",
+  "dcCurrent",
+  "resistance",
+  "fourWireResistance",
+]);
+
+/** Doc §3.10.10 / §3.15.10 — probe + type as `CONFigure:TEMPerature` arguments (not `SENSe:TEMPerature:…`). */
+function encodeTemperatureConfigure(config: MultimeterTemperatureConfig): string {
+  switch (config.transducer) {
+    case "pt100":
+    case "pt1000":
+      return "RTD,385";
+    case "thermistor":
+      return "FTHermistor,5000";
+    case "thermocouple-k":
+      return "TCouple,K";
+    case "thermocouple-j":
+      return "TCouple,J";
+    case "thermocouple-t":
+      return "TCouple,T";
+    case "thermocouple-e":
+      return "TCouple,E";
+    default:
+      return "TCouple,K";
+  }
+}
 
 /**
- * DM858 uses a two-step transducer setter: first select the family via
- * `:SENS:TEMP:TRAN:TYPE {RTD|TCouple|THERmistor}`, then the sub-type via
- * the family-scoped command (e.g. `:SENS:TEMP:TRAN:RTD:TYPE PT100`).
- * Joining them with a comma (as we used to) is silently rejected, which is
- * why setting thermocouple K wasn't honored on the device.
+ * Parse `CONFigure?` temperature line (§3.10.13). Firmware often returns **abbreviated**
+ * probe mnemonics (e.g. `TC` for `TCouple`, `FTH` for `FTHermistor`), not the full
+ * `CONFigure:TEMPerature` spellings.
  */
-const TRANSDUCER_FAMILY: Record<TemperatureTransducer, string> = {
-  pt100: "RTD",
-  pt1000: "RTD",
-  "thermocouple-k": "TCouple",
-  "thermocouple-j": "TCouple",
-  "thermocouple-t": "TCouple",
-  "thermocouple-e": "TCouple",
-  thermistor: "THERmistor",
-};
+function parseTemperatureTransducerFromConfigure(raw: string): TemperatureTransducer {
+  const s = raw.trim().replace(/^"|"$/g, "");
+  const u = s.toUpperCase();
+  if (!u.startsWith("TEMP")) return "pt100";
+  const rest = s.slice(4).trim();
+  const parts = rest
+    .split(",")
+    .map((p) => p.trim().toUpperCase())
+    .filter((p) => p.length > 0);
+  const probe = parts[0] ?? "";
+  const typeArg = parts[1] ?? "";
 
-const TRANSDUCER_SUBTYPE: Partial<Record<TemperatureTransducer, string>> = {
-  pt100: "PT100",
-  pt1000: "PT1000",
-  "thermocouple-k": "K",
-  "thermocouple-j": "J",
-  "thermocouple-t": "T",
-  "thermocouple-e": "E",
-};
+  // TCouple — query often `TEMP TC,K` not `TEMP TCouple,K`
+  if (probe === "TC" || probe.startsWith("TCOUPLE")) {
+    if (typeArg === "K") return "thermocouple-k";
+    if (typeArg === "J") return "thermocouple-j";
+    if (typeArg === "T") return "thermocouple-t";
+    if (typeArg === "E") return "thermocouple-e";
+    return "thermocouple-k";
+  }
 
-const OPTIONAL_TIMEOUT_MS = 800;
+  // FTHermistor — abbreviated `FTH`
+  if (probe === "FTH" || probe.startsWith("FTHERM") || probe.includes("FTHERMISTOR")) {
+    return "thermistor";
+  }
+  if (probe === "THER" || probe.startsWith("THERM")) {
+    return "thermistor";
+  }
 
-const TRANSDUCER_FROM_SCPI: Array<{ match: RegExp; value: TemperatureTransducer }> = [
-  { match: /^RTD.*PT1000/i, value: "pt1000" },
-  { match: /^RTD.*PT100/i, value: "pt100" },
-  { match: /THERmistor/i, value: "thermistor" },
-  { match: /TCouple.*K/i, value: "thermocouple-k" },
-  { match: /TCouple.*J/i, value: "thermocouple-j" },
-  { match: /TCouple.*T/i, value: "thermocouple-t" },
-  { match: /TCouple.*E/i, value: "thermocouple-e" },
-];
+  // RTD / FRTD — sometimes shortened (e.g. leading letters only)
+  if (
+    probe === "RTD" ||
+    probe === "FRTD" ||
+    probe === "RT" ||
+    probe.startsWith("RTD") ||
+    probe.startsWith("FRTD")
+  ) {
+    if (/1000/.test(rest) || typeArg.includes("1000")) return "pt1000";
+    return "pt100";
+  }
+
+  return "pt100";
+}
 
 const UNIT_MAP: Record<TemperatureUnit, string> = {
   celsius: "C",
@@ -129,24 +190,20 @@ const UNIT_FROM_SCPI: Record<string, TemperatureUnit> = {
   KEL: "kelvin",
 };
 
-const MATH_FN_TO_SCPI: Record<MultimeterMathFunction, string> = {
-  none: "NONE",
-  null: "NULL",
-  db: "DB",
-  dbm: "DBM",
-  stats: "AVERage",
-  limit: "LIMit",
-};
-
-const SCPI_TO_MATH_FN: Record<string, MultimeterMathFunction> = {
-  NONE: "none",
-  NULL: "null",
-  DB: "db",
-  DBM: "dbm",
-  AVER: "stats",
-  AVERAGE: "stats",
-  LIM: "limit",
-  LIMIT: "limit",
+/** §3.17 — `<second>` tokens as in examples (`"FREQ"`, `"PER"`, `"VOLTage:AC"`). */
+const SECONDARY_WRITE: Partial<
+  Record<MultimeterMode, Partial<Record<MultimeterMode, string>>>
+> = {
+  acVoltage: {
+    frequency: "FREQ",
+    period: "PER",
+  },
+  acCurrent: {
+    frequency: "FREQ",
+    period: "PER",
+  },
+  frequency: { acVoltage: "VOLTage:AC" },
+  period: { acVoltage: "VOLTage:AC" },
 };
 
 interface LoggingRun {
@@ -175,6 +232,20 @@ export class RigolDm800 implements IMultimeter {
 
   #mathConfig: MultimeterMathConfig = { function: "none" };
   #run: LoggingRun | null = null;
+  /** Used to apply DM858 rule: dB/dBm scaling resets when the measurement function changes. */
+  #lastModeForMath?: MultimeterMode;
+  /** Last known temp settings from device (updated in temperature mode). */
+  #tempCache: MultimeterTemperatureConfig = { unit: "celsius", transducer: "pt100" };
+
+  /** Front-panel function changes: scaling resets (doc §3.9); drop dB/dBm cache when `SENSe:FUNCtion?` diverges from what we last saw. */
+  #onMeasurementFunctionChanged(mode: MultimeterMode): void {
+    if (this.#lastModeForMath !== undefined && this.#lastModeForMath !== mode) {
+      if (this.#mathConfig.function === "db" || this.#mathConfig.function === "dbm") {
+        this.#mathConfig = { function: "none" };
+      }
+    }
+    this.#lastModeForMath = mode;
+  }
 
   constructor(
     private readonly port: ScpiPort,
@@ -187,10 +258,8 @@ export class RigolDm800 implements IMultimeter {
       modes: profile.modes,
       ranges: profile.ranges,
       nplc: profile.nplcOptions,
-      autoZero: true,
+      autoZero: false,
     };
-    // db/dbm are only valid on AC/DC voltage; every other function gets the
-    // full mode list the profile advertises.
     const voltageOnly = profile.modes.filter(
       (m) => m === "dcVoltage" || m === "acVoltage",
     );
@@ -214,12 +283,6 @@ export class RigolDm800 implements IMultimeter {
     this.presets = { slots: profile.presetSlots };
   }
 
-  /**
-   * Query a command that some DM858 firmware revisions silently drop (the
-   * device never replies, the session times out). Uses a short timeout and
-   * falls back to the caller-supplied default so one unsupported node
-   * doesn't stall the whole capability sweep.
-   */
   async #queryOpt(command: string, fallback: string): Promise<string> {
     try {
       return await this.port.query(command, { timeoutMs: OPTIONAL_TIMEOUT_MS });
@@ -229,7 +292,7 @@ export class RigolDm800 implements IMultimeter {
   }
 
   async getMode(): Promise<MultimeterMode> {
-    const raw = await this.port.query(":FUNCtion?");
+    const raw = await this.port.query(":SENSe:FUNCtion?");
     return parseMode(raw);
   }
 
@@ -237,12 +300,17 @@ export class RigolDm800 implements IMultimeter {
     const entry = SCPI_MAP[mode];
     if (!entry) throw new Error(`mode '${mode}' is not supported`);
     await this.port.write(entry.configure);
+    // CONFigure selects a new measurement function; dB/dBm scaling is cleared on the instrument (doc §3.9).
+    if (this.#mathConfig.function === "db" || this.#mathConfig.function === "dbm") {
+      this.#mathConfig = { function: "none" };
+    }
+    this.#lastModeForMath = mode;
   }
 
   async read(): Promise<MultimeterReading> {
     const [raw, modeStr] = await Promise.all([
       this.port.query(":READ?", { timeoutMs: 10_000 }),
-      this.port.query(":FUNCtion?"),
+      this.port.query(":SENSe:FUNCtion?"),
     ]);
     const mode = parseMode(modeStr);
     const value = Number.parseFloat(raw.trim());
@@ -256,17 +324,17 @@ export class RigolDm800 implements IMultimeter {
     };
   }
 
-  // ---- 2.6a ----
-
   async getRange(): Promise<MultimeterRangeState> {
     const mode = await this.getMode();
     const entry = SCPI_MAP[mode];
     if (!entry) return { mode, upper: 0, auto: true };
-    // Some modes (frequency, continuity, capacitance) don't expose a RANGe?
-    // node on this firmware — fast-fail and treat as auto.
+    if (!entry.sense) {
+      return { mode, upper: 0, auto: true };
+    }
+    const rp = rangeScpiPrefix(entry);
     const [upperRaw, autoRaw] = await Promise.all([
-      this.#queryOpt(`${entry.sense}:RANGe?`, "0"),
-      this.#queryOpt(`${entry.sense}:RANGe:AUTO?`, "1"),
+      this.#queryOpt(`${rp}:RANGe?`, "0"),
+      this.#queryOpt(`${rp}:RANGe:AUTO?`, "1"),
     ]);
     const upper = Number.parseFloat(upperRaw) || 0;
     const auto = parseBool(autoRaw);
@@ -276,97 +344,84 @@ export class RigolDm800 implements IMultimeter {
   async setRange(mode: MultimeterMode, range: number | "auto"): Promise<void> {
     const entry = SCPI_MAP[mode];
     if (!entry) throw new Error(`mode '${mode}' is not supported`);
+    if (!entry.sense) {
+      throw new Error(
+        `mode '${mode}' has no [SENSe]:…:RANGe on DM858 — preset range with :CONFigure:… only`,
+      );
+    }
+    const rp = rangeScpiPrefix(entry);
     if (range === "auto") {
-      await this.port.write(`${entry.sense}:RANGe:AUTO ON`);
+      await this.port.write(`${rp}:RANGe:AUTO ON`);
       return;
     }
     if (!Number.isFinite(range) || range <= 0) {
       throw new Error(`invalid range ${range}`);
     }
-    await this.port.write(`${entry.sense}:RANGe:AUTO OFF`);
-    await this.port.write(`${entry.sense}:RANGe ${range}`);
+    await this.port.write(`${rp}:RANGe:AUTO OFF`);
+    await this.port.write(`${rp}:RANGe ${range}`);
   }
 
   async getNplc(): Promise<number> {
     const mode = await this.getMode();
+    if (!MODES_WITH_NPLC.has(mode)) {
+      throw new Error(`mode '${mode}' has no NPLC command on DM800 (DC V, DC I, 2 Ω, 4 Ω only)`);
+    }
     const entry = SCPI_MAP[mode];
-    if (!entry) return 1;
-    // Continuity / diode / frequency don't expose NPLC; fast-fail.
-    const raw = await this.#queryOpt(`${entry.sense}:NPLC?`, "1");
-    return Number.parseFloat(raw) || 0;
+    if (!entry) return 20;
+    const raw = await this.#queryOpt(`${entry.sense!}:NPLC?`, "20");
+    return Number.parseFloat(raw) || 20;
   }
 
   async setNplc(value: number): Promise<void> {
     const mode = await this.getMode();
+    if (!MODES_WITH_NPLC.has(mode)) {
+      throw new Error(`mode '${mode}' has no NPLC command on DM800 (DC V, DC I, 2 Ω, 4 Ω only)`);
+    }
     const entry = SCPI_MAP[mode];
     if (!entry) throw new Error(`mode '${mode}' has no NPLC setting`);
-    await this.port.write(`${entry.sense}:NPLC ${value}`);
-  }
-
-  async setAutoZero(mode: MultimeterAutoZero): Promise<void> {
-    const current = await this.getMode();
-    const entry = SCPI_MAP[current];
-    if (!entry) return;
-    switch (mode) {
-      case "on":
-        await this.port.write(`${entry.sense}:ZERO:AUTO ON`);
-        break;
-      case "off":
-        await this.port.write(`${entry.sense}:ZERO:AUTO OFF`);
-        break;
-      case "once":
-        await this.port.write(`${entry.sense}:ZERO:AUTO ONCE`);
-        break;
-    }
+    await this.port.write(`${entry.sense!}:NPLC ${value}`);
   }
 
   async getTriggerConfig(): Promise<MultimeterTriggerConfig> {
-    // :TRIGger:SLOPe? and :TRIGger:DELay? never reply on this firmware
-    // (confirmed via runtime logs); fast-fail and use sane defaults rather
-    // than blocking the queue for 5 s per query.
-    const [sourceRaw, slopeRaw, delayRaw, countRaw] = await Promise.all([
+    const [sourceRaw, sampleRaw] = await Promise.all([
       this.#queryOpt(":TRIGger:SOURce?", "IMM"),
-      this.#queryOpt(":TRIGger:SLOPe?", "POS"),
-      this.#queryOpt(":TRIGger:DELay?", "0"),
       this.#queryOpt(":SAMPle:COUNt?", "1"),
     ]);
     return {
       source: parseTriggerSource(sourceRaw),
-      slope: parseTriggerSlope(slopeRaw),
-      delaySec: Number.parseFloat(delayRaw) || 0,
-      sampleCount: Math.max(1, Math.round(Number.parseFloat(countRaw) || 1)),
+      slope: "positive",
+      delaySec: 0,
+      sampleCount: Math.max(1, Math.round(Number.parseFloat(sampleRaw) || 1)),
     };
   }
 
   async setTriggerConfig(config: MultimeterTriggerConfig): Promise<void> {
     await this.port.write(`:TRIGger:SOURce ${encodeTriggerSource(config.source)}`);
-    await this.port.write(`:TRIGger:SLOPe ${encodeTriggerSlope(config.slope)}`);
-    await this.port.write(`:TRIGger:DELay ${config.delaySec}`);
     await this.port.write(`:SAMPle:COUNt ${Math.max(1, Math.round(config.sampleCount))}`);
+    await this.port.write(":TRIGger:COUNt 1");
   }
 
   async trigger(): Promise<void> {
     await this.port.write("*TRG");
   }
 
-  // ---- 2.6b ----
-
   async getMath(): Promise<MultimeterMathState> {
-    // :CALCulate:STATe? / :FUNCtion? never reply on this firmware — we
-    // can't know the device-side state, so optimistically treat it as
-    // disabled and let the UI drive it via setMath.
-    const [stateRaw, fnRaw] = await Promise.all([
-      this.#queryOpt(":CALCulate:STATe?", "0"),
-      this.#queryOpt(":CALCulate:FUNCtion?", "NONE"),
+    const mode = await this.getMode();
+    this.#onMeasurementFunctionChanged(mode);
+    const entry = SCPI_MAP[mode];
+    const senseForNull = entry?.sense;
+    const [avgOn, limOn, nullOn] = await Promise.all([
+      this.#queryOpt(":CALCulate:AVERage:STATe?", "0"),
+      this.#queryOpt(":CALCulate:LIMit:STATe?", "0"),
+      senseForNull
+        ? this.#queryOpt(`${senseForNull}:NULL:STATe?`, "0")
+        : Promise.resolve("0"),
     ]);
-    const enabled = parseBool(stateRaw);
-    const fn = parseMathFunction(fnRaw);
-    if (!enabled || fn === "none") {
-      return { config: { function: "none" } };
-    }
-    const config: MultimeterMathConfig = { ...this.#mathConfig, function: fn };
-    const state: MultimeterMathState = { config };
-    if (fn === "stats") {
+    const scaleFromCache =
+      (mode === "dcVoltage" || mode === "acVoltage") &&
+      (this.#mathConfig.function === "db" || this.#mathConfig.function === "dbm");
+
+    if (parseBool(avgOn)) {
       const [min, max, avg, sd, count] = await Promise.all([
         this.port.query(":CALCulate:AVERage:MINimum?"),
         this.port.query(":CALCulate:AVERage:MAXimum?"),
@@ -374,8 +429,9 @@ export class RigolDm800 implements IMultimeter {
         this.port.query(":CALCulate:AVERage:SDEViation?"),
         this.port.query(":CALCulate:AVERage:COUNt?"),
       ]);
+      this.#mathConfig = { ...this.#mathConfig, function: "stats" };
       return {
-        ...state,
+        config: this.#mathConfig,
         stats: {
           min: num(min),
           max: num(max),
@@ -385,52 +441,112 @@ export class RigolDm800 implements IMultimeter {
         },
       };
     }
-    if (fn === "limit") {
+    if (parseBool(limOn)) {
       const [upper, lower] = await Promise.all([
-        this.port.query(":CALCulate:LIMit:UPPer?"),
-        this.port.query(":CALCulate:LIMit:LOWer?"),
+        this.port.query(":CALCulate:LIMit:UPPer:DATA?"),
+        this.port.query(":CALCulate:LIMit:LOWer:DATA?"),
       ]);
       const reading = await this.read();
       const v = reading.value;
-      let result: "pass" | "fail-high" | "fail-low" = "pass";
-      if (v > num(upper)) result = "fail-high";
-      else if (v < num(lower)) result = "fail-low";
+      let limitResult: "pass" | "fail-high" | "fail-low" = "pass";
+      if (v > num(upper)) limitResult = "fail-high";
+      else if (v < num(lower)) limitResult = "fail-low";
+      this.#mathConfig = {
+        ...this.#mathConfig,
+        function: "limit",
+        limitUpper: num(upper),
+        limitLower: num(lower),
+      };
       return {
-        config: { ...config, limitUpper: num(upper), limitLower: num(lower) },
-        limitResult: result,
+        config: this.#mathConfig,
+        limitResult,
       };
     }
-    if (fn === "null") {
-      const offset = await this.port.query(":CALCulate:NULL:OFFSet?");
-      return { config: { ...config, nullOffset: num(offset) } };
+    if (scaleFromCache) {
+      const fn = this.#mathConfig.function;
+      const isDbm = fn === "dbm";
+      const refCmd = isDbm
+        ? ":CALCulate:SCALe:DBM:REFerence?"
+        : ":CALCulate:SCALe:DB:REFerence?";
+      const ref = await this.port.query(refCmd);
+      this.#mathConfig = {
+        ...this.#mathConfig,
+        function: fn,
+        dbmReference: isDbm ? num(ref) : undefined,
+        nullOffset: !isDbm ? num(ref) : undefined,
+      };
+      return { config: this.#mathConfig };
     }
-    if (fn === "dbm") {
-      const ref = await this.port.query(":CALCulate:DBM:REFerence?");
-      return { config: { ...config, dbmReference: num(ref) } };
+    if (parseBool(nullOn)) {
+      if (!senseForNull) {
+        this.#mathConfig = { function: "none" };
+        return { config: this.#mathConfig };
+      }
+      const off = await this.port.query(`${senseForNull}:NULL:VALue?`);
+      this.#mathConfig = {
+        ...this.#mathConfig,
+        function: "null",
+        nullOffset: num(off),
+      };
+      return { config: this.#mathConfig };
     }
-    return state;
+    this.#mathConfig = { function: "none" };
+    return { config: this.#mathConfig };
   }
 
   async setMath(config: MultimeterMathConfig): Promise<void> {
     this.#mathConfig = config;
-    if (config.function === "none") {
-      await this.port.write(":CALCulate:STATe OFF");
+    const mode = await this.getMode();
+    const sense = SCPI_MAP[mode]?.sense;
+
+    await this.port.write(":CALCulate:AVERage:STATe OFF");
+    await this.port.write(":CALCulate:LIMit:STATe OFF");
+    await this.port.write(":CALCulate:SCALe:STATe OFF");
+    if (sense) {
+      await this.port.write(`${sense}:NULL:STATe OFF`);
+    }
+
+    if (config.function === "none") return;
+
+    if (config.function === "stats") {
+      await this.port.write(":CALCulate:AVERage:STATe ON");
       return;
     }
-    await this.port.write(`:CALCulate:FUNCtion ${MATH_FN_TO_SCPI[config.function]}`);
-    await this.port.write(":CALCulate:STATe ON");
-    if (config.function === "null" && config.nullOffset !== undefined) {
-      await this.port.write(`:CALCulate:NULL:OFFSet ${config.nullOffset}`);
-    }
-    if (config.function === "dbm" && config.dbmReference !== undefined) {
-      await this.port.write(`:CALCulate:DBM:REFerence ${config.dbmReference}`);
-    }
     if (config.function === "limit") {
+      await this.port.write(":CALCulate:LIMit:STATe ON");
       if (config.limitUpper !== undefined) {
-        await this.port.write(`:CALCulate:LIMit:UPPer ${config.limitUpper}`);
+        await this.port.write(`:CALCulate:LIMit:UPPer:DATA ${config.limitUpper}`);
       }
       if (config.limitLower !== undefined) {
-        await this.port.write(`:CALCulate:LIMit:LOWer ${config.limitLower}`);
+        await this.port.write(`:CALCulate:LIMit:LOWer:DATA ${config.limitLower}`);
+      }
+      return;
+    }
+    if (config.function === "dbm") {
+      await this.port.write(":CALCulate:SCALe:FUNCtion DBM");
+      if (config.dbmReference !== undefined) {
+        await this.port.write(`:CALCulate:SCALe:DBM:REFerence ${config.dbmReference}`);
+      }
+      await this.port.write(":CALCulate:SCALe:STATe ON");
+      return;
+    }
+    if (config.function === "db") {
+      await this.port.write(":CALCulate:SCALe:FUNCtion DB");
+      if (config.nullOffset !== undefined) {
+        await this.port.write(`:CALCulate:SCALe:DB:REFerence ${config.nullOffset}`);
+      }
+      await this.port.write(":CALCulate:SCALe:STATe ON");
+      return;
+    }
+    if (config.function === "null") {
+      if (!sense) {
+        throw new Error(
+          `relative (NULL) math is not available for '${mode}' on DM800 (no [SENSe]:NULL subtree)`,
+        );
+      }
+      await this.port.write(`${sense}:NULL:STATe ON`);
+      if (config.nullOffset !== undefined) {
+        await this.port.write(`${sense}:NULL:VALue ${config.nullOffset}`);
       }
     }
   }
@@ -444,35 +560,44 @@ export class RigolDm800 implements IMultimeter {
   }
 
   async getDualDisplay(): Promise<MultimeterMode | null> {
-    // :DISPlay:WINDow2:FUNCtion? never replies on this firmware unless
-    // a secondary is actively configured; short-timeout instead of the
-    // 5 s default.
-    const raw = await this.#queryOpt(":DISPlay:WINDow2:FUNCtion?", "");
-    if (!raw) return null;
-    return parseMode(raw);
+    const mode = await this.getMode();
+    const entry = SCPI_MAP[mode];
+    if (!entry?.sense) return null;
+    const raw = await this.#queryOpt(`${entry.sense}:SECondary?`, "OFF");
+    return parseSecondaryToken(raw);
   }
 
   async setDualDisplay(secondary: MultimeterMode | null): Promise<void> {
+    const primary = await this.getMode();
+    const entry = SCPI_MAP[primary];
+    if (!entry?.sense) {
+      throw new Error(`mode '${primary}' has no [SENSe]:…:SECondary path on DM800`);
+    }
     if (secondary === null) {
-      await this.port.write(":DISPlay:WINDow2:STATe OFF");
+      await this.port.write(`${entry.sense}:SECondary "OFF"`);
       return;
     }
-    const entry = SCPI_MAP[secondary];
-    if (!entry) throw new Error(`mode '${secondary}' not supported for dual display`);
-    await this.port.write(`:DISPlay:WINDow2:FUNCtion ${entry.queryPrefix}`);
-    await this.port.write(":DISPlay:WINDow2:STATe ON");
+    const allowed = this.dualDisplay.pairs[primary];
+    if (!allowed?.includes(secondary)) {
+      throw new Error(`secondary '${secondary}' is not allowed for primary '${primary}'`);
+    }
+    const token = SECONDARY_WRITE[primary]?.[secondary];
+    if (!token) {
+      throw new Error(`no SCPI mapping for ${primary} + ${secondary}`);
+    }
+    await this.port.write(`${entry.sense}:SECondary "${token}"`);
   }
 
   async readDual(): Promise<MultimeterDualReading> {
-    const [primary, secondaryRaw] = await Promise.all([
-      this.read(),
-      this.#queryOpt(":READ:SECondary?", ""),
-    ]);
-    const secondaryModeRaw = await this.#queryOpt(
-      ":DISPlay:WINDow2:FUNCtion?",
-      "",
-    );
-    const secondaryMode = parseMode(secondaryModeRaw);
+    const primary = await this.read();
+    const entry = SCPI_MAP[primary.mode];
+    const secondaryRaw = await this.#queryOpt(":SENSe:DATA2?", "");
+    let secondaryMode: MultimeterMode = primary.mode;
+    if (entry?.sense) {
+      const secTok = await this.#queryOpt(`${entry.sense}:SECondary?`, "OFF");
+      const parsed = parseSecondaryToken(secTok);
+      if (parsed) secondaryMode = parsed;
+    }
     const value = Number.parseFloat(secondaryRaw.trim());
     return {
       primary,
@@ -485,8 +610,6 @@ export class RigolDm800 implements IMultimeter {
       },
     };
   }
-
-  // ---- 2.6c ----
 
   async startLogging(config: MultimeterLoggingConfig): Promise<{ runId: string }> {
     if (this.#run && !this.#run.stopped) {
@@ -554,34 +677,27 @@ export class RigolDm800 implements IMultimeter {
   }
 
   async getTemperatureConfig(): Promise<MultimeterTemperatureConfig> {
-    const [unitRaw, transRaw] = await Promise.all([
+    const mode = await this.getMode();
+    if (mode !== "temperature") {
+      return { ...this.#tempCache };
+    }
+    const [unitRaw, cfgRaw] = await Promise.all([
       this.port.query(":UNIT:TEMPerature?"),
-      this.#queryOpt(":SENSe:TEMPerature:TRANsducer:TYPE?", "RTD"),
+      this.#queryOpt(":CONFigure?", "TEMP RTD,385"),
     ]);
     const unit = UNIT_FROM_SCPI[unitRaw.trim().toUpperCase()] ?? "celsius";
-    const transducer =
-      TRANSDUCER_FROM_SCPI.find((entry) => entry.match.test(transRaw))?.value ?? "pt100";
+    const transducer = parseTemperatureTransducerFromConfigure(cfgRaw);
+    this.#tempCache = { unit, transducer };
     return { unit, transducer };
   }
 
   async setTemperatureConfig(config: MultimeterTemperatureConfig): Promise<void> {
     await this.port.write(`:UNIT:TEMPerature ${UNIT_MAP[config.unit]}`);
-    const family = TRANSDUCER_FAMILY[config.transducer];
-    const subtype = TRANSDUCER_SUBTYPE[config.transducer];
-    await this.port.write(`:SENSe:TEMPerature:TRANsducer:TYPE ${family}`);
-    if (subtype) {
-      // DM858 sub-type setter: e.g. :SENS:TEMP:TRAN:RTD:TYPE PT100
-      //                       or :SENS:TEMP:TRAN:TCouple:TYPE K
-      await this.port.write(
-        `:SENSe:TEMPerature:TRANsducer:${family}:TYPE ${subtype}`,
-      );
-    }
+    await this.port.write(`:CONFigure:TEMPerature ${encodeTemperatureConfigure(config)}`);
+    this.#tempCache = { unit: config.unit, transducer: config.transducer };
   }
 
   async getPresetCatalog(): Promise<readonly boolean[]> {
-    // DM858 doesn't expose a slot-catalog query, so we return a conservative
-    // list where we treat every slot as potentially occupied. Drivers that do
-    // support a catalog (PSU) override this.
     return Array.from({ length: this.presets.slots }, () => true);
   }
 
@@ -614,13 +730,11 @@ export class RigolDm800 implements IMultimeter {
         elapsedMs: reading.measuredAt - run.startedAt,
       };
       run.samples.push(sample);
-      // Keep the in-memory buffer bounded.
       if (run.samples.length > LOGGING.maxSamples) {
         run.samples.splice(0, run.samples.length - LOGGING.maxSamples);
       }
     } catch {
-      // Polling errors do not terminate the run; UI can surface them via
-      // /logging status polling when needed.
+      // ignore
     }
   }
 
@@ -650,6 +764,15 @@ export function parseMode(raw: string): MultimeterMode {
   return "dcVoltage";
 }
 
+function parseSecondaryToken(raw: string): MultimeterMode | null {
+  const t = raw.trim().replace(/^"|"$/g, "").toUpperCase();
+  if (!t || t === "OFF") return null;
+  if (t === "FREQ" || t.includes("FREQ")) return "frequency";
+  if (t === "PER" || (t.includes("PER") && !t.includes("TEMP"))) return "period";
+  if (t.includes("VOLT") && t.includes("AC")) return "acVoltage";
+  return null;
+}
+
 function num(raw: string): number {
   const n = Number.parseFloat(raw);
   return Number.isFinite(n) ? n : 0;
@@ -659,7 +782,6 @@ function parseTriggerSource(raw: string): MultimeterTriggerSource {
   const v = raw.trim().toUpperCase();
   if (v.startsWith("EXT")) return "external";
   if (v.startsWith("BUS")) return "bus";
-  if (v.startsWith("SOFT") || v.startsWith("MAN")) return "software";
   return "immediate";
 }
 
@@ -668,23 +790,9 @@ function encodeTriggerSource(source: MultimeterTriggerSource): string {
     case "external":
       return "EXTernal";
     case "bus":
-      return "BUS";
     case "software":
-      return "BUS"; // DM858 uses BUS for software/*TRG triggering
+      return "BUS";
     default:
       return "IMMediate";
   }
-}
-
-function parseTriggerSlope(raw: string): MultimeterTriggerSlope {
-  return raw.trim().toUpperCase().startsWith("NEG") ? "negative" : "positive";
-}
-
-function encodeTriggerSlope(slope: MultimeterTriggerSlope): string {
-  return slope === "negative" ? "NEGative" : "POSitive";
-}
-
-function parseMathFunction(raw: string): MultimeterMathFunction {
-  const v = raw.trim().replace(/^"|"$/g, "").toUpperCase();
-  return SCPI_TO_MATH_FN[v] ?? "none";
 }

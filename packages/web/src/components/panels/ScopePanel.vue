@@ -4,7 +4,6 @@ import uPlot, { type AlignedData, type Options } from "uplot";
 import { Activity, Download } from "lucide-vue-next";
 import {
   api,
-  type PresetsInfo,
   type ScopeAcquisitionInfo,
   type ScopeBusesInfo,
   type ScopeCursorsInfo,
@@ -22,6 +21,7 @@ import { useSafeModeGate } from "@/composables/useSafeModeGate";
 import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 import { useThemeStore } from "@/stores/theme";
 import { formatSi, formatTime } from "@/lib/format";
+import InstrumentPresetsControl from "./InstrumentPresetsControl.vue";
 import type {
   OscilloscopeAcquisitionConfig,
   OscilloscopeChannelState,
@@ -228,7 +228,6 @@ const scopeMath = ref<ScopeMathInfo | null>(null);
 const references = ref<ScopeReferencesInfo | null>(null);
 const history = ref<ScopeHistoryInfo | null>(null);
 const display = ref<ScopeDisplayInfo | null>(null);
-const presets = ref<PresetsInfo | null>(null);
 const buses = ref<ScopeBusesInfo | null>(null);
 const advError = ref<string | null>(null);
 
@@ -242,7 +241,6 @@ async function loadAdvanced(): Promise<void> {
     api.getScopeReferences(props.sessionId),
     api.getScopeHistory(props.sessionId),
     api.getScopeDisplay(props.sessionId),
-    api.getScopePresets(props.sessionId),
     api.getScopeBuses(props.sessionId),
   ]);
   trigger.value = results[0].status === "fulfilled" ? results[0].value : null;
@@ -253,8 +251,7 @@ async function loadAdvanced(): Promise<void> {
   references.value = results[5].status === "fulfilled" ? results[5].value : null;
   history.value = results[6].status === "fulfilled" ? results[6].value : null;
   display.value = results[7].status === "fulfilled" ? results[7].value : null;
-  presets.value = results[8].status === "fulfilled" ? results[8].value : null;
-  buses.value = results[9].status === "fulfilled" ? results[9].value : null;
+  buses.value = results[8].status === "fulfilled" ? results[8].value : null;
 }
 
 void loadAdvanced();
@@ -414,16 +411,6 @@ async function setPersistence(event: Event): Promise<void> {
 
 function screenshotUrl(format: OscilloscopeScreenshotFormat): string {
   return api.scopeScreenshotUrl(props.sessionId, format);
-}
-
-// 2.7c presets
-async function saveScopePreset(slot: number): Promise<void> {
-  await wrap(() => api.saveScopePreset(props.sessionId, slot));
-  presets.value = await api.getScopePresets(props.sessionId);
-}
-async function recallScopePreset(slot: number): Promise<void> {
-  await wrap(() => api.recallScopePreset(props.sessionId, slot));
-  await loadAdvanced();
 }
 
 // 2.7d decoders (compact view — more elaborate UI is future work)
@@ -870,27 +857,15 @@ async function disableBus(busId: number): Promise<void> {
   </details>
 
   <!-- 2.7c presets -->
-  <details v-if="presets?.supported" class="rounded-[var(--radius-card)] border border-border bg-surface-2 p-4">
-    <summary class="cursor-pointer text-sm font-semibold">Presets ({{ presets.slots }} slots)</summary>
-    <div class="mt-3 grid grid-cols-5 gap-2 md:grid-cols-10">
-      <div
-        v-for="(occ, i) in presets.occupied"
-        :key="i"
-        class="flex flex-col items-center gap-1 rounded-md border border-border bg-surface-3 p-2"
-      >
-        <span class="text-xs font-semibold">{{ i }}</span>
-        <span class="block h-1.5 w-full rounded-full" :class="occ ? 'bg-state-success' : 'bg-border'" />
-        <button class="rounded bg-accent px-1 py-0.5 text-[10px] text-accent-fg" v-bind="writeOff" @click="saveScopePreset(i)">Save</button>
-        <button
-          class="rounded border border-border px-1 py-0.5 text-[10px] disabled:opacity-50"
-          :disabled="!occ || gate.enabled"
-          :aria-disabled="!occ || gate.enabled"
-          :title="gate.enabled ? SAFE_MODE_WRITE_TITLE : undefined"
-          @click="recallScopePreset(i)"
-        >Recall</button>
-      </div>
-    </div>
-  </details>
+  <InstrumentPresetsControl
+    :enabled="enabled"
+    description="Save and recall the oscilloscope setup (channels, timebase, trigger, acquisition, and related settings) to one of {slots} internal memory slots."
+    :load-catalog="() => api.getScopePresets(sessionId)"
+    :save-slot="(slot) => api.saveScopePreset(sessionId, slot)"
+    :recall-slot="(slot) => api.recallScopePreset(sessionId, slot)"
+    @saved="loadAdvanced"
+    @recalled="loadAdvanced"
+  />
 
   <!-- 2.7d decoders -->
   <details v-if="buses?.supported" class="rounded-[var(--radius-card)] border border-border bg-surface-2 p-4">

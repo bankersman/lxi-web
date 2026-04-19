@@ -231,7 +231,7 @@ test("DM858 setMode sends the matching CONFigure command", async () => {
 test("DM858 read returns value, unit, and overload flag", async () => {
   const port = new FakeScpiPort()
     .onQuery(/:READ\?/, "1.234560E+00")
-    .onQuery(/:FUNCtion\?/, '"VOLT"');
+    .onQuery(/:SENSe:FUNCtion\?/, '"VOLT"');
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
   const reading = await dmm.read();
   assert.equal(reading.mode, "dcVoltage");
@@ -243,7 +243,7 @@ test("DM858 read returns value, unit, and overload flag", async () => {
 test("DM858 read flags overload when instrument returns 9.9E37 sentinel", async () => {
   const port = new FakeScpiPort()
     .onQuery(/:READ\?/, "9.90000000E+37")
-    .onQuery(/:FUNCtion\?/, '"RES"');
+    .onQuery(/:SENSe:FUNCtion\?/, '"RES"');
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
   const reading = await dmm.read();
   assert.equal(reading.overload, true);
@@ -264,13 +264,25 @@ test("DM858 advertises all 2.6 capabilities", () => {
   assert.ok(dmm.supportedModes.includes("temperature"));
 });
 
-test("DM858 setAutoZero and setNplc emit expected SCPI", async () => {
-  const port = new FakeScpiPort().onQuery(/:FUNCtion\?/, '"VOLT"');
+test("DM858 setNplc emits SENSe NPLC (no IVI auto-zero on DM858 ref)", async () => {
+  const port = new FakeScpiPort().onQuery(/:SENSe:FUNCtion\?/, '"VOLT"');
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
-  await dmm.setAutoZero!("once");
-  await dmm.setNplc!(10);
-  assert.ok(port.writes.some((w) => /ZERO:AUTO ONCE/i.test(w)));
-  assert.ok(port.writes.some((w) => /NPLC 10/i.test(w)));
+  assert.equal(dmm.setAutoZero, undefined);
+  await dmm.setNplc!(5);
+  assert.ok(port.writes.some((w) => /:SENSe:VOLTage:DC:NPLC 5/.test(w)));
+});
+
+test("DM858 getNplc/setNplc reject AC V and AC I (NPLC is DC-only per §3.17)", async () => {
+  const portAcV = new FakeScpiPort().onQuery(/:SENSe:FUNCtion\?/, '"VOLT:AC"');
+  const dmmAcV = new RigolDm858(portAcV, parseIdn("RIGOL,DM858,SN,FW"));
+  await assert.rejects(() => dmmAcV.getNplc!(), /no NPLC command on DM800/);
+  await assert.rejects(() => dmmAcV.setNplc!(5), /no NPLC command on DM800/);
+  assert.ok(!portAcV.queries.some((q) => /VOLTage:AC:NPLC/.test(q)));
+
+  const portAcI = new FakeScpiPort().onQuery(/:SENSe:FUNCtion\?/, '"CURR:AC"');
+  const dmmAcI = new RigolDm858(portAcI, parseIdn("RIGOL,DM858,SN,FW"));
+  await assert.rejects(() => dmmAcI.getNplc!(), /no NPLC command on DM800/);
+  assert.ok(!portAcI.queries.some((q) => /CURRent:AC:NPLC/.test(q)));
 });
 
 test("DHO800 advertises all 2.7 capabilities", () => {
@@ -330,7 +342,7 @@ test("DHO800 channel extras map to SCPI", async () => {
 
 test("DM858 getRange returns parsed state for the active mode", async () => {
   const port = new FakeScpiPort()
-    .onQuery(/:FUNCtion\?/, '"VOLT"')
+    .onQuery(/:SENSe:FUNCtion\?/, '"VOLT"')
     .onQuery(/:SENSe:VOLTage:DC:RANGe\?/, "20")
     .onQuery(/:SENSe:VOLTage:DC:RANGe:AUTO\?/, "0");
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
@@ -338,6 +350,32 @@ test("DM858 getRange returns parsed state for the active mode", async () => {
   assert.equal(state.mode, "dcVoltage");
   assert.equal(state.upper, 20);
   assert.equal(state.auto, false);
+});
+
+test("DM858 getRange does not query SENSe:CONTinuity:RANGe (no such subtree on DM858)", async () => {
+  const port = new FakeScpiPort().onQuery(/:SENSe:FUNCtion\?/, '"CONT"');
+  const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
+  const state = await dmm.getRange!();
+  assert.equal(state.mode, "continuity");
+  assert.ok(!port.queries.some((q) => /CONTinuity:RANGe/.test(q)));
+});
+
+test("DM858 getRange/setRange use FREQuency:VOLTage:RANGe (not FREQuency:RANGe)", async () => {
+  const port = new FakeScpiPort()
+    .onQuery(/:SENSe:FUNCtion\?/, '"FREQ"')
+    .onQuery(/:SENSe:FREQuency:VOLTage:RANGe\?/, "1E+06")
+    .onQuery(/:SENSe:FREQuency:VOLTage:RANGe:AUTO\?/, "0");
+  const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
+  const state = await dmm.getRange!();
+  assert.equal(state.mode, "frequency");
+  assert.equal(state.upper, 1e6);
+  assert.equal(state.auto, false);
+  await dmm.setRange!("frequency", "auto");
+  await dmm.setRange!("frequency", 100_000);
+  assert.ok(!port.queries.some((q) => /:SENSe:FREQuency:RANGe\?/.test(q)));
+  assert.ok(port.writes.includes(":SENSe:FREQuency:VOLTage:RANGe:AUTO ON"));
+  assert.ok(port.writes.includes(":SENSe:FREQuency:VOLTage:RANGe:AUTO OFF"));
+  assert.ok(port.writes.includes(":SENSe:FREQuency:VOLTage:RANGe 100000"));
 });
 
 test("DM858 setRange handles auto and explicit ranges", async () => {
@@ -351,17 +389,15 @@ test("DM858 setRange handles auto and explicit ranges", async () => {
   await assert.rejects(() => dmm.setRange!("dcVoltage", -1), /invalid range/);
 });
 
-test("DM858 getTriggerConfig parses all trigger fields", async () => {
+test("DM858 getTriggerConfig parses documented TRIGger + SAMPle fields only", async () => {
   const port = new FakeScpiPort()
     .onQuery(/:TRIGger:SOURce\?/, "EXT")
-    .onQuery(/:TRIGger:SLOPe\?/, "NEG")
-    .onQuery(/:TRIGger:DELay\?/, "0.1")
     .onQuery(/:SAMPle:COUNt\?/, "42");
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
   const cfg = await dmm.getTriggerConfig!();
   assert.equal(cfg.source, "external");
-  assert.equal(cfg.slope, "negative");
-  assert.ok(Math.abs(cfg.delaySec - 0.1) < 1e-9);
+  assert.equal(cfg.slope, "positive");
+  assert.equal(cfg.delaySec, 0);
   assert.equal(cfg.sampleCount, 42);
 });
 
@@ -371,53 +407,58 @@ test("DM858 setTriggerConfig + trigger emit expected SCPI", async () => {
   await dmm.setTriggerConfig!({
     source: "immediate",
     slope: "positive",
-    delaySec: 0.25,
+    delaySec: 0,
     sampleCount: 5,
   });
   await dmm.trigger!();
   assert.ok(port.writes.includes(":TRIGger:SOURce IMMediate"));
-  assert.ok(port.writes.includes(":TRIGger:SLOPe POSitive"));
-  assert.ok(port.writes.includes(":TRIGger:DELay 0.25"));
   assert.ok(port.writes.includes(":SAMPle:COUNt 5"));
+  assert.ok(port.writes.includes(":TRIGger:COUNt 1"));
   assert.ok(port.writes.includes("*TRG"));
 });
 
 test("DM858 setMath disables with 'none' and configures NULL offset", async () => {
-  const port = new FakeScpiPort();
+  const port = new FakeScpiPort().onQuery(/:SENSe:FUNCtion\?/, '"VOLT"');
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
   await dmm.setMath!({ function: "null", nullOffset: 0.25 });
-  assert.ok(port.writes.includes(":CALCulate:FUNCtion NULL"));
-  assert.ok(port.writes.includes(":CALCulate:STATe ON"));
-  assert.ok(port.writes.includes(":CALCulate:NULL:OFFSet 0.25"));
+  assert.ok(port.writes.includes(":SENSe:VOLTage:DC:NULL:STATe ON"));
+  assert.ok(port.writes.includes(":SENSe:VOLTage:DC:NULL:VALue 0.25"));
   await dmm.setMath!({ function: "none" });
-  assert.ok(port.writes.includes(":CALCulate:STATe OFF"));
+  assert.ok(port.writes.includes(":SENSe:VOLTage:DC:NULL:STATe OFF"));
 });
 
 test("DM858 setMath dbm/limit writes reference and bounds", async () => {
-  const port = new FakeScpiPort();
+  const port = new FakeScpiPort().onQuery(/:SENSe:FUNCtion\?/, '"VOLT"');
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
   await dmm.setMath!({ function: "dbm", dbmReference: 600 });
   await dmm.setMath!({ function: "limit", limitUpper: 5, limitLower: 1 });
-  assert.ok(port.writes.includes(":CALCulate:FUNCtion DBM"));
-  assert.ok(port.writes.includes(":CALCulate:DBM:REFerence 600"));
-  assert.ok(port.writes.includes(":CALCulate:FUNCtion LIMit"));
-  assert.ok(port.writes.includes(":CALCulate:LIMit:UPPer 5"));
-  assert.ok(port.writes.includes(":CALCulate:LIMit:LOWer 1"));
+  assert.ok(port.writes.includes(":CALCulate:SCALe:FUNCtion DBM"));
+  assert.ok(port.writes.includes(":CALCulate:SCALe:DBM:REFerence 600"));
+  assert.ok(port.writes.includes(":CALCulate:LIMit:STATe ON"));
+  assert.ok(port.writes.includes(":CALCulate:LIMit:UPPer:DATA 5"));
+  assert.ok(port.writes.includes(":CALCulate:LIMit:LOWer:DATA 1"));
 });
 
-test("DM858 getMath returns 'none' when CALCulate:STATe is off", async () => {
+test("DM858 getMath returns 'none' when no calc layer is active", async () => {
   const port = new FakeScpiPort()
-    .onQuery(/:CALCulate:STATe\?/, "0")
-    .onQuery(/:CALCulate:FUNCtion\?/, '"NULL"');
+    .onQuery(/:SENSe:FUNCtion\?/, '"VOLT"')
+    .onQuery(/:CALCulate:AVERage:STATe\?/, "0")
+    .onQuery(/:CALCulate:LIMit:STATe\?/, "0")
+    .onQuery(/:SENSe:VOLTage:DC:NULL:STATe\?/, "0");
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
   const state = await dmm.getMath!();
   assert.equal(state.config.function, "none");
+  assert.ok(
+    !port.queries.some((q) => /CALCulate:SCALe:STATe\?|CALCulate:SCALe:FUNCtion\?/.test(q)),
+  );
 });
 
-test("DM858 getMath surfaces stats when function = AVERage", async () => {
+test("DM858 getMath surfaces stats when AVERage statistics are on", async () => {
   const port = new FakeScpiPort()
-    .onQuery(/:CALCulate:STATe\?/, "1")
-    .onQuery(/:CALCulate:FUNCtion\?/, '"AVERage"')
+    .onQuery(/:SENSe:FUNCtion\?/, '"VOLT"')
+    .onQuery(/:CALCulate:AVERage:STATe\?/, "1")
+    .onQuery(/:CALCulate:LIMit:STATe\?/, "0")
+    .onQuery(/:SENSe:VOLTage:DC:NULL:STATe\?/, "0")
     .onQuery(/:CALCulate:AVERage:MINimum\?/, "1.0")
     .onQuery(/:CALCulate:AVERage:MAXimum\?/, "5.0")
     .onQuery(/:CALCulate:AVERage:AVERage\?/, "3.0")
@@ -431,6 +472,56 @@ test("DM858 getMath surfaces stats when function = AVERage", async () => {
   assert.equal(state.stats!.average, 3.0);
 });
 
+test("DM858 getMath does not query CALCulate:SCALe outside DCV/ACV", async () => {
+  const port = new FakeScpiPort()
+    .onQuery(/:SENSe:FUNCtion\?/, '"RES"')
+    .onQuery(/:CALCulate:AVERage:STATe\?/, "0")
+    .onQuery(/:CALCulate:LIMit:STATe\?/, "0")
+    .onQuery(/:SENSe:RESistance:NULL:STATe\?/, "0");
+  const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
+  const state = await dmm.getMath!();
+  assert.equal(state.config.function, "none");
+  assert.ok(
+    !port.queries.some((q) => /CALCulate:SCALe/i.test(q)),
+    "no SCALe SCPI on non-voltage functions",
+  );
+});
+
+test("DM858 getMath reads dBm reference without SCALe STATe/FUNC probes", async () => {
+  const port = new FakeScpiPort()
+    .onQuery(/:SENSe:FUNCtion\?/, '"VOLT"')
+    .onQuery(/:CALCulate:AVERage:STATe\?/, "0")
+    .onQuery(/:CALCulate:LIMit:STATe\?/, "0")
+    .onQuery(/:SENSe:VOLTage:DC:NULL:STATe\?/, "0")
+    .onQuery(/:CALCulate:SCALe:DBM:REFerence\?/, "600");
+  const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
+  await dmm.setMath!({ function: "dbm", dbmReference: 600 });
+  port.queries.length = 0;
+  const state = await dmm.getMath!();
+  assert.equal(state.config.function, "dbm");
+  assert.equal(state.config.dbmReference, 600);
+  assert.ok(!port.queries.some((q) => /SCALe:STATe\?|SCALe:FUNCtion\?/.test(q)));
+  assert.ok(port.queries.some((q) => /SCALe:DBM:REFerence\?/.test(q)));
+});
+
+test("DM858 setMode clears dB/dBm cache (scaling resets with measurement function)", async () => {
+  let func = '"VOLT"';
+  const port = new FakeScpiPort()
+    .onQuery(/:SENSe:FUNCtion\?/, () => func)
+    .onQuery(/:CALCulate:AVERage:STATe\?/, "0")
+    .onQuery(/:CALCulate:LIMit:STATe\?/, "0")
+    .onQuery(/:SENSe:VOLTage:DC:NULL:STATe\?/, "0")
+    .onQuery(/:SENSe:RESistance:NULL:STATe\?/, "0");
+  const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
+  await dmm.setMath!({ function: "dbm", dbmReference: 600 });
+  func = '"RES"';
+  await dmm.setMode!("resistance");
+  port.queries.length = 0;
+  const state = await dmm.getMath!();
+  assert.equal(state.config.function, "none");
+  assert.ok(!port.queries.some((q) => /CALCulate:SCALe/i.test(q)));
+});
+
 test("DM858 resetMathStatistics clears CALCulate:AVERage", async () => {
   const port = new FakeScpiPort();
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
@@ -438,40 +529,57 @@ test("DM858 resetMathStatistics clears CALCulate:AVERage", async () => {
   assert.deepEqual(port.writes, [":CALCulate:AVERage:CLEar"]);
 });
 
-test("DM858 setDualDisplay toggles window 2 on/off", async () => {
-  const port = new FakeScpiPort();
+test("DM858 setDualDisplay uses SENSe:SECondary per API ref", async () => {
+  const port = new FakeScpiPort().onQuery(/:SENSe:FUNCtion\?/, '"FREQ"');
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
-  await dmm.setDualDisplay!("frequency");
+  await dmm.setDualDisplay!("acVoltage");
   await dmm.setDualDisplay!(null);
-  assert.ok(port.writes.includes(":DISPlay:WINDow2:FUNCtion FREQ"));
-  assert.ok(port.writes.includes(":DISPlay:WINDow2:STATe ON"));
-  assert.ok(port.writes.includes(":DISPlay:WINDow2:STATe OFF"));
+  assert.ok(port.writes.some((w) => /SECondary "VOLTage:AC"/.test(w)));
+  assert.ok(port.writes.includes(':SENSe:FREQuency:SECondary "OFF"'));
 });
 
-test("DM858 getTemperatureConfig decodes unit + transducer", async () => {
+test("DM858 getTemperatureConfig decodes unit + transducer in TEMP mode", async () => {
   const port = new FakeScpiPort()
+    .onQuery(/:SENSe:FUNCtion\?/, '"TEMP"')
     .onQuery(/:UNIT:TEMPerature\?/, "F")
-    .onQuery(/:SENSe:TEMPerature:TRANsducer:TYPE\?/, "TCouple,K");
+    .onQuery(/:CONFigure\?/, "TEMP TCouple,K");
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
   const cfg = await dmm.getTemperatureConfig!();
   assert.equal(cfg.unit, "fahrenheit");
   assert.equal(cfg.transducer, "thermocouple-k");
 });
 
-test("DM858 setTemperatureConfig emits unit + two-step transducer SCPI", async () => {
+test("DM858 getTemperatureConfig parses abbreviated CONFigure? (TEMP TC,K)", async () => {
+  const port = new FakeScpiPort()
+    .onQuery(/:SENSe:FUNCtion\?/, '"TEMP"')
+    .onQuery(/:UNIT:TEMPerature\?/, "C")
+    .onQuery(/:CONFigure\?/, "TEMP TC,K");
+  const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
+  const cfg = await dmm.getTemperatureConfig!();
+  assert.equal(cfg.transducer, "thermocouple-k");
+});
+
+test("DM858 getTemperatureConfig parses FTHermistor abbreviation (TEMP FTH,5000)", async () => {
+  const port = new FakeScpiPort()
+    .onQuery(/:SENSe:FUNCtion\?/, '"TEMP"')
+    .onQuery(/:UNIT:TEMPerature\?/, "C")
+    .onQuery(/:CONFigure\?/, "TEMP FTH,5000");
+  const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
+  const cfg = await dmm.getTemperatureConfig!();
+  assert.equal(cfg.transducer, "thermistor");
+});
+
+test("DM858 setTemperatureConfig emits UNIT + CONFigure:TEMPerature (doc §3.10.10)", async () => {
   const port = new FakeScpiPort();
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
   await dmm.setTemperatureConfig!({ unit: "celsius", transducer: "pt1000" });
   assert.ok(port.writes.includes(":UNIT:TEMPerature C"));
-  // DM858 accepts family + sub-type as two writes, not comma-joined.
-  assert.ok(port.writes.includes(":SENSe:TEMPerature:TRANsducer:TYPE RTD"));
-  assert.ok(port.writes.includes(":SENSe:TEMPerature:TRANsducer:RTD:TYPE PT1000"));
+  assert.ok(port.writes.includes(":CONFigure:TEMPerature RTD,385"));
 
   const tcPort = new FakeScpiPort();
   const tcDmm = new RigolDm858(tcPort, parseIdn("RIGOL,DM858,SN,FW"));
   await tcDmm.setTemperatureConfig!({ unit: "celsius", transducer: "thermocouple-k" });
-  assert.ok(tcPort.writes.includes(":SENSe:TEMPerature:TRANsducer:TYPE TCouple"));
-  assert.ok(tcPort.writes.includes(":SENSe:TEMPerature:TRANsducer:TCouple:TYPE K"));
+  assert.ok(tcPort.writes.includes(":CONFigure:TEMPerature TCouple,K"));
 });
 
 test("DM858 preset save/recall emit *SAV / *RCL and validate slot range", async () => {
@@ -490,7 +598,7 @@ test("DM858 preset save/recall emit *SAV / *RCL and validate slot range", async 
 test("DM858 logging: start, status, samples, stop", async () => {
   const port = new FakeScpiPort()
     .onQuery(/:READ\?/, "1.5")
-    .onQuery(/:FUNCtion\?/, '"VOLT"');
+    .onQuery(/:SENSe:FUNCtion\?/, '"VOLT"');
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
   const run = await dmm.startLogging!({ intervalMs: 50, totalSamples: 3 });
   assert.ok(run.runId);
@@ -509,7 +617,7 @@ test("DM858 logging: start, status, samples, stop", async () => {
 test("DM858 logging rejects a second concurrent run", async () => {
   const port = new FakeScpiPort()
     .onQuery(/:READ\?/, "1")
-    .onQuery(/:FUNCtion\?/, '"VOLT"');
+    .onQuery(/:SENSe:FUNCtion\?/, '"VOLT"');
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
   await dmm.startLogging!({ intervalMs: 50 });
   await assert.rejects(() => dmm.startLogging!({ intervalMs: 50 }), /already active/);

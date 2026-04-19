@@ -9,7 +9,7 @@ import { formatSi } from "@/lib/format";
 import type { PsuChannelState, PsuPairingMode } from "@lxi-web/core/browser";
 import PsuPairingControl from "./PsuPairingControl.vue";
 import PsuTrackingControl from "./PsuTrackingControl.vue";
-import PsuPresetsControl from "./PsuPresetsControl.vue";
+import InstrumentPresetsControl from "./InstrumentPresetsControl.vue";
 import PsuProtectionControl from "./PsuProtectionControl.vue";
 
 const props = defineProps<{ sessionId: string; enabled: boolean }>();
@@ -196,10 +196,13 @@ function onPairingChange(mode: PsuPairingMode): void {
       :refresh-key="refreshKey"
       @change="invalidateAll"
     />
-    <PsuPresetsControl
-      :session-id="sessionId"
+    <InstrumentPresetsControl
       :enabled="enabled"
       :refresh-key="refreshKey"
+      description="Save and recall the full PSU state (all channels, OVP/OCP, pairing) to one of {slots} internal memory slots."
+      :load-catalog="() => api.getPsuPresets(sessionId)"
+      :save-slot="(slot) => api.savePsuPreset(sessionId, slot)"
+      :recall-slot="(slot) => api.recallPsuPreset(sessionId, slot)"
       @recalled="onRecalled"
     />
 

@@ -113,7 +113,7 @@ PSU not listed? [File a hardware report](https://github.com/bankersman/lxi-web/i
 | Vendor    | Family      | Variant  | Status  | Notes |
 | --------- | ----------- | -------- | ------- | --- |
 | Rigol     | DM800       | DM858    | Verified | 6½-digit. Full mode / range / NPLC / math / logging / dual-display surface. |
-| Rigol     | DM800       | DM858E   | Preview | Drops 4-wire resistance unless `DM-4W` license present (refine hook re-adds it on licensed units). |
+| Rigol     | DM800       | DM858E   | Preview | Drops 4-wire resistance unless the `DM-4W` license is installed (not probed: `*OPT?` is unsupported on this firmware). |
 | Siglent   | SDM         | SDM3045X | Preview | 4½-digit. No 4-wire resistance. |
 | Siglent   | SDM         | SDM3055  | Preview | 5½-digit. |
 | Siglent   | SDM         | SDM3065X | Preview | 6½-digit. |

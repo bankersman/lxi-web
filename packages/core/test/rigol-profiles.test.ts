@@ -105,21 +105,24 @@ test("refineDp900Profile trims channel count when SYSTem:CHANnel:COUNt? reports 
   assert.equal(refined.channels.length, 2);
 });
 
-test("refineDm800Profile re-adds fourWireResistance when DM-4W license is present", async () => {
+test("refineDm800Profile does not query *OPT? and returns base unchanged", async () => {
   const base = DM800_VARIANTS.find((v) => v.variant === "DM858E");
   assert.ok(base);
-  assert.equal(base!.modes.includes("fourWireResistance"), false);
-  const port = makeOptPort("DM-4W,0");
+  const port: ScpiPort = {
+    async query(command: string): Promise<string> {
+      if (command === "*OPT?") {
+        throw new Error("*OPT? must not be sent on DM800 family");
+      }
+      throw new Error(`unexpected query: ${command}`);
+    },
+    async queryBinary(): Promise<Uint8Array> {
+      return new Uint8Array();
+    },
+    async write(): Promise<void> {},
+    async writeBinary(): Promise<void> {},
+  };
   const refined = await refineDm800Profile(base!, port);
-  assert.ok(refined.modes.includes("fourWireResistance"));
-});
-
-test("refineDm800Profile leaves DM858E as-is when no DM-4W license is reported", async () => {
-  const base = DM800_VARIANTS.find((v) => v.variant === "DM858E");
-  assert.ok(base);
-  const port = makeOptPort("0");
-  const refined = await refineDm800Profile(base!, port);
-  assert.equal(refined.modes.includes("fourWireResistance"), false);
+  assert.equal(refined, base);
 });
 
 // ---- catch-all profile defaults ----

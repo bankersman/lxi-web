@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { api, type EloadStateInfo } from "@/api/client";
+import InstrumentPresetsControl from "./InstrumentPresetsControl.vue";
 import { useLiveReading } from "@/composables/useLiveReading";
 import { useSafeModeGate } from "@/composables/useSafeModeGate";
 import { formatSi } from "@/lib/format";
@@ -62,7 +63,6 @@ const protectionState = ref<
   >
 >({});
 const battery = ref<ElectronicLoadBatteryState | null>(null);
-const presetOccupied = ref<readonly boolean[]>([]);
 
 async function reload(): Promise<void> {
   if (!props.enabled) return;
@@ -88,14 +88,6 @@ async function reload(): Promise<void> {
     try {
       const info = await api.getEloadBattery(props.sessionId);
       battery.value = info.state ?? null;
-    } catch {
-      /* ignore */
-    }
-  }
-  if (initial.value.capabilities.presets) {
-    try {
-      const info = await api.getEloadPresets(props.sessionId);
-      presetOccupied.value = info.occupied;
     } catch {
       /* ignore */
     }
@@ -450,38 +442,16 @@ async function stopBattery(): Promise<void> {
       </div>
 
       <div v-if="tab === 'presets' && caps.presets">
-        <p class="text-xs text-fg-muted">
-          {{ caps.presets.slots }} save/recall slots via
-          <code>*SAV</code>/<code>*RCL</code>.
-        </p>
-        <ul class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
-          <li v-for="(occ, slot) in presetOccupied" :key="slot">
-            <div class="rounded-md border border-border bg-surface-3 p-2 text-center text-xs">
-              <p class="font-mono">#{{ slot }}</p>
-              <p class="text-fg-muted">{{ occ ? "saved" : "empty" }}</p>
-              <div class="mt-1 flex gap-1">
-                <button
-                  type="button"
-                  class="flex-1 rounded bg-surface px-1 py-0.5 text-[10px] hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                  :disabled="controlsLocked"
-                  :title="lockTitle"
-                  @click="api.saveEloadPreset(sessionId, slot)"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  class="flex-1 rounded bg-surface px-1 py-0.5 text-[10px] hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                  :disabled="controlsLocked || !occ"
-                  :title="lockTitle"
-                  @click="api.recallEloadPreset(sessionId, slot)"
-                >
-                  Recall
-                </button>
-              </div>
-            </div>
-          </li>
-        </ul>
+        <InstrumentPresetsControl
+          embedded
+          :enabled="enabled"
+          description="Save and recall the electronic load configuration to one of {slots} internal memory slots (via *SAV / *RCL)."
+          :load-catalog="() => api.getEloadPresets(sessionId)"
+          :save-slot="(slot) => api.saveEloadPreset(sessionId, slot)"
+          :recall-slot="(slot) => api.recallEloadPreset(sessionId, slot)"
+          @saved="reload"
+          @recalled="reload"
+        />
       </div>
     </div>
 

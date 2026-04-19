@@ -2,8 +2,8 @@ import type { ScpiPort } from "../../../scpi/port.js";
 
 /**
  * Probe `*OPT?` with a short timeout so a firmware that silently drops it
- * doesn't stall the connect path. The Rigol DM858, for example, sometimes
- * takes a full second even to reply with `0`.
+ * doesn't stall the connect path. (DM800-family DMMs do not use this helper —
+ * their firmware does not implement `*OPT?` safely.)
  */
 export async function queryOptList(
   port: ScpiPort,

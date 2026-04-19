@@ -485,9 +485,29 @@ async function openScope(
 
 // ---- DMM route tests (2.6a / 2.6b / 2.6c) ----
 
-test("DMM ranging GET exposes capability and POST forwards setAutoZero", async () => {
+test("DMM snapshot GET returns merged bootstrap payload", async () => {
+  const { app, id } = await openDmm((cmd) => {
+    if (/:SENSe:FUNCtion\?/.test(cmd)) return '"VOLT"';
+    if (/:TRIGger:SOURce\?/.test(cmd)) return "IMM";
+    if (/:SAMPle:COUNt\?/.test(cmd)) return "1";
+    return undefined;
+  });
+  const res = await app.inject({ method: "GET", url: `/api/sessions/${id}/dmm` });
+  assert.equal(res.statusCode, 200);
+  const body = res.json() as {
+    mode: { mode: string };
+    identity: { model: string } | null;
+    ranging: { supported: boolean };
+  };
+  assert.equal(body.mode.mode, "dcVoltage");
+  assert.equal(body.identity?.model, "DM858");
+  assert.equal(body.ranging.supported, true);
+  await app.close();
+});
+
+test("DMM ranging GET exposes capability and POST forwards NPLC", async () => {
   const { app, id, session } = await openDmm((cmd) => {
-    if (/:FUNCtion\?/.test(cmd)) return '"VOLT"';
+    if (/:SENSe:FUNCtion\?/.test(cmd)) return '"VOLT"';
     if (/:SENSe:VOLTage:DC:RANGe:AUTO\?/.test(cmd)) return "1";
     if (/:SENSe:VOLTage:DC:RANGe\?/.test(cmd)) return "20";
     if (/:SENSe:VOLTage:DC:NPLC\?/.test(cmd)) return "1";
@@ -497,7 +517,7 @@ test("DMM ranging GET exposes capability and POST forwards setAutoZero", async (
   assert.equal(info.statusCode, 200);
   const body = info.json() as { supported: boolean; capability: { nplc: number[] } };
   assert.equal(body.supported, true);
-  assert.ok(body.capability.nplc.includes(10));
+  assert.ok(body.capability.nplc.includes(5));
 
   const bad = await app.inject({
     method: "POST",
@@ -509,17 +529,16 @@ test("DMM ranging GET exposes capability and POST forwards setAutoZero", async (
   const ok = await app.inject({
     method: "POST",
     url: `/api/sessions/${id}/dmm/ranging`,
-    payload: { nplc: 10, autoZero: "once" },
+    payload: { nplc: 5 },
   });
   assert.equal(ok.statusCode, 200);
   const writes = session()?.writes ?? [];
-  assert.ok(writes.some((w) => /NPLC 10/.test(w)));
-  assert.ok(writes.some((w) => /ZERO:AUTO ONCE/.test(w)));
+  assert.ok(writes.some((w) => /NPLC 5/.test(w)));
   await app.close();
 });
 
 test("DMM ranging rejects nplc outside the capability list", async () => {
-  const { app, id } = await openDmm((cmd) => (/:FUNCtion\?/.test(cmd) ? '"VOLT"' : undefined));
+  const { app, id } = await openDmm((cmd) => (/:SENSe:FUNCtion\?/.test(cmd) ? '"VOLT"' : undefined));
   const res = await app.inject({
     method: "POST",
     url: `/api/sessions/${id}/dmm/ranging`,
@@ -532,8 +551,6 @@ test("DMM ranging rejects nplc outside the capability list", async () => {
 test("DMM trigger endpoints validate input and forward config", async () => {
   const { app, id, session } = await openDmm((cmd) => {
     if (/:TRIGger:SOURce\?/.test(cmd)) return "IMM";
-    if (/:TRIGger:SLOPe\?/.test(cmd)) return "POS";
-    if (/:TRIGger:DELay\?/.test(cmd)) return "0";
     if (/:SAMPle:COUNt\?/.test(cmd)) return "1";
     return undefined;
   });
@@ -553,14 +570,14 @@ test("DMM trigger endpoints validate input and forward config", async () => {
   const outOfRange = await app.inject({
     method: "POST",
     url: `/api/sessions/${id}/dmm/trigger`,
-    payload: { sampleCount: 9_999_999 },
+    payload: { sampleCount: 9_999 },
   });
   assert.equal(outOfRange.statusCode, 400);
 
   const ok = await app.inject({
     method: "POST",
     url: `/api/sessions/${id}/dmm/trigger`,
-    payload: { source: "external", slope: "negative", sampleCount: 10, delaySec: 0.1 },
+    payload: { source: "external", slope: "negative", sampleCount: 10, delaySec: 0 },
   });
   assert.equal(ok.statusCode, 200);
   const fire = await app.inject({
@@ -570,14 +587,15 @@ test("DMM trigger endpoints validate input and forward config", async () => {
   assert.equal(fire.statusCode, 200);
   const writes = session()?.writes ?? [];
   assert.ok(writes.includes(":TRIGger:SOURce EXTernal"));
-  assert.ok(writes.includes(":TRIGger:SLOPe NEGative"));
+  assert.ok(writes.includes(":SAMPle:COUNt 10"));
+  assert.ok(writes.includes(":TRIGger:COUNt 1"));
   assert.ok(writes.includes("*TRG"));
   await app.close();
 });
 
 test("DMM math endpoint validates function and forwards config", async () => {
   const { app, id, session } = await openDmm((cmd) => {
-    if (/:FUNCtion\?/.test(cmd)) return '"VOLT"';
+    if (/:SENSe:FUNCtion\?/.test(cmd)) return '"VOLT"';
     return undefined;
   });
 
@@ -609,15 +627,15 @@ test("DMM math endpoint validates function and forwards config", async () => {
   assert.equal(resetSupported.statusCode, 200);
 
   const writes = session()?.writes ?? [];
-  assert.ok(writes.includes(":CALCulate:FUNCtion NULL"));
-  assert.ok(writes.includes(":CALCulate:NULL:OFFSet 0.1"));
+  assert.ok(writes.some((w) => /:SENSe:VOLTage:DC:NULL:STATe ON/.test(w)));
+  assert.ok(writes.some((w) => /:SENSe:VOLTage:DC:NULL:VALue 0.1/.test(w)));
   assert.ok(writes.includes(":CALCulate:AVERage:CLEar"));
   await app.close();
 });
 
 test("DMM dual display rejects incompatible secondary mode", async () => {
   const { app, id } = await openDmm((cmd) =>
-    /:FUNCtion\?/.test(cmd) ? '"VOLT"' : undefined,
+    /:SENSe:FUNCtion\?/.test(cmd) ? '"VOLT:AC"' : undefined,
   );
 
   const bad = await app.inject({
@@ -659,8 +677,7 @@ test("DMM temperature endpoint validates unit/transducer", async () => {
   assert.equal(ok.statusCode, 200);
   const writes = session()?.writes ?? [];
   assert.ok(writes.includes(":UNIT:TEMPerature C"));
-  assert.ok(writes.includes(":SENSe:TEMPerature:TRANsducer:TYPE TCouple"));
-  assert.ok(writes.includes(":SENSe:TEMPerature:TRANsducer:TCouple:TYPE K"));
+  assert.ok(writes.includes(":CONFigure:TEMPerature TCouple,K"));
   await app.close();
 });
 
@@ -697,7 +714,7 @@ test("DMM presets endpoints validate slots and emit *SAV / *RCL", async () => {
 test("DMM logging start/status/samples/stop round-trip", async () => {
   const { app, id } = await openDmm((cmd) => {
     if (/:READ\?/.test(cmd)) return "1.5";
-    if (/:FUNCtion\?/.test(cmd)) return '"VOLT"';
+    if (/:SENSe:FUNCtion\?/.test(cmd)) return '"VOLT"';
     return undefined;
   });
 

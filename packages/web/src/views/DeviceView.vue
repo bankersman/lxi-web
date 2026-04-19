@@ -8,6 +8,7 @@ import DeviceOverviewCard from "@/components/DeviceOverviewCard.vue";
 import ScopePanel from "@/components/panels/ScopePanel.vue";
 import PsuPanel from "@/components/panels/PsuPanel.vue";
 import DmmPanel from "@/components/panels/DmmPanel.vue";
+import DmmMinimalPanel from "@/components/panels/DmmMinimalPanel.vue";
 import EloadPanel from "@/components/panels/EloadPanel.vue";
 import SgPanel from "@/components/panels/SgPanel.vue";
 import SaPanel from "@/components/panels/SaPanel.vue";
@@ -26,6 +27,14 @@ const session = computed(() => sessions.get(props.sessionId));
 const isConnected = computed(() => session.value?.status === "connected");
 
 const transcriptPanicOnly = computed(() => route.query.origin === "panic");
+
+/** Rigol DM858 / DM858E — full SCPI-aligned panel; other DMMs get a minimal view. */
+const isDm858Family = computed(() => {
+  const id = session.value?.identity;
+  if (!id) return false;
+  if (!/^rigol\b/i.test(id.manufacturer.trim())) return false;
+  return /^DM858(E)?$/i.test(id.model.trim());
+});
 
 watch(
   () => route.query.origin,
@@ -69,6 +78,11 @@ watch(
           :enabled="isConnected"
         />
         <DmmPanel
+          v-else-if="session.kind === 'multimeter' && isDm858Family"
+          :session-id="session.id"
+          :enabled="isConnected"
+        />
+        <DmmMinimalPanel
           v-else-if="session.kind === 'multimeter'"
           :session-id="session.id"
           :enabled="isConnected"

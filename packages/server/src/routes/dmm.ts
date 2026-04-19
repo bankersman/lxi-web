@@ -31,6 +31,86 @@ export async function registerDmmRoutes(
     return facade as IMultimeter;
   };
 
+  /** One round-trip for the detail UI: capabilities + current state (parallel SCPI on the server). */
+  app.get<{ Params: { id: string } }>(
+    "/api/sessions/:id/dmm",
+    async (req, reply) => {
+      const d = dmm(req, reply);
+      if (!d) return;
+      const identity = manager.get(req.params.id)?.identity ?? null;
+      const [
+        mode,
+        ranging,
+        trigger,
+        math,
+        dual,
+        logging,
+        temperature,
+        presets,
+      ] = await Promise.all([
+        d.getMode().then((m) => ({ mode: m, supported: d.supportedModes })),
+        (async () => {
+          if (!d.ranging) return { supported: false as const };
+          const current = d.getRange ? await d.getRange() : null;
+          const nplc = d.getNplc ? await d.getNplc().catch(() => null) : null;
+          return {
+            supported: true as const,
+            capability: d.ranging,
+            current,
+            nplc,
+          };
+        })(),
+        (async () => {
+          if (!d.triggering) return { supported: false as const };
+          const config = d.getTriggerConfig ? await d.getTriggerConfig() : null;
+          return { supported: true as const, capability: d.triggering, config };
+        })(),
+        (async () => {
+          if (!d.math) return { supported: false as const };
+          const state = d.getMath ? await d.getMath() : { config: { function: "none" as const } };
+          return { supported: true as const, capability: d.math, state };
+        })(),
+        (async () => {
+          if (!d.dualDisplay) return { supported: false as const };
+          const secondary = d.getDualDisplay ? await d.getDualDisplay() : null;
+          return { supported: true as const, capability: d.dualDisplay, secondary };
+        })(),
+        (async () => {
+          if (!d.logging) return { supported: false as const };
+          const status = d.getLoggingStatus ? await d.getLoggingStatus() : null;
+          return { supported: true as const, capability: d.logging, status };
+        })(),
+        (async () => {
+          if (!d.temperature) return { supported: false as const };
+          const config = d.getTemperatureConfig ? await d.getTemperatureConfig() : null;
+          return { supported: true as const, capability: d.temperature, config };
+        })(),
+        (async () => {
+          if (!d.presets || !d.getPresetCatalog) {
+            return { supported: false as const, slots: 0, occupied: [] as boolean[] };
+          }
+          const occupied = await d.getPresetCatalog();
+          return {
+            supported: true as const,
+            slots: d.presets.slots,
+            occupied: Array.from(occupied),
+          };
+        })(),
+      ]);
+      return {
+        identity,
+        mode,
+        ranging,
+        trigger,
+        math,
+        dual,
+        logging,
+        temperature,
+        presets,
+      };
+    },
+  );
+
   app.get<{ Params: { id: string } }>(
     "/api/sessions/:id/dmm/reading",
     async (req, reply) => {
@@ -113,11 +193,12 @@ export async function registerDmmRoutes(
       await d.setRange(body.mode, body.range);
     }
     if (body.nplc !== undefined) {
-      if (!d.ranging.nplc.includes(body.nplc)) {
+      const nplc = Number(body.nplc);
+      if (!Number.isFinite(nplc) || !d.ranging.nplc.some((x) => x === nplc)) {
         return reply.code(400).send({ error: "nplc not in capability list" });
       }
       if (!d.setNplc) return reply.code(409).send({ error: "setNplc not implemented" });
-      await d.setNplc(body.nplc);
+      await d.setNplc(nplc);
     }
     if (body.autoZero !== undefined) {
       if (!["on", "off", "once"].includes(body.autoZero)) {
@@ -158,8 +239,9 @@ export async function registerDmmRoutes(
     const next: MultimeterTriggerConfig = {
       source: body.source ?? current.source,
       slope: body.slope ?? current.slope,
-      delaySec: body.delaySec ?? current.delaySec,
-      sampleCount: body.sampleCount ?? current.sampleCount,
+      delaySec: body.delaySec !== undefined ? Number(body.delaySec) : current.delaySec,
+      sampleCount:
+        body.sampleCount !== undefined ? Number(body.sampleCount) : current.sampleCount,
     };
     if (!d.triggering.sources.includes(next.source)) {
       return reply.code(400).send({ error: "source not supported" });

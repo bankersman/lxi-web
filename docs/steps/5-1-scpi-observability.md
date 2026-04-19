@@ -115,9 +115,10 @@ once operators can see what's actually happening on the wire.
   narrow grid column.
 - Detail page: new **Transcript** tab next to Raw SCPI. Virtualised list
   with timestamp, direction glyph, origin tag, command, response (if
-  any), elapsed ms. Filter bar: text search (substring), direction, and
-  origin-kind checkboxes. **Pause** / **Resume** toggles live tail;
-  **Download NDJSON** button uses the export endpoint.
+  any), elapsed ms; rows are **newest first** (descending `seq`) so recent
+  traffic appears at the top of the scroll area. Filter bar: text search
+  (substring), direction, and origin-kind checkboxes. **Pause** / **Resume**
+  toggles live tail; **Download NDJSON** button uses the export endpoint.
 - Raw SCPI console (2.4) auto-appends to the transcript with
   `origin: { kind: "rawScpi" }`; the Transcript tab is the canonical view
   for rich replay rather than building filters into the Raw SCPI panel.

@@ -42,7 +42,7 @@ function formatOrigin(o: TranscriptOrigin): string {
 
 const filtered = computed(() => {
   const q = filterText.value.trim().toLowerCase();
-  return entries.value.filter((e) => {
+  const list = entries.value.filter((e) => {
     if (props.panicFilterOnly && e.origin.kind !== "panic") return false;
     if (!showDriver.value && e.origin.kind === "driver") return false;
     if (!showPoller.value && e.origin.kind === "poller") return false;
@@ -57,6 +57,7 @@ const filtered = computed(() => {
     const hay = `${e.command} ${e.response ?? ""} ${formatOrigin(e.origin)}`.toLowerCase();
     return hay.includes(q);
   });
+  return list.sort((a, b) => b.seq - a.seq);
 });
 
 async function loadInitial(): Promise<void> {

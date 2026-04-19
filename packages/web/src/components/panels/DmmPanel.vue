@@ -8,8 +8,8 @@ import type {
   DmmRangingInfo,
   DmmTemperatureInfo,
   DmmTriggerInfo,
-  PresetsInfo,
 } from "@/api/client";
+import InstrumentPresetsControl from "./InstrumentPresetsControl.vue";
 import { useLiveReading } from "@/composables/useLiveReading";
 import { usePolling } from "@/composables/usePolling";
 import { useSafeModeGate } from "@/composables/useSafeModeGate";
@@ -17,7 +17,6 @@ import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 import { formatSi, formatTime } from "@/lib/format";
 import { multimeterModeLabel } from "@/lib/labels";
 import type {
-  MultimeterAutoZero,
   MultimeterDualReading,
   MultimeterMathFunction,
   MultimeterMode,
@@ -46,34 +45,30 @@ const dual = ref<DmmDualInfo | null>(null);
 const dualReading = ref<MultimeterDualReading | null>(null);
 const logging = ref<DmmLoggingInfo | null>(null);
 const temperature = ref<DmmTemperatureInfo | null>(null);
-const presets = ref<PresetsInfo | null>(null);
 const actionError = ref<string | null>(null);
 
-async function loadCapabilities(): Promise<void> {
-  const results = await Promise.allSettled([
-    api.getDmmMode(props.sessionId),
-    api.getDmmRanging(props.sessionId),
-    api.getDmmTrigger(props.sessionId),
-    api.getDmmMath(props.sessionId),
-    api.getDmmDualDisplay(props.sessionId),
-    api.getDmmLogging(props.sessionId),
-    api.getDmmTemperature(props.sessionId),
-    api.getDmmPresets(props.sessionId),
-  ]);
-  if (results[0].status === "fulfilled") {
-    supported.value = results[0].value.supported;
-    selectedMode.value = results[0].value.mode;
+async function loadSnapshot(): Promise<void> {
+  try {
+    const s = await api.getDmmSnapshot(props.sessionId);
+    supported.value = s.mode.supported;
+    selectedMode.value = s.mode.mode;
+    ranging.value = s.ranging.supported ? s.ranging : null;
+    trigger.value = s.trigger.supported ? s.trigger : null;
+    math.value = s.math.supported ? s.math : null;
+    dual.value = s.dual.supported ? s.dual : null;
+    logging.value = s.logging.supported ? s.logging : null;
+    temperature.value = s.temperature.supported ? s.temperature : null;
+  } catch {
+    ranging.value = null;
+    trigger.value = null;
+    math.value = null;
+    dual.value = null;
+    logging.value = null;
+    temperature.value = null;
   }
-  ranging.value = results[1].status === "fulfilled" ? results[1].value : null;
-  trigger.value = results[2].status === "fulfilled" ? results[2].value : null;
-  math.value = results[3].status === "fulfilled" ? results[3].value : null;
-  dual.value = results[4].status === "fulfilled" ? results[4].value : null;
-  logging.value = results[5].status === "fulfilled" ? results[5].value : null;
-  temperature.value = results[6].status === "fulfilled" ? results[6].value : null;
-  presets.value = results[7].status === "fulfilled" ? results[7].value : null;
 }
 
-void loadCapabilities();
+void loadSnapshot();
 
 const reading = useLiveReading<MultimeterReading>(
   () => props.sessionId,
@@ -83,8 +78,13 @@ const reading = useLiveReading<MultimeterReading>(
 
 watch(reading.data, (r) => {
   if (!r) return;
+  const prevMode = selectedMode.value;
   selectedMode.value = r.mode;
   history.value = [r, ...history.value].slice(0, 20);
+  // Front-panel switch into temperature: refresh snapshot so unit/transducer match :CONFigure?
+  if (r.mode === "temperature" && prevMode !== "temperature") {
+    void loadSnapshot();
+  }
 });
 
 async function changeMode(event: Event): Promise<void> {
@@ -92,7 +92,7 @@ async function changeMode(event: Event): Promise<void> {
   selectedMode.value = value;
   await api.setDmmMode(props.sessionId, value);
   history.value = [];
-  await loadCapabilities();
+  await loadSnapshot();
 }
 
 const primary = computed(() => {
@@ -120,7 +120,7 @@ async function applyRange(event: Event): Promise<void> {
         range: Number.parseFloat(value),
       });
     }
-    ranging.value = await api.getDmmRanging(props.sessionId);
+    await loadSnapshot();
   } catch (err) {
     actionError.value = String(err);
   }
@@ -131,17 +131,7 @@ async function applyNplc(event: Event): Promise<void> {
   actionError.value = null;
   try {
     await api.setDmmRanging(props.sessionId, { nplc: value });
-    ranging.value = await api.getDmmRanging(props.sessionId);
-  } catch (err) {
-    actionError.value = String(err);
-  }
-}
-
-async function applyAutoZero(event: Event): Promise<void> {
-  const value = (event.target as HTMLSelectElement).value as MultimeterAutoZero;
-  actionError.value = null;
-  try {
-    await api.setDmmRanging(props.sessionId, { autoZero: value });
+    await loadSnapshot();
   } catch (err) {
     actionError.value = String(err);
   }
@@ -157,7 +147,7 @@ async function applyTrigger(): Promise<void> {
   actionError.value = null;
   try {
     await api.setDmmTrigger(props.sessionId, triggerDraft.value);
-    trigger.value = await api.getDmmTrigger(props.sessionId);
+    await loadSnapshot();
   } catch (err) {
     actionError.value = String(err);
   }
@@ -193,16 +183,18 @@ watch(math, (m) => {
 async function applyMath(): Promise<void> {
   actionError.value = null;
   try {
+    const nullNum = mathNull.value === "" ? undefined : Number.parseFloat(mathNull.value);
     await api.setDmmMath(props.sessionId, {
       function: mathFn.value,
-      nullOffset: mathNull.value === "" ? undefined : Number.parseFloat(mathNull.value),
+      nullOffset:
+        mathFn.value === "null" || mathFn.value === "db" ? nullNum : undefined,
       dbmReference: mathFn.value === "dbm" ? Number.parseFloat(mathDbm.value) : undefined,
       limitUpper:
         mathLimitUpper.value === "" ? undefined : Number.parseFloat(mathLimitUpper.value),
       limitLower:
         mathLimitLower.value === "" ? undefined : Number.parseFloat(mathLimitLower.value),
     });
-    math.value = await api.getDmmMath(props.sessionId);
+    await loadSnapshot();
   } catch (err) {
     actionError.value = String(err);
   }
@@ -212,7 +204,7 @@ async function resetStats(): Promise<void> {
   actionError.value = null;
   try {
     await api.resetDmmMathStats(props.sessionId);
-    math.value = await api.getDmmMath(props.sessionId);
+    await loadSnapshot();
   } catch (err) {
     actionError.value = String(err);
   }
@@ -226,7 +218,7 @@ async function applyDual(event: Event): Promise<void> {
       props.sessionId,
       value === "" ? null : (value as MultimeterMode),
     );
-    dual.value = await api.getDmmDualDisplay(props.sessionId);
+    await loadSnapshot();
   } catch (err) {
     actionError.value = String(err);
   }
@@ -257,7 +249,7 @@ async function startLogging(): Promise<void> {
       totalSamples: loggingTotal.value === "" ? undefined : Number.parseInt(loggingTotal.value, 10),
     });
     loggingSamples.value = [];
-    logging.value = await api.getDmmLogging(props.sessionId);
+    await loadSnapshot();
   } catch (err) {
     actionError.value = String(err);
   }
@@ -267,7 +259,7 @@ async function stopLogging(): Promise<void> {
   actionError.value = null;
   try {
     await api.stopDmmLogging(props.sessionId);
-    logging.value = await api.getDmmLogging(props.sessionId);
+    await loadSnapshot();
   } catch (err) {
     actionError.value = String(err);
   }
@@ -316,31 +308,15 @@ async function applyTemperature(): Promise<void> {
       unit: tempUnit.value,
       transducer: tempTransducer.value,
     });
-    temperature.value = await api.getDmmTemperature(props.sessionId);
+    await loadSnapshot();
   } catch (err) {
     actionError.value = String(err);
   }
 }
 
-async function savePreset(slot: number): Promise<void> {
-  actionError.value = null;
-  try {
-    await api.saveDmmPreset(props.sessionId, slot);
-    presets.value = await api.getDmmPresets(props.sessionId);
-  } catch (err) {
-    actionError.value = String(err);
-  }
-}
-
-async function recallPreset(slot: number): Promise<void> {
-  actionError.value = null;
-  try {
-    await api.recallDmmPreset(props.sessionId, slot);
-    await loadCapabilities();
-  } catch (err) {
-    actionError.value = String(err);
-  }
-}
+const showTriggerSlopeAndDelay = computed(
+  () => (trigger.value?.capability?.delayRangeSec?.max ?? 0) > 0,
+);
 
 const availableRanges = computed(() => {
   const mode = selectedMode.value;
@@ -363,7 +339,7 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
           {{ multimeterModeLabel(reading.data.value.mode) }}
         </span>
       </div>
-      <p class="text-center font-mono text-5xl font-semibold tabular-nums" aria-live="polite">
+      <p class="text-center font-mono text-6xl font-semibold tabular-nums" aria-live="polite">
         {{ primary.value }}
       </p>
       <p v-if="reading.data.value" class="mt-1 text-center text-xs text-fg-muted">
@@ -403,18 +379,24 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
       </section>
 
       <section class="rounded-[var(--radius-card)] border border-border bg-surface-2 p-4">
-        <h3 class="mb-2 text-sm font-semibold">Recent readings</h3>
-        <ol class="flex flex-col gap-1 font-mono text-xs">
-          <li
-            v-for="(r, i) in history"
-            :key="i"
-            class="flex items-center justify-between rounded-md bg-surface-3 px-2 py-1"
-          >
-            <span class="text-fg-muted">{{ formatTime(r.measuredAt) }}</span>
-            <span>{{ r.overload ? "OVLD" : formatSi(r.value, r.unit, 4) }}</span>
-          </li>
-          <li v-if="history.length === 0" class="text-xs text-fg-muted">No readings yet.</li>
-        </ol>
+        <h3 id="dmm-recent-readings-heading" class="mb-2 text-sm font-semibold">Recent readings</h3>
+        <div
+          class="h-[min(17.5rem,30vh)] min-h-0 shrink-0 overflow-y-auto rounded-md"
+          role="region"
+          aria-labelledby="dmm-recent-readings-heading"
+        >
+          <ol class="flex flex-col gap-1 font-mono text-xs">
+            <li
+              v-for="(r, i) in history"
+              :key="i"
+              class="flex items-center justify-between rounded-md bg-surface-3 px-2 py-1"
+            >
+              <span class="text-fg-muted">{{ formatTime(r.measuredAt) }}</span>
+              <span>{{ r.overload ? "OVLD" : formatSi(r.value, r.unit, 4) }}</span>
+            </li>
+            <li v-if="history.length === 0" class="text-xs text-fg-muted">No readings yet.</li>
+          </ol>
+        </div>
       </section>
     </aside>
 
@@ -490,7 +472,7 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
             >{{ s }}</option>
           </select>
         </label>
-        <label class="flex flex-col text-xs text-fg-muted">
+        <label v-if="showTriggerSlopeAndDelay" class="flex flex-col text-xs text-fg-muted">
           Slope
           <select
             v-model="triggerDraft.slope"
@@ -503,7 +485,7 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
             >{{ s }}</option>
           </select>
         </label>
-        <label class="flex flex-col text-xs text-fg-muted">
+        <label v-if="showTriggerSlopeAndDelay" class="flex flex-col text-xs text-fg-muted">
           Delay (s)
           <input
             v-model.number="triggerDraft.delaySec"
@@ -558,6 +540,15 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
         </label>
         <label v-if="mathFn === 'null'" class="flex flex-col text-xs text-fg-muted">
           Null offset
+          <input
+            v-model="mathNull"
+            type="number"
+            step="any"
+            class="mt-1 h-9 rounded-md border border-border bg-surface px-2 text-sm"
+          />
+        </label>
+        <label v-if="mathFn === 'db'" class="flex flex-col text-xs text-fg-muted">
+          dB reference (dBm)
           <input
             v-model="mathNull"
             type="number"
@@ -748,38 +739,15 @@ const limitStatus = computed(() => math.value?.state?.limitResult);
     </details>
 
     <!-- 2.6c presets -->
-    <details
-      v-if="presets?.supported"
-      class="col-span-full rounded-[var(--radius-card)] border border-border bg-surface-2 p-4"
-    >
-      <summary class="cursor-pointer select-none text-sm font-semibold">Presets ({{ presets.slots }} slots)</summary>
-      <div class="mt-3 grid grid-cols-5 gap-2 md:grid-cols-10">
-        <div
-          v-for="(occ, i) in presets.occupied"
-          :key="i"
-          class="flex flex-col items-center gap-1 rounded-md border border-border bg-surface-3 p-2"
-        >
-          <span class="text-xs font-semibold">{{ i }}</span>
-          <span
-            class="block h-1.5 w-full rounded-full"
-            :class="occ ? 'bg-state-success' : 'bg-border'"
-          />
-          <button
-            class="rounded bg-accent px-1 py-0.5 text-[10px] text-accent-fg"
-            :disabled="controlsLocked"
-            :aria-disabled="controlsLocked"
-            :title="lockTitle"
-            @click="savePreset(i)"
-          >Save</button>
-          <button
-            class="rounded border border-border px-1 py-0.5 text-[10px] disabled:opacity-50"
-            :disabled="!occ || controlsLocked"
-            :aria-disabled="!occ || controlsLocked"
-            :title="lockTitle"
-            @click="recallPreset(i)"
-          >Recall</button>
-        </div>
-      </div>
-    </details>
+    <InstrumentPresetsControl
+      class="col-span-full"
+      :enabled="enabled"
+      description="Save and recall the full multimeter configuration (mode, range, math, trigger, and related settings) to one of {slots} internal memory slots."
+      :load-catalog="() => api.getDmmPresets(sessionId)"
+      :save-slot="(slot) => api.saveDmmPreset(sessionId, slot)"
+      :recall-slot="(slot) => api.recallDmmPreset(sessionId, slot)"
+      @saved="loadSnapshot"
+      @recalled="loadSnapshot"
+    />
   </div>
 </template>

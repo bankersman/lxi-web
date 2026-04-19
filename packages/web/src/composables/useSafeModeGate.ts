@@ -1,22 +1,27 @@
-import { computed, type ComputedRef } from "vue";
+import { computed, reactive, type ComputedRef } from "vue";
 import { mergeWriteGate } from "@/lib/safeModeWriteBind";
 import { useSafeModeStore } from "@/stores/safeMode";
 
+/**
+ * Return a reactive gate object so `gate.enabled` unwraps in templates and script.
+ * A plain `{ enabled: ComputedRef }` does not auto-unwrap nested refs on property access,
+ * so `:disabled="... || gate.enabled"` was always truthy outside `<script>` top-level refs.
+ */
 export function useSafeModeGate(): {
-  readonly enabled: ComputedRef<boolean>;
-  readonly attrs: ComputedRef<{
+  readonly enabled: boolean;
+  readonly attrs: {
     disabled: boolean;
     "aria-disabled": boolean;
-    title: string; // empty when safe mode off
-  }>;
-  /** Per-control merge of local `disabled` with safe mode (preferred for panels). */
+    title: string;
+  };
   bindWrite(getOwnDisabled: () => boolean): ComputedRef<ReturnType<typeof mergeWriteGate>>;
 } {
   const safe = useSafeModeStore();
-  const enabled = computed(() => safe.enabled);
-  const attrs = computed(() => mergeWriteGate(false, safe.enabled));
-  function bindWrite(getOwnDisabled: () => boolean) {
-    return computed(() => mergeWriteGate(getOwnDisabled(), safe.enabled));
-  }
-  return { enabled, attrs, bindWrite };
+  return reactive({
+    enabled: computed(() => safe.enabled),
+    attrs: computed(() => mergeWriteGate(false, safe.enabled)),
+    bindWrite(getOwnDisabled: () => boolean) {
+      return computed(() => mergeWriteGate(getOwnDisabled(), safe.enabled));
+    },
+  });
 }

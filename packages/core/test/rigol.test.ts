@@ -582,15 +582,33 @@ test("DM858 setTemperatureConfig emits UNIT + CONFigure:TEMPerature (doc §3.10.
   assert.ok(tcPort.writes.includes(":CONFigure:TEMPerature TCouple,K"));
 });
 
-test("DM858 preset save/recall emit *SAV / *RCL and validate slot range", async () => {
-  const port = new FakeScpiPort();
+test("DM858 preset save/recall use MMEMory (§3.16) and validate slot range", async () => {
+  const port = new FakeScpiPort().onQuery(
+    /MMEMory:CATalog:ALL\?/i,
+    '0,1000000,"state5.sta,STAT,100"',
+  );
   const dmm = new RigolDm858(port, parseIdn("RIGOL,DM858,SN,FW"));
   const catalog = await dmm.getPresetCatalog!();
   assert.equal(catalog.length, 10);
+  assert.equal(catalog[5], true);
+  assert.ok(port.queries.some((q) => /MMEMory:CATalog:ALL\?/i.test(q)));
   await dmm.savePreset!(3);
   await dmm.recallPreset!(3);
-  assert.ok(port.writes.includes("*SAV 3"));
-  assert.ok(port.writes.includes("*RCL 3"));
+  assert.ok(
+    port.writes.some((w) =>
+      /MMEMory:MDIRectory "INT:\\LxiPresets"/i.test(w),
+    ),
+  );
+  assert.ok(
+    port.writes.some((w) =>
+      /MMEMory:STORe:STATe "INT:\\LxiPresets\\state3"/i.test(w),
+    ),
+  );
+  assert.ok(
+    port.writes.some((w) =>
+      /MMEMory:LOAD:STATe "INT:\\LxiPresets\\state3\.sta"/i.test(w),
+    ),
+  );
   await assert.rejects(() => dmm.savePreset!(10), /preset slot/);
   await assert.rejects(() => dmm.recallPreset!(-1), /preset slot/);
 });

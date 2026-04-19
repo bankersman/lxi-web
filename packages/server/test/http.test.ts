@@ -681,13 +681,19 @@ test("DMM temperature endpoint validates unit/transducer", async () => {
   await app.close();
 });
 
-test("DMM presets endpoints validate slots and emit *SAV / *RCL", async () => {
-  const { app, id, session } = await openDmm();
+test("DMM presets endpoints validate slots and emit MMEMory STORe/LOAD (DM858 §3.16)", async () => {
+  const { app, id, session } = await openDmm((cmd) => {
+    if (/MMEMory:CATalog:ALL\?/i.test(cmd)) {
+      return '0,1000000,"state4.sta,STAT,100"';
+    }
+    return undefined;
+  });
   const list = await app.inject({ method: "GET", url: `/api/sessions/${id}/dmm/presets` });
   assert.equal(list.statusCode, 200);
   const body = list.json() as { slots: number; occupied: boolean[] };
   assert.equal(body.slots, 10);
   assert.equal(body.occupied.length, 10);
+  assert.equal(body.occupied[4], true);
 
   const bad = await app.inject({
     method: "POST",
@@ -706,8 +712,19 @@ test("DMM presets endpoints validate slots and emit *SAV / *RCL", async () => {
   });
   assert.equal(recalled.statusCode, 200);
   const writes = session()?.writes ?? [];
-  assert.ok(writes.includes("*SAV 4"));
-  assert.ok(writes.includes("*RCL 4"));
+  assert.ok(
+    writes.some((w) => /MMEMory:MDIRectory "INT:\\LxiPresets"/.test(w)),
+  );
+  assert.ok(
+    writes.some((w) =>
+      /MMEMory:STORe:STATe "INT:\\LxiPresets\\state4"/.test(w),
+    ),
+  );
+  assert.ok(
+    writes.some((w) =>
+      /MMEMory:LOAD:STATe "INT:\\LxiPresets\\state4\.sta"/.test(w),
+    ),
+  );
   await app.close();
 });
 

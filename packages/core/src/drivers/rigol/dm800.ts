@@ -30,6 +30,12 @@ import {
   type TemperatureUnit,
 } from "../../facades/multimeter.js";
 import { type Dm800Profile, DM800_DEFAULT } from "./dm800-profile.js";
+import {
+  dm800PresetLoadPath,
+  dm800PresetStorePath,
+  DM800_PRESET_FOLDER,
+  parseDm800PresetCatalog,
+} from "./dm800-presets.js";
 import { parseBool } from "./_shared/index.js";
 
 /**
@@ -236,6 +242,8 @@ export class RigolDm800 implements IMultimeter {
   #lastModeForMath?: MultimeterMode;
   /** Last known temp settings from device (updated in temperature mode). */
   #tempCache: MultimeterTemperatureConfig = { unit: "celsius", transducer: "pt100" };
+  /** Ensures `MMEMory:MDIRectory` for {@link DM800_PRESET_FOLDER} is attempted once per driver instance. */
+  #presetDirEnsured = false;
 
   /** Front-panel function changes: scaling resets (doc §3.9); drop dB/dBm cache when `SENSe:FUNCtion?` diverges from what we last saw. */
   #onMeasurementFunctionChanged(mode: MultimeterMode): void {
@@ -698,17 +706,36 @@ export class RigolDm800 implements IMultimeter {
   }
 
   async getPresetCatalog(): Promise<readonly boolean[]> {
-    return Array.from({ length: this.presets.slots }, () => true);
+    const n = this.presets.slots;
+    try {
+      const raw = await this.port.query(`MMEMory:CATalog:ALL? "${DM800_PRESET_FOLDER}"`);
+      return parseDm800PresetCatalog(raw, n);
+    } catch {
+      return Array.from({ length: n }, () => false);
+    }
+  }
+
+  async #ensurePresetDir(): Promise<void> {
+    if (this.#presetDirEnsured) return;
+    try {
+      await this.port.write(`MMEMory:MDIRectory "${DM800_PRESET_FOLDER}"`);
+    } catch {
+      /* folder may already exist */
+    }
+    this.#presetDirEnsured = true;
   }
 
   async savePreset(slot: number): Promise<void> {
     this.#assertSlot(slot);
-    await this.port.write(`*SAV ${slot}`);
+    await this.#ensurePresetDir();
+    const p = dm800PresetStorePath(slot);
+    await this.port.write(`MMEMory:STORe:STATe "${p}"`);
   }
 
   async recallPreset(slot: number): Promise<void> {
     this.#assertSlot(slot);
-    await this.port.write(`*RCL ${slot}`);
+    const p = dm800PresetLoadPath(slot);
+    await this.port.write(`MMEMory:LOAD:STATe "${p}"`);
   }
 
   #assertSlot(slot: number): void {

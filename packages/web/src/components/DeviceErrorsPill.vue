@@ -80,6 +80,10 @@ onBeforeUnmount(() => {
   unsub?.();
 });
 
+watch(count, (n) => {
+  if (n === 0) open.value = false;
+});
+
 async function clearErrors(): Promise<void> {
   if (busy.value) return;
   busy.value = true;
@@ -94,7 +98,7 @@ async function clearErrors(): Promise<void> {
 </script>
 
 <template>
-  <div v-if="active" class="relative inline-flex items-center">
+  <div v-if="active && count > 0" class="relative inline-flex items-center">
     <button
       type="button"
       class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"

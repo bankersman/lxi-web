@@ -7,7 +7,8 @@ operator. Two concrete artefacts:
 
 1. A **device-errors** surface that drains `SYST:ERR?` on a cadence and
    shows the resulting entries on the detail page and as a dashboard
-   badge. Today the hook exists in `ScpiSession` but the errors never
+   badge whenever the queue is non-empty. Today the hook exists in
+   `ScpiSession` but the errors never
    reach the UI — a rejected command silently disappears, which is the
    single most common frustration with raw SCPI and any typed panel that
    pushes slightly wrong commands.
@@ -97,14 +98,21 @@ once operators can see what's actually happening on the wire.
 
 ### UI
 
-- Overview card (3.4): add a small pill next to the status dot:
-  **"2 device errors"** → click drops a panel listing recent entries with
-  code, message, and wall-clock timestamp; clear button calls a new
-  `POST /api/sessions/:id/errors/clear` that drops the session's ring.
-- Dashboard card: same pill in compact form (count only), colour-coded by
-  severity (`-4xx` catalogue codes = red, `-1xx / -2xx` = amber, others =
-  neutral). Follow the 2.3 accessibility rule: never colour-only, always
-  include the numeric count.
+- **Device error pill (`DeviceErrorsPill`):** only **mounts when there is at
+  least one** buffered error (`count > 0`). While the queue is empty, no
+  pill is shown — the layout stays unchanged and polling / `device.errors`
+  subscription still runs so the pill appears as soon as an error lands.
+  Click opens a popover with recent entries (code, message, wall-clock
+  timestamp); **Clear buffer** calls `POST /api/sessions/:id/errors/clear`
+  and removes the pill when the count returns to zero.
+- **Device detail — overview card (3.4):** when errors exist, show the
+  pill next to the status / reconnect controls (full label, e.g.
+  **"2 device errors"**).
+- **Dashboard — device grid card:** same behaviour with the `compact`
+  styling flag (tighter pill height). Header row uses `min-w-0` on the card
+  and title column plus `flex-wrap` on the actions cluster so the pill and
+  connection status stay inside the card when multiple devices sit in a
+  narrow grid column.
 - Detail page: new **Transcript** tab next to Raw SCPI. Virtualised list
   with timestamp, direction glyph, origin tag, command, response (if
   any), elapsed ms. Filter bar: text search (substring), direction, and
@@ -149,9 +157,9 @@ once operators can see what's actually happening on the wire.
       the full ring in memory.
 - [ ] WS `session.transcript` tail is throttled at 100 ms; test confirms
       no missed entries after a 1000-command burst.
-- [ ] Overview card pill renders on sessions with ≥ 1 device error,
-      updates reactively, and is keyboard-reachable with an
-      `aria-describedby` summary.
+- [ ] Error pill is **omitted when the buffer is empty**; it appears only
+      when there is ≥ 1 device error, updates reactively, and is
+      keyboard-reachable with an `aria-describedby` summary.
 - [ ] Detail page Transcript tab virtualises ≥ 2000 entries without jank
       on the reference hardware; filter, pause, download work end-to-end.
 - [ ] Raw SCPI inputs auto-appear in the transcript with

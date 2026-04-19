@@ -51,13 +51,13 @@ async function reconnect(): Promise<void> {
 
 <template>
   <article
-    class="group flex flex-col gap-3 rounded-[var(--radius-card)] border border-border bg-surface-2 p-4 shadow-sm transition-shadow focus-within:shadow-md hover:shadow-md"
+    class="group flex min-w-0 flex-col gap-3 rounded-[var(--radius-card)] border border-border bg-surface-2 p-4 shadow-sm transition-shadow focus-within:shadow-md hover:shadow-md"
     :aria-label="ariaSummary"
   >
-    <header class="flex items-start justify-between gap-3">
-      <div class="flex items-center gap-3">
+    <header class="flex flex-wrap items-start justify-between gap-3">
+      <div class="flex min-w-0 flex-1 items-center gap-3">
         <span
-          class="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface-3 text-accent"
+          class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-surface-3 text-accent"
           aria-hidden="true"
         >
           <DeviceKindIcon :kind="session.kind" />
@@ -67,7 +67,7 @@ async function reconnect(): Promise<void> {
           <p class="truncate text-xs text-fg-muted">{{ subtitle }}</p>
         </div>
       </div>
-      <div class="flex shrink-0 items-center gap-2">
+      <div class="flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
         <DeviceErrorsPill
           v-if="session.kind !== 'unknown'"
           :session-id="session.id"

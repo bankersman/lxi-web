@@ -17,6 +17,7 @@ import { SAFE_MODE_WRITE_TITLE } from "@/lib/safeModeWriteBind";
 import { formatSi, formatTime } from "@/lib/format";
 import { multimeterModeLabel } from "@/lib/labels";
 import type {
+  MultimeterAutoZero,
   MultimeterDualReading,
   MultimeterMathFunction,
   MultimeterMode,
@@ -131,6 +132,17 @@ async function applyNplc(event: Event): Promise<void> {
   actionError.value = null;
   try {
     await api.setDmmRanging(props.sessionId, { nplc: value });
+    await loadSnapshot();
+  } catch (err) {
+    actionError.value = String(err);
+  }
+}
+
+async function applyAutoZero(event: Event): Promise<void> {
+  const value = (event.target as HTMLSelectElement).value as MultimeterAutoZero;
+  actionError.value = null;
+  try {
+    await api.setDmmRanging(props.sessionId, { autoZero: value });
     await loadSnapshot();
   } catch (err) {
     actionError.value = String(err);

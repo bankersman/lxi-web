@@ -92,7 +92,7 @@ jobs:
       # - name: Compute image tags (GHCR + Docker Hub)
       #   if: steps.dh.outputs.enabled == 'true'
       #   id: meta-both
-      #   uses: docker/metadata-action@v5
+      #   uses: docker/metadata-action@v6
       #   with:
       #     images: |
       #       ghcr.io/${{ github.repository }}
@@ -106,7 +106,7 @@ jobs:
 
       - name: Compute image tags (GHCR only)
         id: meta-ghcr
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ghcr.io/${{ github.repository }}

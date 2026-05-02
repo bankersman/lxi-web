@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "@lxi-web/core": "workspace:*",
-    "@types/node": "^22.9.0",
+    "@types/node": "^25.6.0",
     "tsx": "^4.19.2",
     "typescript": "^6.0.3"
   }

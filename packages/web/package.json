@@ -16,7 +16,7 @@
     "lucide-vue-next": "^1.0.0",
     "pinia": "^3.0.4",
     "uplot": "^1.6.31",
-    "vue": "^3.5.12",
+    "vue": "^3.5.33",
     "vue-router": "^5.0.4"
   },
   "devDependencies": {
